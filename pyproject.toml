@@ -1,0 +1,33 @@
+[project]
+name = "gaussian-sim"
+version = "0.1.0"
+description = "Paraxial Gaussian beam optics simulator using ABCD matrices"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "matplotlib",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.pylint.main]
+init-hook = 'import sys; sys.path.insert(0, ".")'
+py-version = "3.10"
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "q", "R", "R_z", "ax", "fig", "q_to_R", "q_to_w", "w0", "z0"]
+
+[tool.pylint.messages_control]
+disable = [
+    "duplicate-code",
+    "too-few-public-methods",
+    "wrong-import-position",
+    "missing-function-docstring",
+    "invalid-name",
+]
+
+[tool.pylint.design]
+max-args = 6
+max-locals = 20

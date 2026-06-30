@@ -1,0 +1,5 @@
+{
+    "git.ignoreLimitWarning": true,
+    "python.analysis.extraPaths": ["."],
+    "pylint.args": ["--rcfile=pyproject.toml"]
+}
