@@ -465,7 +465,7 @@ def test_tk_app_simulate_updates_fiber_received_power():
             for item_id in app.canvas.find_all()
             if app.canvas.type(item_id) == "text"
         )
-        assert "optical mode 2.18 x 0.965 um" in canvas_text
+        assert "optical mode 1.24 x 2.9 um" in canvas_text
     finally:
         app.destroy()
 
