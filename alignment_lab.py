@@ -28,7 +28,10 @@ from interactive_setup import (
 
 
 DEFAULT_ALIGNMENT_SEED = 42
+DEFAULT_INITIAL_BALL_X_OFFSET = 300e-6
+# Max |offset| from nominal perfect alignment for source and taper x/y (metres).
 DEFAULT_SOURCE_DETECTOR_TOLERANCE = 5.0e-6
+# Max |offset| from nominal perfect alignment per lens x/y/z axis (metres).
 DEFAULT_LENS_POSE_TOLERANCE = 2.0e-6
 DEFAULT_HEIGHT_TOLERANCE = DEFAULT_SOURCE_DETECTOR_TOLERANCE
 DEFAULT_ALGORITHM_SHOW_DELAY_MS = 180
@@ -68,6 +71,8 @@ def seeded_alignment_errors(
     lens_pose_tolerance: float = DEFAULT_LENS_POSE_TOLERANCE,
     lens_count: int = 2,
 ) -> AlignmentScramble:
+    """Return reproducible misalignments relative to the nominal perfect layout."""
+
     _validate_tolerance("source/detector", source_detector_tolerance)
     _validate_tolerance("lens pose", lens_pose_tolerance)
     if lens_count < 0:
@@ -191,7 +196,12 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         self.title("Optical Alignment Lab")
         self._capture_nominal_ball_poses()
         self._alignment_initializing = False
-        self._apply_seeded_alignment_errors(push_undo=False)
+        for ball in self.balls:
+            ball.x_offset = DEFAULT_INITIAL_BALL_X_OFFSET
+        self._clear_simulation_overlay()
+        self._fit_view_bounds_to_layout()
+        self._refresh_tree()
+        self.redraw()
         self._run_alignment_simulation(update_report=True)
 
     def _build_ui(self) -> None:
@@ -206,7 +216,7 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         self.seed_var = tk.StringVar(value=str(DEFAULT_ALIGNMENT_SEED))
         ttk.Entry(panel, textvariable=self.seed_var, width=8).grid(row=0, column=1, padx=(0, 10), sticky="w")
 
-        ttk.Label(panel, text="Src/det tol").grid(row=0, column=2, padx=(0, 4), sticky="w")
+        ttk.Label(panel, text="Src/det ±").grid(row=0, column=2, padx=(0, 4), sticky="w")
         self.source_detector_tolerance_var = tk.StringVar(
             value=f"{DEFAULT_SOURCE_DETECTOR_TOLERANCE * 1e6:.3g}"
         )
@@ -215,7 +225,7 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         )
         ttk.Label(panel, text="um").grid(row=0, column=4, padx=(0, 10), sticky="w")
 
-        ttk.Label(panel, text="Lens tol").grid(row=0, column=5, padx=(0, 4), sticky="w")
+        ttk.Label(panel, text="Lens ±").grid(row=0, column=5, padx=(0, 4), sticky="w")
         self.lens_tolerance_var = tk.StringVar(value=f"{DEFAULT_LENS_POSE_TOLERANCE * 1e6:.3g}")
         ttk.Entry(panel, textvariable=self.lens_tolerance_var, width=8).grid(
             row=0, column=6, padx=(0, 4), sticky="w"
@@ -510,7 +520,12 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         super()._reset_defaults()
         self._capture_nominal_ball_poses()
         self._best_evaluation = None
-        self._apply_seeded_alignment_errors(push_undo=False)
+        for ball in self.balls:
+            ball.x_offset = DEFAULT_INITIAL_BALL_X_OFFSET
+        self._clear_simulation_overlay()
+        self._fit_view_bounds_to_layout()
+        self._refresh_tree()
+        self.redraw()
         self._maybe_run_live_alignment()
 
     def _add_source(self) -> None:

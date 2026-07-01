@@ -11,6 +11,7 @@ from alignment_algorithms.base import AlignmentAlgorithmResult, PowerReading
 import alignment_lab as alignment_lab_module
 from alignment_lab import (
     DEFAULT_ALIGNMENT_SEED,
+    DEFAULT_INITIAL_BALL_X_OFFSET,
     DEFAULT_LENS_POSE_TOLERANCE,
     DEFAULT_SOURCE_DETECTOR_TOLERANCE,
     AlignmentLabEditor,
@@ -71,17 +72,14 @@ def test_seeded_alignment_errors_are_repeatable_and_bounded():
         assert all(-DEFAULT_LENS_POSE_TOLERANCE <= value <= DEFAULT_LENS_POSE_TOLERANCE for value in pose_offset)
 
 
-def test_alignment_lab_startup_applies_2d_and_3d_scramble():
+def test_alignment_lab_startup_places_balls_out_of_beam_path():
     app = _make_app()
 
     try:
-        assert app.sources[0].y_offset != 0.0
-        assert app.tapers[0].y_offset != 0.0
+        assert all(np.isclose(ball.x_offset, DEFAULT_INITIAL_BALL_X_OFFSET) for ball in app.balls)
+        assert all(np.isclose(ball.y_offset, 0.0) for ball in app.balls)
         assert app.source_detector_tolerance == DEFAULT_SOURCE_DETECTOR_TOLERANCE
         assert app.lens_pose_tolerance == DEFAULT_LENS_POSE_TOLERANCE
-
-        for pose_offset in app._ball_pose_offsets_from_nominal():  # pylint: disable=protected-access
-            assert all(-DEFAULT_LENS_POSE_TOLERANCE <= value <= DEFAULT_LENS_POSE_TOLERANCE for value in pose_offset)
     finally:
         app.destroy()
 
@@ -201,15 +199,15 @@ def test_alignment_lab_algorithm_handoff_hides_source_and_detector_positions(mon
         app.destroy()
 
 
-def test_moving_lens_in_y_changes_evaluated_power():
+def test_moving_lens_in_x_changes_evaluated_power():
     app = _make_app()
 
     try:
         first = app.evaluate_current_alignment()
-        app.balls[1].y_offset += 5e-6
+        app.balls[0].x_offset -= 50e-6
         second = app.evaluate_current_alignment()
 
-        assert first.received_power > 0.0
+        assert first.received_power >= 0.0
         assert second.received_power >= 0.0
         assert second.received_power != first.received_power
     finally:

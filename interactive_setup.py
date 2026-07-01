@@ -54,7 +54,8 @@ DEFAULT_TAPER_FACET_REFRACTIVE_INDEX = 2.0
 DEFAULT_BALL1_FRONT_GAP = 39e-6
 DEFAULT_BALL_GAP = 200e-6
 DEFAULT_BALL2_TAPER_GAP = 39e-6
-AXIAL_TOLERANCE = 500e-6
+# Maximum random offsets applied relative to the stored nominal (perfectly aligned) pose.
+AXIAL_TOLERANCE = 5e-6
 TRANSVERSE_TOLERANCE = 50e-6
 
 
@@ -1336,9 +1337,22 @@ def scramble_element_positive(
     *,
     axial_tolerance: float = AXIAL_TOLERANCE,
     transverse_tolerance: float = TRANSVERSE_TOLERANCE,
+    scramble_axial: bool | None = None,
     rng: random.Random | None = None,
 ) -> None:
-    element.position = nominal.position + random_positive(axial_tolerance, rng)
+    """Apply a random misalignment relative to the nominal perfectly aligned pose.
+
+    Lenses and ball lenses: positive z offset plus positive x/y offsets from nominal.
+    Laser, fibre, and taper elements: x/y offsets only (z stays at nominal).
+    """
+
+    if scramble_axial is None:
+        scramble_axial = isinstance(element, (LensElement, BallLensElement))
+
+    if scramble_axial:
+        element.position = nominal.position + random_positive(axial_tolerance, rng)
+    else:
+        element.position = nominal.position
     element.x_offset = random_positive(transverse_tolerance, rng)
     element.y_offset = random_positive(transverse_tolerance, rng)
 
@@ -1429,7 +1443,6 @@ class OpticalLayoutEditor(tk.Tk):
         ttk.Button(toolbar, text="Zoom -", command=self._zoom_out).grid(row=0, column=10, padx=(0, 6))
         ttk.Button(toolbar, text="Zoom +", command=self._zoom_in).grid(row=0, column=11, padx=(0, 6))
         ttk.Button(toolbar, text="Reset view", command=self._reset_view).grid(row=0, column=12, padx=(0, 14))
-        ttk.Button(toolbar, text="Reset defaults", command=self._reset_defaults).grid(row=0, column=13, padx=(0, 14))
         ttk.Button(toolbar, text="Align all", command=self._align_all).grid(row=1, column=0, padx=(0, 6), pady=(6, 0))
         ttk.Button(toolbar, text="Scramble laser/fibre", command=self._scramble_laser_fibre).grid(
             row=1, column=1, padx=(0, 6), pady=(6, 0)
@@ -2700,6 +2713,7 @@ class OpticalLayoutEditor(tk.Tk):
         self._refresh_tree()
         self.redraw()
         self.status_var.set(status)
+        self._simulate()
 
     def _validate_layout(self) -> bool:
         try:
@@ -2715,12 +2729,19 @@ class OpticalLayoutEditor(tk.Tk):
             apply_nominal_state(element, self._nominal_for(element))
         self._apply_layout_change("All elements restored to nominal aligned positions.")
 
-    def _scramble_status_message(self, scope: str) -> str:
+    def _scramble_transverse_message(self, scope: str) -> str:
+        transverse_um = TRANSVERSE_TOLERANCE * 1e6
+        return (
+            f"{scope} scrambled relative to perfect alignment "
+            f"(+0 to {transverse_um:g} µm x/y from nominal)."
+        )
+
+    def _scramble_lens_message(self, scope: str) -> str:
         axial_um = AXIAL_TOLERANCE * 1e6
         transverse_um = TRANSVERSE_TOLERANCE * 1e6
         return (
-            f"{scope} scrambled "
-            f"(+0 to {axial_um:g} µm axial tolerance, +0 to {transverse_um:g} µm transverse tolerance)."
+            f"{scope} scrambled relative to perfect alignment "
+            f"(+0 to {axial_um:g} µm z, +0 to {transverse_um:g} µm x/y from nominal)."
         )
 
     def _scramble_laser_fibre(self) -> None:
@@ -2729,16 +2750,20 @@ class OpticalLayoutEditor(tk.Tk):
             scramble_element_positive(element, self._nominal_for(element), rng=rng)
         if not self._validate_layout():
             return
-        self._apply_layout_change(self._scramble_status_message("Laser, fibre, and taper positions"))
+        self._apply_layout_change(self._scramble_transverse_message("Laser, fibre, and taper positions"))
 
     def _scramble_full(self) -> None:
         rng = random.Random()
-        for element in [*self.lenses, *self.balls, *self.sources, *self.fibers, *self.tapers]:
+        for element in [*self.lenses, *self.balls]:
+            scramble_element_positive(element, self._nominal_for(element), rng=rng)
+        for element in [*self.sources, *self.fibers, *self.tapers]:
             scramble_element_positive(element, self._nominal_for(element), rng=rng)
         if not self._validate_layout():
             return
         self._apply_layout_change(
-            self._scramble_status_message("All lenses, laser, fibre, and taper positions")
+            "All elements scrambled relative to perfect alignment "
+            f"(lenses: +0 to {AXIAL_TOLERANCE * 1e6:g} µm z and +0 to {TRANSVERSE_TOLERANCE * 1e6:g} µm x/y from nominal; "
+            f"laser/fibre/taper: +0 to {TRANSVERSE_TOLERANCE * 1e6:g} µm x/y from nominal only)."
         )
 
     def _simulate(self) -> None:

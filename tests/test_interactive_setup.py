@@ -385,6 +385,16 @@ def test_scramble_element_positive_uses_nominal_and_positive_offsets():
     assert 0.0 <= ball.y_offset <= TRANSVERSE_TOLERANCE
 
 
+def test_scramble_laser_source_keeps_nominal_z_and_moves_xy_only():
+    source = LaserSource(position=0.0, x_offset=0.0, y_offset=0.0)
+    nominal = capture_element_nominal(source)
+    rng = random.Random(2)
+    scramble_element_positive(source, nominal, rng=rng)
+    assert source.position == nominal.position
+    assert 0.0 <= source.x_offset <= TRANSVERSE_TOLERANCE
+    assert 0.0 <= source.y_offset <= TRANSVERSE_TOLERANCE
+
+
 def test_apply_nominal_state_restores_aligned_layout():
     source = LaserSource(x_offset=20e-6, y_offset=30e-6, x_angle=1e-3, y_angle=2e-3)
     nominal = NominalElementState(position=0.0, x_offset=0.0, y_offset=0.0, x_angle=0.0, y_angle=0.0)
@@ -414,6 +424,7 @@ def test_tk_app_align_and_scramble_buttons():
         assert app.balls[0].position <= nominal_ball_z + AXIAL_TOLERANCE
         assert 0.0 <= app.balls[0].x_offset <= TRANSVERSE_TOLERANCE
         assert 0.0 <= app.balls[0].y_offset <= TRANSVERSE_TOLERANCE
+        assert np.isclose(app.sources[0].position, 0.0)
         assert app.sources[0].x_offset >= 0.0
         assert app.sources[0].x_offset <= TRANSVERSE_TOLERANCE
     finally:
