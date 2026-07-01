@@ -1,6 +1,7 @@
 """Tests for the interactive setup simulation wiring."""
 
 import math
+import random
 import tkinter as tk
 
 import numpy as np
@@ -16,16 +17,23 @@ from interactive_setup import (
     FiberElement,
     LaserSource,
     LensElement,
+    NominalElementState,
     OpticalLayoutEditor,
     SAPPHIRE_REFRACTIVE_INDEX,
+    SCRAMBLE_AXIAL_MAX,
+    SCRAMBLE_TRANSVERSE_MAX,
     TaperDetectorElement,
     _one_over_e2_half_angle_from_fwhm,
+    apply_nominal_state,
     ball_lens_matrix,
+    capture_element_nominal,
     default_ball_lens_layout,
     fiber_to_spec,
     format_simulation_report,
     lens_to_spec,
     propagate_astigmatic_through_balls,
+    random_positive,
+    scramble_element_positive,
     simulate_source_to_taper,
     simulate_layout,
     simulate_source_to_fiber,
@@ -255,6 +263,56 @@ def test_simulation_report_contains_source_lens_and_fiber_results():
     assert "Lens aperture checks" in report
     assert "Fiber coupling" in report
     assert results[0].fiber_results[0].received_power > 0.0
+
+
+def test_random_positive_stays_in_one_sided_range():
+    rng = random.Random(0)
+    samples = [random_positive(500e-6, rng) for _ in range(200)]
+    assert all(0.0 <= sample <= 500e-6 for sample in samples)
+    assert any(sample > 0.0 for sample in samples)
+
+
+def test_scramble_element_positive_uses_nominal_and_positive_offsets():
+    ball = BallLensElement(position=0.001, x_offset=0.0, y_offset=0.0)
+    nominal = capture_element_nominal(ball)
+    rng = random.Random(1)
+    scramble_element_positive(ball, nominal, rng=rng)
+    assert 0.001 <= ball.position <= 0.001 + SCRAMBLE_AXIAL_MAX
+    assert 0.0 <= ball.x_offset <= SCRAMBLE_TRANSVERSE_MAX
+    assert 0.0 <= ball.y_offset <= SCRAMBLE_TRANSVERSE_MAX
+
+
+def test_apply_nominal_state_restores_aligned_layout():
+    source = LaserSource(x_offset=20e-6, y_offset=30e-6, x_angle=1e-3, y_angle=2e-3)
+    nominal = NominalElementState(position=0.0, x_offset=0.0, y_offset=0.0, x_angle=0.0, y_angle=0.0)
+    apply_nominal_state(source, nominal)
+    assert source.x_offset == 0.0
+    assert source.y_offset == 0.0
+    assert source.x_angle == 0.0
+    assert source.y_angle == 0.0
+
+
+def test_tk_app_align_and_scramble_buttons():
+    try:
+        app = OpticalLayoutEditor()
+    except tk.TclError as exc:
+        pytest.skip(f"Tk is not available: {exc}")
+
+    try:
+        nominal_ball_z = app.balls[0].position
+        app.balls[0].x_offset = 25e-6
+        app.balls[0].position = nominal_ball_z + 100e-6
+        app._align_all()  # pylint: disable=protected-access
+        assert app.balls[0].x_offset == 0.0
+        assert np.isclose(app.balls[0].position, nominal_ball_z)
+
+        app._scramble_lenses_full()  # pylint: disable=protected-access
+        assert app.balls[0].position >= nominal_ball_z
+        assert app.balls[0].position <= nominal_ball_z + SCRAMBLE_AXIAL_MAX
+        assert 0.0 <= app.balls[0].x_offset <= SCRAMBLE_TRANSVERSE_MAX
+        assert 0.0 <= app.balls[0].y_offset <= SCRAMBLE_TRANSVERSE_MAX
+    finally:
+        app.destroy()
 
 
 def test_tk_app_simulate_updates_fiber_received_power():
