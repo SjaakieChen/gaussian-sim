@@ -32,10 +32,11 @@ def _assert_pose_close(actual, expected):
         assert np.allclose(actual_pose, expected_pose)
 
 
-def test_alignment_algorithm_registry_has_manual_baseline_only():
+def test_alignment_algorithm_registry_has_manual_and_yase_subprocesses():
     algorithms = available_algorithms()
 
-    assert set(algorithms) == {"manual"}
+    assert "manual" in algorithms
+    assert "yase:SUB_Positioning/SUB_Test_DrawCircle_AlignX1Z1.xseq" in algorithms
     assert get_algorithm("manual").display_name == "Manual/no search"
 
 

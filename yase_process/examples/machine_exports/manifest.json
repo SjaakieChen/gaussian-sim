@@ -1,0 +1,26 @@
+{
+  "description": "Tracks machine export files expected for site-data validation.",
+  "exports": {
+    "systemvar.ini": {
+      "status": "missing",
+      "required_sections": ["MainVelocity"],
+      "copy_to": "examples/machine_exports/systemvar.ini"
+    },
+    "Hardware.ini": {
+      "status": "missing",
+      "copy_to": "examples/machine_exports/Hardware.ini"
+    },
+    "IOPointDB.txt": {
+      "status": "partial",
+      "checkout_path": "IOPointDB.txt",
+      "note": "Only camera exposure lines in checkout; full export required",
+      "copy_to": "examples/machine_exports/IOPointDB.txt"
+    },
+    "Processvar.ini": {
+      "status": "present",
+      "checkout_path": "Processvar.ini"
+    }
+  },
+  "last_export_date": null,
+  "exported_by": null
+}

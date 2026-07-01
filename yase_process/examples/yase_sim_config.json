@@ -1,0 +1,127 @@
+{
+  "process_ini": "Processvar.ini",
+  "fiducialed": true,
+  "dialog_policy": "button2",
+  "dropdown_selection": "Cancel",
+  "dropdown_selections": {
+    "TIASelect": "TIA1",
+    "MAIN": "PickUpBallLens"
+  },
+  "default_missing_number": 0.0,
+  "default_missing_string": "",
+  "_notes": {
+    "conventions": "See YASE_MACHINE_CONVENTIONS.md",
+    "tia_definition": "TIA reading = optical power received at the detector (mW).",
+    "tia_assignment": "TIA channels are manually selected on the machine. These process variables represent the operator-selected channels for simulation runs.",
+    "holder_mapping": "1=left, 2=right. Holder 1: Align1, Gripper1, vacuum helper Gripper. Holder 2: Align2, Gripper2, vacuum helper CH2.",
+    "rotation_frame": "+Z nose = machine Y / sim z. Roll about Z, pitch about X, yaw about Y; degrees.",
+    "axis_signs": "User confirmed the current machine-to-simulation axis signs are correct.",
+    "dropdown_selections": "Per-dialog Title overrides; falls back to dropdown_selection.",
+    "TipSensor": "WaitDigIn in SUB_Calibrate_Needles.xseq: 0=off, 1=on. Off means needle adjusted."
+  },
+  "process_variables": {
+    "Alignment": {
+      "TIA_Lo": "TIA1",
+      "TIA_Tx": "TIA1",
+      "TIA_Rx": "TIA2",
+      "OpticSwitchLo": 0.0,
+      "OpticSwitchTx": 0.0,
+      "OpticSwitchRx": 1.0
+    },
+    "ProcessData": {
+      "PowerLo_Dispensed": 0.0,
+      "PowerRx_Dispensed": 0.0,
+      "PowerTx_Dispensed": 0.0,
+      "FinalPowerTarget_Lo": 0.0,
+      "FinalPowerTarget_Rx": 0.0,
+      "FinalPowerTarget_Tx": 0.0,
+      "FinalPowerChangeRate": 0.0
+    }
+  },
+  "system_variables": {
+    "MainVelocity": {
+      "VelocityAlignXSlow": 50.0,
+      "VelocityAlignSlow": 100.0,
+      "VelocityAlignMedium": 500.0,
+      "VelocityAlignFast": 1000.0,
+      "VelocityAlignXFast": 2000.0,
+      "VelocityAlignXXFast": 5000.0,
+      "VelocityCameraXSlow": 50.0,
+      "VelocityCameraSlow": 100.0,
+      "VelocityCameraMedium": 500.0,
+      "VelocityCameraFast": 1000.0,
+      "VelocityCameraXFast": 2000.0,
+      "VelocityRotSlow": 1.0,
+      "VelocityRotMedium": 5.0,
+      "VelocityRotFast": 10.0,
+      "VelocityZoom": 100.0
+    }
+  },
+  "initial_stage_positions": {
+    "Align_X1": 0.0,
+    "Align_Y1": 0.0,
+    "Align_Z1": 0.0,
+    "Align_X2": 0.0,
+    "Align_Y2": 0.0,
+    "Align_Z2": 0.0,
+    "Camera_X": 0.0,
+    "Camera_Y": 0.0,
+    "Camera_Z": 0.0
+  },
+  "digital_inputs": {
+    "Vacuum_OK": 1,
+    "Gripper1_Open": 1,
+    "Gripper2_Open": 1,
+    "AirPressure_OK": 1,
+    "MotionStop": 0,
+    "TipSensor": 0,
+    "Limit_Door_Open": 1,
+    "TrayFixed": 1
+  },
+  "analog_inputs": {
+    "Vacuum_Pressure": -60.0,
+    "Gripper1_Pressure": -60.0,
+    "Gripper2_Pressure": -60.0,
+    "Force1": 0.0,
+    "Force2": 0.0,
+    "TIA1": 0.1,
+    "TIA2": 0.1
+  },
+  "holder_map": {
+    "1": {
+      "lens": "leftmost_ball_lens",
+      "actor": "Align1",
+      "gripper": "Gripper1",
+      "vacuum": "Vacuum1",
+      "vacuum_helper_channel": "Gripper",
+      "pressure_sensor": "Gripper1_Pressure",
+      "force_sensor": "Force1"
+    },
+    "2": {
+      "lens": "rightmost_ball_lens",
+      "actor": "Align2",
+      "gripper": "Gripper2",
+      "vacuum": "Vacuum2",
+      "vacuum_helper_channel": "CH2",
+      "pressure_sensor": "Gripper2_Pressure",
+      "force_sensor": "Force2"
+    }
+  },
+  "power": {
+    "gaussian_sim_path": "..",
+    "default": {
+      "model": "static",
+      "mw": 0.1
+    },
+    "TIA1": {
+      "model": "external_gaussian_ball_lens",
+      "lens_actor_map": ["Align1", "Align2"],
+      "stage_um_to_m": 0.000001
+    },
+    "TIA2": {
+      "model": "external_gaussian_ball_lens",
+      "lens_actor_map": ["Align1", "Align2"],
+      "stage_um_to_m": 0.000001
+    }
+  }
+}

@@ -11,6 +11,7 @@ from .base import (
     PowerReading,
 )
 from .manual import ManualAlignmentAlgorithm
+from .yase import YaseAlignmentAlgorithm, discover_yase_algorithms
 
 
 _ALGORITHMS: dict[str, AlignmentAlgorithm] = {
@@ -19,6 +20,7 @@ _ALGORITHMS: dict[str, AlignmentAlgorithm] = {
         ManualAlignmentAlgorithm(),
     )
 }
+_ALGORITHMS.update(discover_yase_algorithms())
 
 
 def available_algorithms() -> dict[str, AlignmentAlgorithm]:
@@ -41,6 +43,7 @@ __all__ = [
     "LensPose",
     "ManualAlignmentAlgorithm",
     "PowerReading",
+    "YaseAlignmentAlgorithm",
     "available_algorithms",
     "get_algorithm",
 ]

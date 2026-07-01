@@ -250,7 +250,7 @@ class AlignmentLabEditor(OpticalLayoutEditor):
             textvariable=self.algorithm_var,
             values=algorithm_labels,
             state="readonly",
-            width=18,
+            width=44,
         ).grid(row=1, column=1, columnspan=2, padx=(0, 8), sticky="w")
         ttk.Button(panel, text="Run algorithm", command=self._run_selected_algorithm).grid(
             row=1, column=3, padx=(0, 8), sticky="w"
@@ -604,11 +604,14 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         return algorithm, result, device.move_history(), initial_poses
 
     def _set_algorithm_complete_status(self, algorithm, result, evaluation: AlignmentEvaluation) -> None:
+        detail = (
+            f"{algorithm.display_name}: {result.move_count} moves, {result.evaluations} reads, "
+            f"best {evaluation.received_power * 1e3:.6g} mW"
+        )
+        if result.message:
+            detail = f"{detail} | {result.message}"
         if self._alignment_ui_ready:
-            self.algorithm_status_var.set(
-                f"{algorithm.display_name}: {result.move_count} moves, {result.evaluations} reads, "
-                f"best {evaluation.received_power * 1e3:.6g} mW"
-            )
+            self.algorithm_status_var.set(detail)
         self.status_var.set(
             f"{algorithm.display_name} complete: {evaluation.received_power * 1e3:.6g} mW received."
         )
