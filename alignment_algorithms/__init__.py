@@ -11,12 +11,14 @@ from .base import (
     PowerReading,
 )
 from .manual import ManualAlignmentAlgorithm
+from .walk_beam import WalkBeamAlgorithm
 
 
 _ALGORITHMS: dict[str, AlignmentAlgorithm] = {
     algorithm.name: algorithm
     for algorithm in (
         ManualAlignmentAlgorithm(),
+        WalkBeamAlgorithm(),
     )
 }
 
@@ -41,6 +43,7 @@ __all__ = [
     "LensPose",
     "ManualAlignmentAlgorithm",
     "PowerReading",
+    "WalkBeamAlgorithm",
     "available_algorithms",
     "get_algorithm",
 ]

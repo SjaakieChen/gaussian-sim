@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from tkinter import messagebox, ttk
 
 from alignment_algorithms import AlignmentMove, LensPose, PowerReading, available_algorithms, get_algorithm
+from alignment_session import AlignmentLayout, beam_centroid_at_ball_entry, evaluate_alignment_layout
 from interactive_setup import (
     DEFAULT_CLIPPING_RADIUS_FACTOR,
     DEFAULT_REFRACTIVE_INDEX,
@@ -167,6 +168,9 @@ class AlignmentLabDevice:
     def move_history(self) -> tuple[AlignmentMove, ...]:
         return tuple(self._move_history)
 
+    def beam_centroid_at_ball_entry(self, lens_index: int) -> tuple[float, float]:
+        return beam_centroid_at_ball_entry(self._app._alignment_layout(), lens_index)
+
     def _reading_from_evaluation(self, evaluation: AlignmentEvaluation) -> PowerReading:
         return PowerReading(
             received_power=evaluation.received_power,
@@ -238,7 +242,7 @@ class AlignmentLabEditor(OpticalLayoutEditor):
             algorithm.display_name: name for name, algorithm in self._alignment_algorithms.items()
         }
         algorithm_labels = list(self._algorithm_label_to_name)
-        default_algorithm = self._alignment_algorithms.get("coordinate_scan") or next(
+        default_algorithm = self._alignment_algorithms.get("walk_beam") or next(
             iter(self._alignment_algorithms.values())
         )
         self.algorithm_var = tk.StringVar(value=default_algorithm.display_name)
@@ -389,17 +393,31 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         self._rescramble_alignment_errors()
 
     def evaluate_current_alignment(self) -> AlignmentEvaluation:
-        results = simulate_layout(
-            self.sources,
-            self.lenses,
-            self.fibers,
-            self.final_z,
+        layout = self._alignment_layout()
+        metrics = evaluate_alignment_layout(layout)
+        return AlignmentEvaluation(
+            source_x_offset=layout.source.x_offset,
+            source_y_offset=layout.source.y_offset,
+            taper_x_offset=layout.tapers[0].x_offset,
+            taper_y_offset=layout.tapers[0].y_offset,
+            ball_poses=layout.current_poses(),
+            ball_pose_offsets=self._ball_pose_offsets_from_nominal(),
+            received_power=metrics.received_power,
+            total_efficiency=metrics.total_efficiency,
+            mode_efficiency=metrics.mode_efficiency,
+            warnings=metrics.warnings,
+        )
+
+    def _alignment_layout(self) -> AlignmentLayout:
+        if not self.sources or not self.tapers:
+            raise ValueError("alignment layout requires a source and taper")
+        return AlignmentLayout(
+            source=self.sources[0],
             balls=self.balls,
             tapers=self.tapers,
-            refractive_index=DEFAULT_REFRACTIVE_INDEX,
-            clipping_radius_factor=DEFAULT_CLIPPING_RADIUS_FACTOR,
+            final_z=self.final_z,
+            nominal_ball_poses=self._nominal_ball_poses,
         )
-        return self._evaluation_from_results(results)
 
     def _evaluation_from_results(self, results) -> AlignmentEvaluation:
         source = self.sources[0]

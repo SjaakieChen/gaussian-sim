@@ -35,8 +35,9 @@ def _assert_pose_close(actual, expected):
 def test_alignment_algorithm_registry_has_manual_baseline_only():
     algorithms = available_algorithms()
 
-    assert set(algorithms) == {"manual"}
+    assert set(algorithms) == {"manual", "walk_beam"}
     assert get_algorithm("manual").display_name == "Manual/no search"
+    assert get_algorithm("walk_beam").display_name == "Walk the beam"
 
 
 def test_alignment_algorithms_only_accept_step_device():
@@ -160,7 +161,13 @@ def test_alignment_lab_algorithm_handoff_hides_source_and_detector_positions(mon
                 for name in dir(device)
                 if not name.startswith("_") and callable(getattr(device, name))
             }
-            assert public_methods == {"current_poses", "measure", "move_history", "move_lens"}
+            assert public_methods == {
+                "beam_centroid_at_ball_entry",
+                "current_poses",
+                "measure",
+                "move_history",
+                "move_lens",
+            }
 
             expected_poses = app.current_poses()
             assert device.current_poses() == expected_poses
