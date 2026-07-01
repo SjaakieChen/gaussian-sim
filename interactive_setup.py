@@ -44,8 +44,8 @@ L808H1_Y_DIVERGENCE_FWHM = math.radians(14.0)
 SAPPHIRE_REFRACTIVE_INDEX = 1.760
 DEFAULT_BALL_DIAMETER = 500e-6
 DEFAULT_TAPER_SIZE = 200e-9
-SCRAMBLE_AXIAL_MAX = 500e-6
-SCRAMBLE_TRANSVERSE_MAX = 50e-6
+AXIAL_TOLERANCE = 500e-6
+TRANSVERSE_TOLERANCE = 50e-6
 
 
 def _one_over_e2_half_angle_from_fwhm(full_angle_fwhm: float) -> float:
@@ -1186,13 +1186,13 @@ def scramble_element_positive(
     element: LayoutElement,
     nominal: NominalElementState,
     *,
-    axial_max: float = SCRAMBLE_AXIAL_MAX,
-    transverse_max: float = SCRAMBLE_TRANSVERSE_MAX,
+    axial_tolerance: float = AXIAL_TOLERANCE,
+    transverse_tolerance: float = TRANSVERSE_TOLERANCE,
     rng: random.Random | None = None,
 ) -> None:
-    element.position = nominal.position + random_positive(axial_max, rng)
-    element.x_offset = random_positive(transverse_max, rng)
-    element.y_offset = random_positive(transverse_max, rng)
+    element.position = nominal.position + random_positive(axial_tolerance, rng)
+    element.x_offset = random_positive(transverse_tolerance, rng)
+    element.y_offset = random_positive(transverse_tolerance, rng)
 
 
 def default_ball_lens_layout() -> tuple[list[BallLensElement], list[TaperDetectorElement], float]:
@@ -1282,7 +1282,7 @@ class OpticalLayoutEditor(tk.Tk):
         ttk.Button(toolbar, text="Scramble laser/fibre", command=self._scramble_laser_fibre).grid(
             row=1, column=1, padx=(0, 6), pady=(6, 0)
         )
-        ttk.Button(toolbar, text="Full scramble lenses", command=self._scramble_lenses_full).grid(
+        ttk.Button(toolbar, text="Full scramble", command=self._scramble_full).grid(
             row=1, column=2, padx=(0, 6), pady=(6, 0)
         )
 
@@ -2464,23 +2464,31 @@ class OpticalLayoutEditor(tk.Tk):
             apply_nominal_state(element, self._nominal_for(element))
         self._apply_layout_change("All elements restored to nominal aligned positions.")
 
+    def _scramble_status_message(self, scope: str) -> str:
+        axial_um = AXIAL_TOLERANCE * 1e6
+        transverse_um = TRANSVERSE_TOLERANCE * 1e6
+        return (
+            f"{scope} scrambled "
+            f"(+0 to {axial_um:g} µm axial tolerance, +0 to {transverse_um:g} µm transverse tolerance)."
+        )
+
     def _scramble_laser_fibre(self) -> None:
         rng = random.Random()
         for element in [*self.sources, *self.fibers, *self.tapers]:
             scramble_element_positive(element, self._nominal_for(element), rng=rng)
         if not self._validate_layout():
             return
-        self._apply_layout_change(
-            "Laser, fibre, and taper positions scrambled (+0 to 500 µm z, +0 to 50 µm x/y)."
-        )
+        self._apply_layout_change(self._scramble_status_message("Laser, fibre, and taper positions"))
 
-    def _scramble_lenses_full(self) -> None:
+    def _scramble_full(self) -> None:
         rng = random.Random()
-        for element in [*self.lenses, *self.balls]:
+        for element in [*self.lenses, *self.balls, *self.sources, *self.fibers, *self.tapers]:
             scramble_element_positive(element, self._nominal_for(element), rng=rng)
         if not self._validate_layout():
             return
-        self._apply_layout_change("All lenses scrambled (+0 to 500 µm z, +0 to 50 µm x/y).")
+        self._apply_layout_change(
+            self._scramble_status_message("All lenses, laser, fibre, and taper positions")
+        )
 
     def _simulate(self) -> None:
         results = simulate_layout(

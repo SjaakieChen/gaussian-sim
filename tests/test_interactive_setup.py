@@ -20,8 +20,8 @@ from interactive_setup import (
     NominalElementState,
     OpticalLayoutEditor,
     SAPPHIRE_REFRACTIVE_INDEX,
-    SCRAMBLE_AXIAL_MAX,
-    SCRAMBLE_TRANSVERSE_MAX,
+    AXIAL_TOLERANCE,
+    TRANSVERSE_TOLERANCE,
     TaperDetectorElement,
     _one_over_e2_half_angle_from_fwhm,
     apply_nominal_state,
@@ -277,9 +277,9 @@ def test_scramble_element_positive_uses_nominal_and_positive_offsets():
     nominal = capture_element_nominal(ball)
     rng = random.Random(1)
     scramble_element_positive(ball, nominal, rng=rng)
-    assert 0.001 <= ball.position <= 0.001 + SCRAMBLE_AXIAL_MAX
-    assert 0.0 <= ball.x_offset <= SCRAMBLE_TRANSVERSE_MAX
-    assert 0.0 <= ball.y_offset <= SCRAMBLE_TRANSVERSE_MAX
+    assert 0.001 <= ball.position <= 0.001 + AXIAL_TOLERANCE
+    assert 0.0 <= ball.x_offset <= TRANSVERSE_TOLERANCE
+    assert 0.0 <= ball.y_offset <= TRANSVERSE_TOLERANCE
 
 
 def test_apply_nominal_state_restores_aligned_layout():
@@ -306,11 +306,13 @@ def test_tk_app_align_and_scramble_buttons():
         assert app.balls[0].x_offset == 0.0
         assert np.isclose(app.balls[0].position, nominal_ball_z)
 
-        app._scramble_lenses_full()  # pylint: disable=protected-access
+        app._scramble_full()  # pylint: disable=protected-access
         assert app.balls[0].position >= nominal_ball_z
-        assert app.balls[0].position <= nominal_ball_z + SCRAMBLE_AXIAL_MAX
-        assert 0.0 <= app.balls[0].x_offset <= SCRAMBLE_TRANSVERSE_MAX
-        assert 0.0 <= app.balls[0].y_offset <= SCRAMBLE_TRANSVERSE_MAX
+        assert app.balls[0].position <= nominal_ball_z + AXIAL_TOLERANCE
+        assert 0.0 <= app.balls[0].x_offset <= TRANSVERSE_TOLERANCE
+        assert 0.0 <= app.balls[0].y_offset <= TRANSVERSE_TOLERANCE
+        assert app.sources[0].x_offset >= 0.0
+        assert app.sources[0].x_offset <= TRANSVERSE_TOLERANCE
     finally:
         app.destroy()
 
