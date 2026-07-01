@@ -138,11 +138,45 @@ class AlignmentLabDevice:
             raise IndexError("lens_index is out of range")
         poses = list(self.current_poses())
         x_offset, y_offset, position = poses[lens_index]
-        poses[lens_index] = (
+        target_pose = (
             x_offset + float(dx),
             y_offset + float(dy),
             position + float(dz),
         )
+        return self._move_lens_to_pose(lens_index, target_pose, dx=float(dx), dy=float(dy), dz=float(dz))
+
+    def move_lens_to(
+        self,
+        lens_index: int,
+        x_offset: float,
+        y_offset: float,
+        z_position: float,
+    ) -> PowerReading:
+        if lens_index < 0 or lens_index >= len(self._app.balls):
+            raise IndexError("lens_index is out of range")
+        current_x, current_y, current_z = self.current_poses()[lens_index]
+        target_pose = (float(x_offset), float(y_offset), float(z_position))
+        return self._move_lens_to_pose(
+            lens_index,
+            target_pose,
+            dx=target_pose[0] - current_x,
+            dy=target_pose[1] - current_y,
+            dz=target_pose[2] - current_z,
+        )
+
+    def coordinate_reference_point(self) -> LensPose:
+        return self._app.alignment_coordinate_reference_point()
+
+    def _move_lens_to_pose(
+        self,
+        lens_index: int,
+        target_pose: LensPose,
+        dx: float,
+        dy: float,
+        dz: float,
+    ) -> PowerReading:
+        poses = list(self.current_poses())
+        poses[lens_index] = target_pose
         self._app._apply_lens_poses(tuple(poses))
         self._move_count += 1
         self._measurement_count += 1
@@ -306,6 +340,19 @@ class AlignmentLabEditor(OpticalLayoutEditor):
 
     def current_poses(self) -> tuple[LensPose, ...]:
         return tuple((ball.x_offset, ball.y_offset, ball.position) for ball in self.balls)
+
+    def alignment_coordinate_reference_point(self) -> LensPose:
+        """Return the single camera/lab reference point exposed to algorithms.
+
+        The simulated lab uses the nominal centre of the first ball lens as the
+        reference. Real hardware can replace this with the camera-derived
+        coordinate for the middle of the field of view.
+        """
+
+        self._ensure_nominal_ball_poses()
+        if self._nominal_ball_poses:
+            return self._nominal_ball_poses[0]
+        return (0.0, 0.0, 0.0)
 
     def _apply_lens_poses(self, poses: tuple[LensPose, ...]) -> None:
         if len(poses) != len(self.balls):

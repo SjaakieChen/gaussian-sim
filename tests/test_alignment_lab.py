@@ -32,11 +32,12 @@ def _assert_pose_close(actual, expected):
         assert np.allclose(actual_pose, expected_pose)
 
 
-def test_alignment_algorithm_registry_has_manual_baseline_only():
+def test_alignment_algorithm_registry_includes_probe_algorithm():
     algorithms = available_algorithms()
 
-    assert set(algorithms) == {"manual"}
+    assert set(algorithms) == {"manual", "ball_lens_probe"}
     assert get_algorithm("manual").display_name == "Manual/no search"
+    assert get_algorithm("ball_lens_probe").display_name == "Ball-lens probe"
 
 
 def test_alignment_algorithms_only_accept_step_device():
@@ -160,7 +161,14 @@ def test_alignment_lab_algorithm_handoff_hides_source_and_detector_positions(mon
                 for name in dir(device)
                 if not name.startswith("_") and callable(getattr(device, name))
             }
-            assert public_methods == {"current_poses", "measure", "move_history", "move_lens"}
+            assert public_methods == {
+                "coordinate_reference_point",
+                "current_poses",
+                "measure",
+                "move_history",
+                "move_lens",
+                "move_lens_to",
+            }
 
             expected_poses = app.current_poses()
             assert device.current_poses() == expected_poses
@@ -198,6 +206,40 @@ def test_alignment_lab_algorithm_handoff_hides_source_and_detector_positions(mon
     finally:
         app.destroy()
 
+
+def test_alignment_device_absolute_move_and_reference_point():
+    app = _make_app()
+
+    try:
+        device = app.create_alignment_device()
+        reference = device.coordinate_reference_point()
+        assert len(reference) == 3
+
+        target = (reference[0] + 2.0e-6, reference[1] - 1.0e-6, reference[2] + 0.5e-6)
+        reading = device.move_lens_to(0, *target)
+
+        assert reading.move_count == 1
+        assert reading.measurement_count == 1
+        assert np.allclose(app.current_poses()[0], target)
+    finally:
+        app.destroy()
+
+
+def test_ball_lens_probe_algorithm_moves_both_lenses_from_safe_defaults():
+    app = _make_app()
+
+    try:
+        device = app.create_alignment_device()
+        result = get_algorithm("ball_lens_probe").run(device)
+
+        assert isinstance(result, AlignmentAlgorithmResult)
+        assert result.move_count > 0
+        assert result.evaluations >= result.move_count
+        assert "safe default" in result.message
+        moved_lenses = {move.lens_index for move in result.move_history}
+        assert moved_lenses == {0, 1}
+    finally:
+        app.destroy()
 
 def test_moving_lens_in_x_changes_evaluated_power():
     app = _make_app()

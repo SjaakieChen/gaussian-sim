@@ -10,12 +10,14 @@ from .base import (
     LensPose,
     PowerReading,
 )
+from .ball_lens_probe import BallLensProbeAlignmentAlgorithm
 from .manual import ManualAlignmentAlgorithm
 
 
 _ALGORITHMS: dict[str, AlignmentAlgorithm] = {
     algorithm.name: algorithm
     for algorithm in (
+        BallLensProbeAlignmentAlgorithm(),
         ManualAlignmentAlgorithm(),
     )
 }
@@ -39,6 +41,7 @@ __all__ = [
     "AlignmentDevice",
     "AlignmentMove",
     "LensPose",
+    "BallLensProbeAlignmentAlgorithm",
     "ManualAlignmentAlgorithm",
     "PowerReading",
     "available_algorithms",
