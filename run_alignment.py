@@ -3,6 +3,7 @@
 
 Examples:
 
+    python run_alignment.py --algorithm walk_beam --seed 42
     python run_alignment.py --algorithm walk_beam --scramble full --seed 42
     python run_alignment.py --algorithm manual --scramble lab --seed 42 --report
 """
@@ -16,6 +17,7 @@ from alignment_algorithms import available_algorithms
 from alignment_session import (
     apply_full_scramble,
     apply_lab_scramble,
+    apply_laser_taper_scramble,
     default_alignment_layout,
     evaluate_alignment_layout,
     run_alignment_session,
@@ -62,11 +64,15 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--scramble",
-        default="full",
-        choices=("full", "lab"),
+        default="laser",
+        choices=("laser", "full", "lab", "lab-laser"),
         help=(
-            "Starting misalignment: 'full' uses one-sided +z and +x/+y offsets "
-            "(interactive_setup Full scramble); 'lab' uses symmetric seeded errors."
+            "Starting misalignment (default: laser). "
+            "'laser' keeps ball lenses at nominal alignment and scrambles only the "
+            "source and taper x/y (same as the UI 'Scramble laser/fibre' button). "
+            "'full' also scrambles ball lens poses. "
+            "'lab' applies symmetric seeded errors to all elements. "
+            "'lab-laser' applies symmetric seeded errors to source/taper only."
         ),
     )
     parser.add_argument("--seed", type=int, default=42, help="RNG seed for scramble (default: 42)")
@@ -89,8 +95,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.scramble == "full":
         apply_full_scramble(layout, seed=args.seed)
-    else:
+    elif args.scramble == "lab":
         apply_lab_scramble(layout, seed=args.seed)
+    elif args.scramble == "lab-laser":
+        apply_lab_scramble(layout, seed=args.seed, scramble_balls=False)
+    else:
+        apply_laser_taper_scramble(layout, seed=args.seed)
 
     initial_metrics = evaluate_alignment_layout(layout)
     if args.report:

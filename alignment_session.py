@@ -138,6 +138,25 @@ def beam_centroid_at_ball_entry(layout: AlignmentLayout, lens_index: int) -> tup
     return state.x, state.y
 
 
+def restore_nominal_ball_poses(layout: AlignmentLayout) -> None:
+    if not layout.nominal_ball_poses:
+        capture_layout_nominals(layout)
+    layout.apply_poses(layout.nominal_ball_poses)
+
+
+def apply_laser_taper_scramble(layout: AlignmentLayout, seed: int | None = None) -> None:
+    """Keep ball lenses at nominal alignment; scramble only the source and taper x/y."""
+
+    if not layout.element_nominals:
+        capture_layout_nominals(layout)
+
+    restore_nominal_ball_poses(layout)
+    rng = random.Random(seed)
+    for element in [layout.source, *layout.tapers]:
+        nominal = layout.element_nominals[element.uid]
+        scramble_element_positive(element, nominal, rng=rng)
+
+
 def apply_full_scramble(layout: AlignmentLayout, seed: int | None = None) -> None:
     if not layout.element_nominals:
         capture_layout_nominals(layout)
@@ -156,6 +175,8 @@ def apply_lab_scramble(
     seed: int,
     source_detector_tolerance: float = DEFAULT_SOURCE_DETECTOR_TOLERANCE,
     lens_pose_tolerance: float = DEFAULT_LENS_POSE_TOLERANCE,
+    *,
+    scramble_balls: bool = True,
 ) -> None:
     from alignment_lab import seeded_alignment_errors
 
@@ -172,18 +193,21 @@ def apply_lab_scramble(
     layout.source.y_offset = scramble.source_y_offset
     layout.tapers[0].x_offset = scramble.taper_x_offset
     layout.tapers[0].y_offset = scramble.taper_y_offset
-    poses = tuple(
-        (
-            nominal_x + offset_x,
-            nominal_y + offset_y,
-            nominal_z + offset_z,
+    if scramble_balls:
+        poses = tuple(
+            (
+                nominal_x + offset_x,
+                nominal_y + offset_y,
+                nominal_z + offset_z,
+            )
+            for (nominal_x, nominal_y, nominal_z), (offset_x, offset_y, offset_z) in zip(
+                layout.nominal_ball_poses,
+                scramble.ball_pose_offsets,
+            )
         )
-        for (nominal_x, nominal_y, nominal_z), (offset_x, offset_y, offset_z) in zip(
-            layout.nominal_ball_poses,
-            scramble.ball_pose_offsets,
-        )
-    )
-    layout.apply_poses(poses)
+        layout.apply_poses(poses)
+    else:
+        restore_nominal_ball_poses(layout)
 
 
 class HeadlessAlignmentDevice:

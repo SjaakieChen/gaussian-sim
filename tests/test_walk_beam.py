@@ -14,6 +14,7 @@ from alignment_session import (
     HeadlessAlignmentDevice,
     apply_full_scramble,
     apply_lab_scramble,
+    apply_laser_taper_scramble,
     default_alignment_layout,
     evaluate_alignment_layout,
     run_alignment_session,
@@ -28,6 +29,34 @@ def _ball_mismatches(layout) -> list[float]:
         layout.tapers[0].position,
     )
     return [report.radial_mismatch for report in reports]
+
+
+def test_laser_taper_scramble_keeps_balls_at_nominal():
+    layout = default_alignment_layout()
+    nominal_poses = layout.nominal_ball_poses
+    apply_laser_taper_scramble(layout, seed=42)
+
+    assert layout.current_poses() == nominal_poses
+    assert layout.source.x_offset > 0.0 or layout.source.y_offset > 0.0
+    assert layout.tapers[0].x_offset != 0.0 or layout.tapers[0].y_offset != 0.0
+
+
+def test_lab_laser_scramble_keeps_balls_at_nominal():
+    layout = default_alignment_layout()
+    nominal_poses = layout.nominal_ball_poses
+    apply_lab_scramble(layout, seed=42, scramble_balls=False)
+
+    assert layout.current_poses() == nominal_poses
+
+
+def test_walk_beam_improves_power_from_laser_taper_scramble():
+    layout = default_alignment_layout()
+    apply_laser_taper_scramble(layout, seed=42)
+    initial = evaluate_alignment_layout(layout).received_power
+
+    _algorithm, result, _device = run_alignment_session("walk_beam", layout)
+
+    assert result.received_power >= initial
 
 
 def test_alignment_algorithm_registry_includes_walk_beam():
@@ -94,7 +123,7 @@ def test_walk_beam_improves_or_maintains_power_from_full_scramble():
 
 def test_cli_runs_without_tk():
     completed = subprocess.run(
-        [sys.executable, "run_alignment.py", "--algorithm", "walk_beam", "--scramble", "lab", "--seed", "42"],
+        [sys.executable, "run_alignment.py", "--algorithm", "walk_beam", "--seed", "42"],
         cwd="/workspace",
         capture_output=True,
         text=True,
@@ -103,4 +132,4 @@ def test_cli_runs_without_tk():
 
     assert completed.returncode == 0, completed.stderr
     assert "Final power:" in completed.stdout
-    assert "Walk the beam" in completed.stdout
+    assert "Scramble: laser" in completed.stdout
