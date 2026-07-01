@@ -4,9 +4,10 @@ Run this file directly:
 
     python interactive_setup.py
 
-This first version edits and stores the layout parameters only. The Simulate
-button prints a ready-to-wire configuration block, but it does not run beam
-propagation yet.
+The default setup is an 808 nm elliptical Gaussian waist coupled through two
+500 um sapphire ball lenses into a SiN inverse taper mode. The Simulate button
+runs first-order paraxial propagation and reports taper mode overlap plus the
+separate taper transmission factor.
 """
 
 from __future__ import annotations
@@ -14,10 +15,13 @@ from __future__ import annotations
 import math
 import random
 import tkinter as tk
+from copy import deepcopy
 from dataclasses import dataclass, field
 from itertools import count
 from tkinter import messagebox, ttk
 from typing import Any
+
+import numpy as np
 
 from beam import GaussianBeam, q_to_R, q_to_w
 from layout import (
@@ -37,28 +41,21 @@ from system import abcd_propagate, sample_system
 _UID_COUNTER = count(1)
 DEFAULT_REFRACTIVE_INDEX = 1.0
 DEFAULT_CLIPPING_RADIUS_FACTOR = 1.5
-L808H1_WAVELENGTH = 808e-9
-L808H1_POWER = 300e-3
-L808H1_X_DIVERGENCE_FWHM = math.radians(6.0)
-L808H1_Y_DIVERGENCE_FWHM = math.radians(14.0)
+DEFAULT_WAVELENGTH = 0.808e-6
+DEFAULT_SOURCE_POWER = 300e-3
+DEFAULT_MODE_RADIUS_X = 2.18e-6
+DEFAULT_MODE_RADIUS_Y = 0.965e-6
 SAPPHIRE_REFRACTIVE_INDEX = 1.760
 DEFAULT_BALL_DIAMETER = 500e-6
-DEFAULT_TAPER_SIZE = 200e-9
+DEFAULT_TAPER_PHYSICAL_WIDTH = 0.2e-6
+DEFAULT_TAPER_PHYSICAL_THICKNESS = 0.2e-6
+DEFAULT_TAPER_EXTRA_TRANSMISSION = 0.40
+DEFAULT_TAPER_FACET_REFRACTIVE_INDEX = 2.0
+DEFAULT_BALL1_FRONT_GAP = 39e-6
+DEFAULT_BALL_GAP = 200e-6
+DEFAULT_BALL2_TAPER_GAP = 39e-6
 AXIAL_TOLERANCE = 500e-6
 TRANSVERSE_TOLERANCE = 50e-6
-
-
-def _one_over_e2_half_angle_from_fwhm(full_angle_fwhm: float) -> float:
-    return full_angle_fwhm / math.sqrt(2.0 * math.log(2.0))
-
-
-def _waist_from_divergence(wavelength: float, full_angle_fwhm: float) -> float:
-    theta = _one_over_e2_half_angle_from_fwhm(full_angle_fwhm)
-    return wavelength / (math.pi * theta)
-
-
-L808H1_X_WAIST = _waist_from_divergence(L808H1_WAVELENGTH, L808H1_X_DIVERGENCE_FWHM)
-L808H1_Y_WAIST = _waist_from_divergence(L808H1_WAVELENGTH, L808H1_Y_DIVERGENCE_FWHM)
 
 
 def _new_uid(prefix: str) -> str:
@@ -73,18 +70,28 @@ def _waist_radius_from_rayleigh(wavelength: float, rayleigh_range: float) -> flo
     return math.sqrt(wavelength * rayleigh_range / math.pi)
 
 
+def fresnel_reflection_loss(n1: float, n2: float) -> float:
+    if n1 <= 0 or n2 <= 0:
+        raise ValueError("refractive indices must be positive")
+    return float(((n1 - n2) / (n1 + n2)) ** 2)
+
+
+def fresnel_power_transmission(n1: float, n2: float) -> float:
+    return 1.0 - fresnel_reflection_loss(n1, n2)
+
+
 @dataclass
 class LaserSource:
     uid: str = field(default_factory=lambda: _new_uid("laser"))
-    name: str = "L808H1 laser diode"
+    name: str = "Elliptical Gaussian laser waist"
     position: float = 0.0
-    wavelength: float = L808H1_WAVELENGTH
-    waist_radius: float = L808H1_X_WAIST
+    wavelength: float = DEFAULT_WAVELENGTH
+    waist_radius: float = DEFAULT_MODE_RADIUS_X
     rayleigh_range: float | None = None
-    waist_radius_y: float | None = None
+    waist_radius_y: float | None = DEFAULT_MODE_RADIUS_Y
     rayleigh_range_y: float | None = None
     waist_position: float = 0.0
-    power: float = L808H1_POWER
+    power: float = DEFAULT_SOURCE_POWER
     x_offset: float = 0.0
     y_offset: float = 0.0
     x_angle: float = 0.0
@@ -94,10 +101,7 @@ class LaserSource:
         if self.wavelength <= 0:
             raise ValueError("wavelength must be positive")
         if self.waist_radius_y is None:
-            if math.isclose(self.wavelength, L808H1_WAVELENGTH) and math.isclose(self.waist_radius, L808H1_X_WAIST):
-                self.waist_radius_y = L808H1_Y_WAIST
-            else:
-                self.waist_radius_y = self.waist_radius
+            self.waist_radius_y = self.waist_radius
         if self.rayleigh_range is None:
             if self.waist_radius <= 0:
                 raise ValueError("waist radius must be positive")
@@ -193,10 +197,14 @@ class FiberElement:
 @dataclass
 class TaperDetectorElement:
     uid: str = field(default_factory=lambda: _new_uid("taper"))
-    name: str = "200 nm square taper detector"
+    name: str = "SiN inverse taper"
     position: float = 0.0
-    width: float = DEFAULT_TAPER_SIZE
-    height: float = DEFAULT_TAPER_SIZE
+    width: float = DEFAULT_TAPER_PHYSICAL_WIDTH
+    height: float = DEFAULT_TAPER_PHYSICAL_THICKNESS
+    mode_radius_x: float = DEFAULT_MODE_RADIUS_X
+    mode_radius_y: float = DEFAULT_MODE_RADIUS_Y
+    extra_transmission: float = DEFAULT_TAPER_EXTRA_TRANSMISSION
+    facet_refractive_index: float = DEFAULT_TAPER_FACET_REFRACTIVE_INDEX
     x_offset: float = 0.0
     y_offset: float = 0.0
     received_power: float = 0.0
@@ -228,6 +236,10 @@ class BallLensReport:
     beam_radius_x: float
     beam_radius_y: float
     transmission: float
+    aperture_transmission: float = 1.0
+    reflection_transmission: float = 1.0
+    entry_reflection_loss: float = 0.0
+    exit_reflection_loss: float = 0.0
 
     @property
     def radial_mismatch(self) -> float:
@@ -245,11 +257,18 @@ class TaperSimulationResult:
     ball_reports: list[BallLensReport]
     beam_radius_x: float | None
     beam_radius_y: float | None
+    beam_R_x: float | None
+    beam_R_y: float | None
     beam_x: float | None
     beam_y: float | None
+    beam_x_angle: float | None
+    beam_y_angle: float | None
     x_mismatch: float | None
     y_mismatch: float | None
-    detector_fraction: float
+    mode_efficiency: float
+    extra_transmission: float
+    taper_reflection_transmission: float
+    ball_reflection_transmission: float
     aperture_transmission: float
     received_power: float
     warnings: list[str]
@@ -273,6 +292,8 @@ class SourceSimulationResult:
     fiber_results: list[FiberSimulationResult]
     final_beam_radius: float | None
     final_beam_R: float | None
+    final_beam_radius_y: float | None
+    final_beam_R_y: float | None
     aperture_transmission: float
     warnings: list[str]
     ball_reports: list[BallLensReport] = field(default_factory=list)
@@ -303,27 +324,27 @@ class FieldSpec:
 
 _LASER_FIELDS = [
     FieldSpec("name", "Name", is_text=True),
-    FieldSpec("position", "z position", "cm", 1e2),
-    FieldSpec("wavelength", "wavelength", "nm", 1e9),
+    FieldSpec("position", "z position", "um", 1e6),
+    FieldSpec("wavelength", "wavelength", "um", 1e6),
     FieldSpec("waist_radius", "x waist radius", "um", 1e6),
     FieldSpec("rayleigh_range", "x Rayleigh length", "um", 1e6),
     FieldSpec("waist_radius_y", "y waist radius", "um", 1e6),
     FieldSpec("rayleigh_range_y", "y Rayleigh length", "um", 1e6),
-    FieldSpec("waist_position", "waist z position", "cm", 1e2),
+    FieldSpec("waist_position", "waist z position", "um", 1e6),
     FieldSpec("power", "source power", "mW", 1e3),
-    FieldSpec("x_offset", "x offset", "mm", 1e3),
-    FieldSpec("y_offset", "y offset", "mm", 1e3),
+    FieldSpec("x_offset", "x offset", "um", 1e6),
+    FieldSpec("y_offset", "y offset", "um", 1e6),
     FieldSpec("x_angle", "x angle", "mrad", 1e3),
     FieldSpec("y_angle", "y angle", "mrad", 1e3),
 ]
 
 _LENS_FIELDS = [
     FieldSpec("name", "Name", is_text=True),
-    FieldSpec("position", "z position", "cm", 1e2),
-    FieldSpec("focal_length", "focal length", "cm", 1e2),
-    FieldSpec("aperture_radius", "aperture radius", "mm", 1e3),
-    FieldSpec("x_offset", "x offset", "mm", 1e3),
-    FieldSpec("y_offset", "y offset", "mm", 1e3),
+    FieldSpec("position", "z position", "um", 1e6),
+    FieldSpec("focal_length", "focal length", "um", 1e6),
+    FieldSpec("aperture_radius", "aperture radius", "um", 1e6),
+    FieldSpec("x_offset", "x offset", "um", 1e6),
+    FieldSpec("y_offset", "y offset", "um", 1e6),
 ]
 
 _BALL_FIELDS = [
@@ -337,7 +358,7 @@ _BALL_FIELDS = [
 
 _FIBER_FIELDS = [
     FieldSpec("name", "Name", is_text=True),
-    FieldSpec("position", "z position", "cm", 1e2),
+    FieldSpec("position", "z position", "um", 1e6),
     FieldSpec("mode_field_diameter", "mode-field diameter", "um", 1e6),
     FieldSpec("cladding_diameter", "cladding diameter", "um", 1e6),
     FieldSpec("x_offset", "x offset", "um", 1e6),
@@ -348,8 +369,12 @@ _FIBER_FIELDS = [
 _TAPER_FIELDS = [
     FieldSpec("name", "Name", is_text=True),
     FieldSpec("position", "z position", "um", 1e6),
-    FieldSpec("width", "active width", "nm", 1e9),
-    FieldSpec("height", "active height", "nm", 1e9),
+    FieldSpec("width", "physical width", "um", 1e6),
+    FieldSpec("height", "physical thickness", "um", 1e6),
+    FieldSpec("mode_radius_x", "mode radius x", "um", 1e6),
+    FieldSpec("mode_radius_y", "mode radius y", "um", 1e6),
+    FieldSpec("extra_transmission", "extra taper transmission"),
+    FieldSpec("facet_refractive_index", "facet refractive index"),
     FieldSpec("x_offset", "x offset", "um", 1e6),
     FieldSpec("y_offset", "y offset", "um", 1e6),
     FieldSpec("received_power", "received power", "mW", 1e3),
@@ -523,7 +548,7 @@ def propagate_astigmatic_through_balls(
 
         if radial_mismatch > ball.radius:
             status = "MISS"
-            transmission = 0.0
+            transmission = 1.0
             missed_ball = True
             reports.append(
                 BallLensReport(
@@ -536,6 +561,10 @@ def propagate_astigmatic_through_balls(
                     beam_radius_x=beam_radius_x,
                     beam_radius_y=beam_radius_y,
                     transmission=transmission,
+                    aperture_transmission=1.0,
+                    reflection_transmission=1.0,
+                    entry_reflection_loss=0.0,
+                    exit_reflection_loss=0.0,
                 )
             )
             if samples_per_space:
@@ -555,7 +584,11 @@ def propagate_astigmatic_through_balls(
 
         status = "CLIPPING" if radial_mismatch + clipping_radius_factor * max_beam_radius > ball.radius else "OK"
         clearance_radius = max(ball.radius - radial_mismatch, 1e-15)
-        transmission = 1.0 if status == "OK" else gaussian_aperture_estimate(max_beam_radius, clearance_radius)
+        aperture_transmission = 1.0 if status == "OK" else gaussian_aperture_estimate(max_beam_radius, clearance_radius)
+        entry_reflection_loss = fresnel_reflection_loss(DEFAULT_REFRACTIVE_INDEX, ball.refractive_index)
+        exit_reflection_loss = fresnel_reflection_loss(ball.refractive_index, DEFAULT_REFRACTIVE_INDEX)
+        reflection_transmission = (1.0 - entry_reflection_loss) * (1.0 - exit_reflection_loss)
+        transmission = aperture_transmission * reflection_transmission
         reports.append(
             BallLensReport(
                 ball=ball,
@@ -567,6 +600,10 @@ def propagate_astigmatic_through_balls(
                 beam_radius_x=beam_radius_x,
                 beam_radius_y=beam_radius_y,
                 transmission=transmission,
+                aperture_transmission=aperture_transmission,
+                reflection_transmission=reflection_transmission,
+                entry_reflection_loss=entry_reflection_loss,
+                exit_reflection_loss=exit_reflection_loss,
             )
         )
         state = _apply_ball_matrix_to_state(state, ball)
@@ -608,33 +645,66 @@ def gaussian_aperture_estimate(beam_radius: float, aperture_radius: float) -> fl
     return float(1.0 - math.exp(-2.0 * aperture_radius**2 / beam_radius**2))
 
 
-def _gaussian_interval_fraction(center: float, radius: float, low: float, high: float) -> float:
-    if radius <= 0:
-        raise ValueError("radius must be positive")
-    scale = math.sqrt(2.0) / radius
-    return 0.5 * (math.erf((high - center) * scale) - math.erf((low - center) * scale))
-
-
-def square_detector_collection_fraction(
-    beam_x: float,
-    beam_y: float,
+def elliptical_gaussian_mode_overlap_efficiency(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     beam_radius_x: float,
     beam_radius_y: float,
-    detector: TaperDetectorElement,
+    mode_radius_x: float,
+    mode_radius_y: float,
+    wavelength: float,
+    beam_R_x: float = math.inf,
+    beam_R_y: float = math.inf,
+    mode_R_x: float = math.inf,
+    mode_R_y: float = math.inf,
+    x_offset: float = 0.0,
+    y_offset: float = 0.0,
+    x_angle: float = 0.0,
+    y_angle: float = 0.0,
+    refractive_index: float = DEFAULT_REFRACTIVE_INDEX,
 ) -> float:
-    x_fraction = _gaussian_interval_fraction(
-        beam_x,
+    if beam_radius_x <= 0 or beam_radius_y <= 0:
+        raise ValueError("beam radii must be positive")
+    if mode_radius_x <= 0 or mode_radius_y <= 0:
+        raise ValueError("mode radii must be positive")
+    if wavelength <= 0:
+        raise ValueError("wavelength must be positive")
+    if refractive_index <= 0:
+        raise ValueError("refractive_index must be positive")
+
+    k = 2.0 * math.pi * refractive_index / wavelength
+
+    def axis_amplitude(
+        beam_radius: float,
+        mode_radius: float,
+        beam_R: float,
+        mode_R: float,
+        offset: float,
+        angle: float,
+    ) -> complex:
+        inv_beam_R = 0.0 if math.isinf(beam_R) else 1.0 / beam_R
+        inv_mode_R = 0.0 if math.isinf(mode_R) else 1.0 / mode_R
+        beam_alpha = 1.0 / beam_radius**2 + 1j * math.pi * refractive_index * inv_beam_R / wavelength
+        mode_alpha_conj = 1.0 / mode_radius**2 - 1j * math.pi * refractive_index * inv_mode_R / wavelength
+        alpha_sum = beam_alpha + mode_alpha_conj
+        linear = 2.0 * beam_alpha * offset + 1j * k * angle
+        exponent = linear**2 / (4.0 * alpha_sum) - beam_alpha * offset**2
+        return complex(math.sqrt(2.0 / (beam_radius * mode_radius))) / np.sqrt(alpha_sum) * np.exp(exponent)
+
+    amplitude = axis_amplitude(
         beam_radius_x,
-        detector.x_offset - 0.5 * detector.width,
-        detector.x_offset + 0.5 * detector.width,
-    )
-    y_fraction = _gaussian_interval_fraction(
-        beam_y,
+        mode_radius_x,
+        beam_R_x,
+        mode_R_x,
+        x_offset,
+        x_angle,
+    ) * axis_amplitude(
         beam_radius_y,
-        detector.y_offset - 0.5 * detector.height,
-        detector.y_offset + 0.5 * detector.height,
+        mode_radius_y,
+        beam_R_y,
+        mode_R_y,
+        y_offset,
+        y_angle,
     )
-    return min(max(x_fraction * y_fraction, 0.0), 1.0)
+    return min(max(float(abs(amplitude) ** 2), 0.0), 1.0)
 
 
 def lens_to_spec(lens: LensElement) -> LensSpec:
@@ -729,7 +799,7 @@ def simulate_source_to_fiber(
 
     aperture_transmission = aperture_transmission_product(lens_reports)
     received_power = source.power * aperture_transmission * coupling_report.total_efficiency
-    warnings = [f"clipping risk at {report.lens.position * 1e2:.3g} cm" for report in lens_reports if report.clips]
+    warnings = [f"clipping risk at {report.lens.position * 1e6:.3g} um" for report in lens_reports if report.clips]
 
     return FiberSimulationResult(
         source=source,
@@ -755,11 +825,18 @@ def simulate_source_to_taper(
             ball_reports=[],
             beam_radius_x=None,
             beam_radius_y=None,
+            beam_R_x=None,
+            beam_R_y=None,
             beam_x=None,
             beam_y=None,
+            beam_x_angle=None,
+            beam_y_angle=None,
             x_mismatch=None,
             y_mismatch=None,
-            detector_fraction=0.0,
+            mode_efficiency=0.0,
+            extra_transmission=taper.extra_transmission,
+            taper_reflection_transmission=0.0,
+            ball_reflection_transmission=0.0,
             aperture_transmission=0.0,
             received_power=0.0,
             warnings=["taper detector is before this source"],
@@ -780,12 +857,20 @@ def simulate_source_to_taper(
         )
         beam_radius_x = float(q_to_w(state.q_x, source.wavelength))
         beam_radius_y = float(q_to_w(state.q_y, source.wavelength))
-        detector_fraction = square_detector_collection_fraction(
-            state.x,
-            state.y,
-            beam_radius_x,
-            beam_radius_y,
-            taper,
+        beam_R_x = float(q_to_R(state.q_x))
+        beam_R_y = float(q_to_R(state.q_y))
+        mode_efficiency = elliptical_gaussian_mode_overlap_efficiency(
+            beam_radius_x=beam_radius_x,
+            beam_radius_y=beam_radius_y,
+            mode_radius_x=taper.mode_radius_x,
+            mode_radius_y=taper.mode_radius_y,
+            wavelength=source.wavelength,
+            beam_R_x=beam_R_x,
+            beam_R_y=beam_R_y,
+            x_offset=state.x - taper.x_offset,
+            y_offset=state.y - taper.y_offset,
+            x_angle=state.x_angle,
+            y_angle=state.y_angle,
         )
     except ValueError as exc:
         return TaperSimulationResult(
@@ -794,41 +879,64 @@ def simulate_source_to_taper(
             ball_reports=[],
             beam_radius_x=None,
             beam_radius_y=None,
+            beam_R_x=None,
+            beam_R_y=None,
             beam_x=None,
             beam_y=None,
+            beam_x_angle=None,
+            beam_y_angle=None,
             x_mismatch=None,
             y_mismatch=None,
-            detector_fraction=0.0,
+            mode_efficiency=0.0,
+            extra_transmission=taper.extra_transmission,
+            taper_reflection_transmission=0.0,
+            ball_reflection_transmission=0.0,
             aperture_transmission=0.0,
             received_power=0.0,
             warnings=[str(exc)],
         )
 
     aperture_transmission = 1.0
+    ball_reflection_transmission = 1.0
     warnings: list[str] = []
     for report in ball_reports:
-        aperture_transmission *= report.transmission
+        aperture_transmission *= report.aperture_transmission
+        ball_reflection_transmission *= report.reflection_transmission
         if report.status == "MISS":
             warnings.append(f"{report.ball.name} MISS")
         elif report.status == "CLIPPING":
             warnings.append(f"{report.ball.name} CLIPPING")
 
-    if missed_ball:
-        detector_fraction = 0.0
-        aperture_transmission = 0.0
-
-    received_power = source.power * aperture_transmission * detector_fraction
+    taper_reflection_transmission = fresnel_power_transmission(
+        DEFAULT_REFRACTIVE_INDEX,
+        taper.facet_refractive_index,
+    )
+    received_power = (
+        source.power
+        * aperture_transmission
+        * ball_reflection_transmission
+        * taper_reflection_transmission
+        * mode_efficiency
+        * taper.extra_transmission
+    )
     return TaperSimulationResult(
         source=source,
         taper=taper,
         ball_reports=ball_reports,
         beam_radius_x=beam_radius_x,
         beam_radius_y=beam_radius_y,
+        beam_R_x=beam_R_x,
+        beam_R_y=beam_R_y,
         beam_x=state.x,
         beam_y=state.y,
+        beam_x_angle=state.x_angle,
+        beam_y_angle=state.y_angle,
         x_mismatch=state.x - taper.x_offset,
         y_mismatch=state.y - taper.y_offset,
-        detector_fraction=detector_fraction,
+        mode_efficiency=mode_efficiency,
+        extra_transmission=taper.extra_transmission,
+        taper_reflection_transmission=taper_reflection_transmission,
+        ball_reflection_transmission=ball_reflection_transmission,
         aperture_transmission=aperture_transmission,
         received_power=received_power,
         warnings=warnings,
@@ -851,6 +959,8 @@ def simulate_source(
     lens_reports: list[ApertureReport] = []
     final_beam_radius: float | None = None
     final_beam_R: float | None = None
+    final_beam_radius_y: float | None = None
+    final_beam_R_y: float | None = None
 
     if final_z < source.position:
         warnings.append("final z is before this source")
@@ -865,6 +975,8 @@ def simulate_source(
                 )
                 final_beam_radius = float(q_to_w(final_state.q_x, source.wavelength))
                 final_beam_R = float(q_to_R(final_state.q_x))
+                final_beam_radius_y = float(q_to_w(final_state.q_y, source.wavelength))
+                final_beam_R_y = float(q_to_R(final_state.q_y))
             else:
                 final_lenses = lens_specs_between(lenses, source.position, final_z)
                 lens_reports = analyze_lens_apertures(
@@ -879,6 +991,8 @@ def simulate_source(
                 final_q = sample.q[-1]
                 final_beam_radius = float(q_to_w(final_q, source.wavelength))
                 final_beam_R = float(q_to_R(final_q))
+                final_beam_radius_y = final_beam_radius
+                final_beam_R_y = final_beam_R
         except ValueError as exc:
             warnings.append(str(exc))
 
@@ -903,13 +1017,15 @@ def simulate_source(
     ]
     ball_reports = taper_results[0].ball_reports if taper_results else []
 
-    warnings.extend(f"clipping risk at {report.lens.position * 1e2:.3g} cm" for report in lens_reports if report.clips)
+    warnings.extend(f"clipping risk at {report.lens.position * 1e6:.3g} um" for report in lens_reports if report.clips)
     return SourceSimulationResult(
         source=source,
         lens_reports=lens_reports,
         fiber_results=fiber_results,
         final_beam_radius=final_beam_radius,
         final_beam_R=final_beam_R,
+        final_beam_radius_y=final_beam_radius_y,
+        final_beam_R_y=final_beam_R_y,
         aperture_transmission=aperture_transmission_product(lens_reports),
         warnings=warnings,
         ball_reports=ball_reports,
@@ -964,29 +1080,45 @@ def format_simulation_report(results: list[SourceSimulationResult]) -> str:
     valid_results = [fiber_result for fiber_result in fiber_results if fiber_result.coupling_report is not None]
     valid_tapers = [taper_result for taper_result in taper_results if taper_result.beam_radius_x is not None]
     lines = [
-        "Astigmatic Gaussian propagation and detector collection",
-        "Model: x/y q propagation + affine centroid propagation + spherical ball lenses",
+        "Elliptical Gaussian propagation and SiN taper mode matching",
+        "Model: independent x/y q propagation with shared waist plane + affine centroid propagation + spherical ball lenses + Gaussian mode overlap",
         f"Coupling refractive index: {DEFAULT_REFRACTIVE_INDEX:.6g}",
         "",
         "COUPLING SUMMARY",
     ]
     if valid_tapers:
         best_taper = max(valid_tapers, key=lambda taper_result: taper_result.received_power)
+        best_total = (
+            best_taper.mode_efficiency
+            * best_taper.aperture_transmission
+            * best_taper.ball_reflection_transmission
+            * best_taper.taper_reflection_transmission
+            * best_taper.extra_transmission
+        )
         lines.append(
             "BEST DETECTOR: "
             f"{best_taper.source.name} -> {best_taper.taper.name} | "
-            f"COLLECTION = {best_taper.detector_fraction * 100:.5g}% | "
+            f"MODE = {best_taper.mode_efficiency * 100:.5g}% | "
+            f"TOTAL = {best_total * 100:.5g}% | "
             f"RECEIVED = {best_taper.received_power * 1e3:.5g} mW"
         )
         for taper_result in valid_tapers:
             offset = math.hypot(taper_result.x_mismatch or 0.0, taper_result.y_mismatch or 0.0)
             status = "; ".join(taper_result.warnings) if taper_result.warnings else "ok"
+            total_efficiency = (
+                taper_result.mode_efficiency
+                * taper_result.aperture_transmission
+                * taper_result.ball_reflection_transmission
+                * taper_result.taper_reflection_transmission
+                * taper_result.extra_transmission
+            )
             lines.append(
                 "  "
                 f"{taper_result.source.name} -> {taper_result.taper.name}: "
-                f"COLLECTION = {taper_result.detector_fraction * 100:.5g}%"
+                f"MODE = {taper_result.mode_efficiency * 100:.5g}%"
+                f", total = {total_efficiency * 100:.5g}%"
                 f", received = {taper_result.received_power * 1e3:.5g} mW"
-                f", offset = {offset * 1e9:.4g} nm"
+                f", offset = {offset * 1e6:.4g} um"
                 f", status = {status}"
             )
     elif valid_results:
@@ -1025,20 +1157,21 @@ def format_simulation_report(results: list[SourceSimulationResult]) -> str:
         lines.extend(
             [
                 f"Source {source_index}: {source.name}",
-                f"  z: {source.position * 1e2:.4g} cm",
-                f"  wavelength: {source.wavelength * 1e9:.4g} nm",
+                f"  z: {source.position * 1e6:.4g} um",
+                f"  wavelength: {source.wavelength * 1e6:.4g} um",
                 f"  x/y waist radius: ({source.waist_radius * 1e6:.4g}, {source.waist_radius_y * 1e6:.4g}) um",
                 f"  x/y Rayleigh length: ({source.rayleigh_range * 1e6:.4g}, {source.rayleigh_range_y * 1e6:.4g}) um",
-                f"  waist z: {source.waist_position * 1e2:.4g} cm",
+                f"  waist z: {source.waist_position * 1e6:.4g} um",
                 f"  power: {source.power * 1e3:.4g} mW",
-                f"  x/y offset: ({source.x_offset * 1e3:.4g}, {source.y_offset * 1e3:.4g}) mm",
+                f"  x/y offset: ({source.x_offset * 1e6:.4g}, {source.y_offset * 1e6:.4g}) um",
                 f"  x/y angle: ({source.x_angle * 1e3:.4g}, {source.y_angle * 1e3:.4g}) mrad",
             ]
         )
         if result.final_beam_radius is not None:
             lines.append(
                 "  final beam at FINAL_Z: "
-                f"w={result.final_beam_radius * 1e6:.4g} um, R={_format_curvature(result.final_beam_R)}"
+                f"wx/wy=({result.final_beam_radius * 1e6:.4g}, {result.final_beam_radius_y * 1e6:.4g}) um, "
+                f"Rx/Ry=({_format_curvature(result.final_beam_R)}, {_format_curvature(result.final_beam_R_y)})"
             )
         for warning in result.warnings:
             lines.append(f"  WARNING: {warning}")
@@ -1047,7 +1180,7 @@ def format_simulation_report(results: list[SourceSimulationResult]) -> str:
             lines.append("  Ball lens checks:")
             ball_reports = result.taper_results[0].ball_reports
             if ball_reports:
-                lines.append("    z(um)   D(um)   wx(um)   wy(um)   offset(um)   trans(%)   status")
+                lines.append("    z(um)   D(um)   wx(um)   wy(um)   offset(um)   aper(%)   refl(%)   total(%)   status")
                 for report in ball_reports:
                     lines.append(
                         "    "
@@ -1056,47 +1189,62 @@ def format_simulation_report(results: list[SourceSimulationResult]) -> str:
                         f" {report.beam_radius_x * 1e6:8.4g}"
                         f" {report.beam_radius_y * 1e6:8.4g}"
                         f" {report.radial_mismatch * 1e6:11.4g}"
+                        f" {report.aperture_transmission * 100:9.4g}"
+                        f" {report.reflection_transmission * 100:9.4g}"
                         f" {report.transmission * 100:9.4g}"
                         f"   {report.status}"
                     )
             else:
                 lines.append("    none before detector")
 
-            lines.append("  Taper detector collection:")
-            lines.append("    detector              collect(%)   Prx(mW)   aper(%)   wx(um)   wy(um)   offset(nm)   status")
+            lines.append("  Taper Gaussian mode matching:")
+            lines.append(
+                "    taper                 mode(%)   refl(%)   extra   total(%)   Prx(mW)   aper(%)   ball refl(%)   wx(um)   wy(um)   offset(um)   status"
+            )
             for taper_result in result.taper_results:
                 status = "; ".join(taper_result.warnings) if taper_result.warnings else "ok"
                 if taper_result.beam_radius_x is None or taper_result.beam_radius_y is None:
                     lines.append(
                         f"    {taper_result.taper.name[:20]:20s}"
-                        "    n/a       0        0       n/a      n/a       n/a       "
+                        "    n/a      n/a      n/a      0        0        0        0       n/a      n/a       n/a       "
                         f"{status}"
                     )
                     continue
                 offset = math.hypot(taper_result.x_mismatch or 0.0, taper_result.y_mismatch or 0.0)
+                total_efficiency = (
+                    taper_result.mode_efficiency
+                    * taper_result.aperture_transmission
+                    * taper_result.ball_reflection_transmission
+                    * taper_result.taper_reflection_transmission
+                    * taper_result.extra_transmission
+                )
                 lines.append(
                     f"    {taper_result.taper.name[:20]:20s}"
-                    f" {taper_result.detector_fraction * 100:10.5g}"
+                    f" {taper_result.mode_efficiency * 100:8.5g}"
+                    f" {taper_result.taper_reflection_transmission * 100:9.4g}"
+                    f" {taper_result.extra_transmission:7.4g}"
+                    f" {total_efficiency * 100:9.5g}"
                     f" {taper_result.received_power * 1e3:9.4g}"
                     f" {taper_result.aperture_transmission * 100:8.4g}"
+                    f" {taper_result.ball_reflection_transmission * 100:12.4g}"
                     f" {taper_result.beam_radius_x * 1e6:8.4g}"
                     f" {taper_result.beam_radius_y * 1e6:8.4g}"
-                    f" {offset * 1e9:10.4g}"
+                    f" {offset * 1e6:10.4g}"
                     f"   {status}"
                 )
             lines.append("")
 
         lines.append("  Lens aperture checks:")
         if result.lens_reports:
-            lines.append("    z(cm)   w(mm)   mismatch(mm)   aperture(mm)   trans(%)   status")
+            lines.append("    z(um)   w(um)   mismatch(um)   aperture(um)   trans(%)   status")
             for report in result.lens_reports:
                 status = "CLIPPING" if report.clips else "ok"
                 lines.append(
                     "    "
-                    f"{report.lens.position * 1e2:6.3g}"
-                    f" {report.beam_radius * 1e3:7.4g}"
-                    f" {report.radial_mismatch * 1e3:12.4g}"
-                    f" {report.lens.aperture_radius * 1e3:12.4g}"
+                    f"{report.lens.position * 1e6:6.3g}"
+                    f" {report.beam_radius * 1e6:7.4g}"
+                    f" {report.radial_mismatch * 1e6:12.4g}"
+                    f" {report.lens.aperture_radius * 1e6:12.4g}"
                     f" {report.transmission * 100:9.4g}"
                     f"   {status}"
                 )
@@ -1196,13 +1344,16 @@ def scramble_element_positive(
 
 
 def default_ball_lens_layout() -> tuple[list[BallLensElement], list[TaperDetectorElement], float]:
-    efl = ball_lens_effective_focal_length(DEFAULT_BALL_DIAMETER, SAPPHIRE_REFRACTIVE_INDEX)
+    radius = 0.5 * DEFAULT_BALL_DIAMETER
+    ball1_center = DEFAULT_BALL1_FRONT_GAP + radius
+    ball2_center = ball1_center + DEFAULT_BALL_DIAMETER + DEFAULT_BALL_GAP
+    taper_z = ball2_center + radius + DEFAULT_BALL2_TAPER_GAP
     balls = [
-        BallLensElement(name="Sapphire ball 1", position=efl),
-        BallLensElement(name="Sapphire ball 2", position=3.0 * efl),
+        BallLensElement(name="Sapphire ball 1", position=ball1_center),
+        BallLensElement(name="Sapphire ball 2", position=ball2_center),
     ]
-    taper = TaperDetectorElement(position=4.0 * efl)
-    final_z = 4.2 * efl
+    taper = TaperDetectorElement(position=taper_z)
+    final_z = taper_z
     return balls, [taper], final_z
 
 
@@ -1242,6 +1393,7 @@ class OpticalLayoutEditor(tk.Tk):
         self._zoom_anchor_z_fraction = 0.5
         self._zoom_anchor_x_fraction = 0.5
         self._beam_paths: list[BeamPathDisplay] = []
+        self._undo_stack: list[dict[str, Any]] = []
         self._plot_left = 76
         self._plot_right = 36
         self._plot_top = 42
@@ -1267,11 +1419,11 @@ class OpticalLayoutEditor(tk.Tk):
         ttk.Button(toolbar, text="Edit selected", command=self._edit_selected).grid(row=0, column=3, padx=(0, 6))
         ttk.Button(toolbar, text="Delete selected", command=self._delete_selected).grid(row=0, column=4, padx=(0, 14))
         ttk.Label(toolbar, text="Final z").grid(row=0, column=5, padx=(0, 4))
-        self.final_z_var = tk.StringVar(value=f"{self.final_z * 1e2:.2f}")
+        self.final_z_var = tk.StringVar(value=f"{self.final_z * 1e6:.2f}")
         final_entry = ttk.Entry(toolbar, textvariable=self.final_z_var, width=8)
         final_entry.grid(row=0, column=6, padx=(0, 4))
         final_entry.bind("<Return>", lambda _event: self._apply_final_z())
-        ttk.Label(toolbar, text="cm").grid(row=0, column=7, padx=(0, 6))
+        ttk.Label(toolbar, text="um").grid(row=0, column=7, padx=(0, 6))
         ttk.Button(toolbar, text="Apply", command=self._apply_final_z).grid(row=0, column=8, padx=(0, 14))
         ttk.Button(toolbar, text="Simulate", command=self._simulate).grid(row=0, column=9, padx=(0, 6))
         ttk.Button(toolbar, text="Zoom -", command=self._zoom_out).grid(row=0, column=10, padx=(0, 6))
@@ -1310,22 +1462,22 @@ class OpticalLayoutEditor(tk.Tk):
         side.columnconfigure(0, weight=1)
         ttk.Label(side, text="Layout parameters").grid(row=0, column=0, sticky="w")
 
-        columns = ("kind", "z", "x", "size", "extra", "power")
+        columns = ("kind", "z", "x", "y", "mfd", "extra")
         self.tree = ttk.Treeview(side, columns=columns, show="tree headings", height=10, selectmode="browse")
         self.tree.heading("#0", text="Element")
         self.tree.heading("kind", text="Type")
-        self.tree.heading("z", text="z cm")
+        self.tree.heading("z", text="z")
         self.tree.heading("x", text="x")
-        self.tree.heading("size", text="size")
+        self.tree.heading("y", text="y")
+        self.tree.heading("mfd", text="MFD")
         self.tree.heading("extra", text="extra")
-        self.tree.heading("power", text="power")
         self.tree.column("#0", width=150, anchor="w")
         self.tree.column("kind", width=66, anchor="center")
-        self.tree.column("z", width=70, anchor="e")
+        self.tree.column("z", width=80, anchor="e")
         self.tree.column("x", width=80, anchor="e")
-        self.tree.column("size", width=95, anchor="e")
-        self.tree.column("extra", width=95, anchor="e")
-        self.tree.column("power", width=100, anchor="e")
+        self.tree.column("y", width=80, anchor="e")
+        self.tree.column("mfd", width=110, anchor="e")
+        self.tree.column("extra", width=150, anchor="e")
         self.tree.grid(row=1, column=0, sticky="nsew", pady=(4, 8))
 
         ttk.Label(side, text="Simulate output").grid(row=2, column=0, sticky="w")
@@ -1341,6 +1493,8 @@ class OpticalLayoutEditor(tk.Tk):
         self.canvas.bind("<MouseWheel>", self._on_mouse_wheel)
         self.tree.bind("<<TreeviewSelect>>", self._on_tree_select)
         self.tree.bind("<Double-Button-1>", lambda _event: self._edit_selected())
+        self.bind_all("<Control-z>", self._undo)
+        self.bind_all("<Control-Z>", self._undo)
 
     def _all_elements(self) -> list[LaserSource | LensElement | BallLensElement | FiberElement | TaperDetectorElement]:
         elements: list[LaserSource | LensElement | BallLensElement | FiberElement | TaperDetectorElement] = [
@@ -1363,6 +1517,45 @@ class OpticalLayoutEditor(tk.Tk):
             if element.uid == uid:
                 return element
         return None
+
+    def _layout_snapshot(self) -> dict[str, Any]:
+        return {
+            "sources": deepcopy(self.sources),
+            "lenses": deepcopy(self.lenses),
+            "balls": deepcopy(self.balls),
+            "fibers": deepcopy(self.fibers),
+            "tapers": deepcopy(self.tapers),
+            "final_z": self.final_z,
+            "selected_uid": self.selected_uid,
+        }
+
+    def _push_undo(self) -> None:
+        self._undo_stack.append(self._layout_snapshot())
+        max_undo = 80
+        if len(self._undo_stack) > max_undo:
+            del self._undo_stack[0 : len(self._undo_stack) - max_undo]
+
+    def _restore_layout_snapshot(self, snapshot: dict[str, Any]) -> None:
+        self.sources = deepcopy(snapshot["sources"])
+        self.lenses = deepcopy(snapshot["lenses"])
+        self.balls = deepcopy(snapshot["balls"])
+        self.fibers = deepcopy(snapshot["fibers"])
+        self.tapers = deepcopy(snapshot["tapers"])
+        self.final_z = float(snapshot["final_z"])
+        self.selected_uid = snapshot["selected_uid"]
+        self.final_z_var.set(f"{self.final_z * 1e6:.2f}")
+        self._clear_simulation_overlay()
+        self._fit_view_bounds_to_layout()
+        self._refresh_tree()
+        self.redraw()
+
+    def _undo(self, _event: tk.Event | None = None) -> str:
+        if not self._undo_stack:
+            self.status_var.set("Nothing to undo.")
+            return "break"
+        self._restore_layout_snapshot(self._undo_stack.pop())
+        self.status_var.set("Undid last layout change.")
+        return "break"
 
     def redraw(self) -> None:
         self.canvas.delete("all")
@@ -1543,19 +1736,19 @@ class OpticalLayoutEditor(tk.Tk):
             z_value = self._z_min + i * (self._z_max - self._z_min) / 6.0
             px = self._z_to_px(z_value)
             self.canvas.create_line(px, top, px, bottom, fill="#eeeeee")
-            self.canvas.create_text(px, bottom + 18, text=f"{z_value * 1e2:.1f}", fill="#555555", font=("Segoe UI", 9))
+            self.canvas.create_text(px, bottom + 18, text=f"{z_value * 1e6:.1f}", fill="#555555", font=("Segoe UI", 9))
 
         for i in range(5):
             x_value = self._x_min + i * (self._x_max - self._x_min) / 4.0
             py = self._x_to_px(x_value)
             self.canvas.create_line(left, py, right, py, fill="#f0f0f0")
-            self.canvas.create_text(left - 8, py, text=f"{x_value * 1e3:.1f}", anchor="e", fill="#555555", font=("Segoe UI", 9))
+            self.canvas.create_text(left - 8, py, text=f"{x_value * 1e6:.1f}", anchor="e", fill="#555555", font=("Segoe UI", 9))
 
-        self.canvas.create_text((left + right) / 2.0, height - 20, text="z position (cm)", fill="#333333")
+        self.canvas.create_text((left + right) / 2.0, height - 20, text="z position (um)", fill="#333333")
         self.canvas.create_text(
             18,
             (top + bottom) / 2.0,
-            text=f"x offset / aperture (mm), zoom {self._view_zoom:.2g}x",
+            text=f"x offset / aperture (um), zoom {self._view_zoom:.2g}x",
             angle=90,
             fill="#333333",
         )
@@ -1672,7 +1865,7 @@ class OpticalLayoutEditor(tk.Tk):
         bottom = self.canvas.create_rectangle(z_px - 6, x_px + display_radius_px - 6, z_px + 6, x_px + display_radius_px + 6, fill="#ffffff", outline=color, width=2)
         self._register_canvas_item(top, uid, "radius")
         self._register_canvas_item(bottom, uid, "radius")
-        label_text = f"{lens.name}\nf={lens.focal_length * 1e2:.2g} cm, ap={lens.aperture_radius * 1e3:.2g} mm"
+        label_text = f"{lens.name}\nf={lens.focal_length * 1e6:.3g} um, ap={lens.aperture_radius * 1e6:.3g} um"
         label = self.canvas.create_text(z_px + 8, x_px - display_radius_px - 16, text=label_text, anchor="w", fill="#333333", font=("Segoe UI", 9))
         self._register_canvas_item(label, uid, "move")
         if selected:
@@ -1799,9 +1992,33 @@ class OpticalLayoutEditor(tk.Tk):
         x_px = self._x_to_px(taper.x_offset)
         half_width_px = max(5.0, abs(self._z_to_px(taper.position + 0.5 * taper.width) - z_px))
         half_height_px = max(5.0, abs(self._x_to_px(taper.x_offset + 0.5 * taper.height) - x_px))
+        mode_radius_x_px = max(7.0, abs(self._x_to_px(taper.x_offset + taper.mode_radius_x) - x_px))
+        mode_half_width_px = max(8.0, half_width_px * 1.9)
         uid = taper.uid
         selected = uid == self.selected_uid
         color = "#5b5b5b"
+        mode_color = "#2f73d9"
+
+        mode = self.canvas.create_oval(
+            z_px - mode_half_width_px,
+            x_px - mode_radius_x_px,
+            z_px + mode_half_width_px,
+            x_px + mode_radius_x_px,
+            outline=mode_color,
+            width=2,
+            dash=(5, 3),
+        )
+        self._register_canvas_item(mode, uid, "move")
+        mode_center = self.canvas.create_line(
+            z_px - mode_half_width_px,
+            x_px,
+            z_px + mode_half_width_px,
+            x_px,
+            fill=mode_color,
+            width=1,
+            dash=(2, 3),
+        )
+        self._register_canvas_item(mode_center, uid, "move")
 
         body = self.canvas.create_rectangle(
             z_px - half_width_px,
@@ -1815,12 +2032,14 @@ class OpticalLayoutEditor(tk.Tk):
         self._register_canvas_item(body, uid, "move")
         label_text = (
             f"{taper.name}\n"
-            f"{taper.width * 1e9:.3g} x {taper.height * 1e9:.3g} nm\n"
+            f"physical {taper.width * 1e6:.3g} x {taper.height * 1e6:.3g} um\n"
+            f"optical mode {taper.mode_radius_x * 1e6:.3g} x {taper.mode_radius_y * 1e6:.3g} um, "
+            f"n={taper.facet_refractive_index:.3g}, T={taper.extra_transmission:.3g}\n"
             f"Prx={taper.received_power * 1e3:.4g} mW"
         )
         label = self.canvas.create_text(
             z_px + half_width_px + 8,
-            x_px + half_height_px + 12,
+            x_px + max(half_height_px, mode_radius_x_px) + 12,
             text=label_text,
             anchor="w",
             fill="#333333",
@@ -1960,6 +2179,7 @@ class OpticalLayoutEditor(tk.Tk):
             "start_y": event.y,
             "position": element.position,
             "x_offset": getattr(element, "x_offset", 0.0),
+            "undo_pushed": False,
         }
         self._refresh_tree()
         self.redraw()
@@ -1979,6 +2199,9 @@ class OpticalLayoutEditor(tk.Tk):
         element = self._element_by_uid(self._drag["uid"])
         if element is None:
             return
+        if not self._drag.get("undo_pushed"):
+            self._push_undo()
+            self._drag["undo_pushed"] = True
 
         if self._drag["mode"] == "radius":
             self._resize_element_from_pointer(element, event.y)
@@ -2057,31 +2280,31 @@ class OpticalLayoutEditor(tk.Tk):
         element: LaserSource | LensElement | BallLensElement | FiberElement | TaperDetectorElement,
     ) -> tuple[str, str, str, str, str, str]:
         if isinstance(element, LaserSource):
-            size = f"w0x {element.waist_radius * 1e6:.3g} um"
-            extra = f"w0y {element.waist_radius_y * 1e6:.3g} um"
+            mfd = f"{2.0 * element.waist_radius * 1e6:.3g}x{2.0 * element.waist_radius_y * 1e6:.3g} um"
+            extra = f"w0 {element.waist_radius * 1e6:.3g}x{element.waist_radius_y * 1e6:.3g} um"
             x_text = f"{element.x_offset * 1e6:.3g} um"
-            power = f"{element.power * 1e3:.3g} mW"
+            y_text = f"{element.y_offset * 1e6:.3g} um"
         elif isinstance(element, LensElement):
-            size = f"ap {element.aperture_radius * 1e3:.3g} mm"
-            extra = f"f {element.focal_length * 1e2:.3g} cm"
-            x_text = f"{element.x_offset * 1e3:.3g} mm"
-            power = "-"
+            mfd = "-"
+            extra = f"f {element.focal_length * 1e6:.3g} um, ap {element.aperture_radius * 1e6:.3g} um"
+            x_text = f"{element.x_offset * 1e6:.3g} um"
+            y_text = f"{element.y_offset * 1e6:.3g} um"
         elif isinstance(element, BallLensElement):
-            size = f"D {element.diameter * 1e6:.3g} um"
-            extra = f"n {element.refractive_index:.3g}"
+            mfd = "-"
+            extra = f"D {element.diameter * 1e6:.3g} um, n {element.refractive_index:.3g}"
             x_text = f"{element.x_offset * 1e6:.3g} um"
-            power = "-"
+            y_text = f"{element.y_offset * 1e6:.3g} um"
         elif isinstance(element, TaperDetectorElement):
-            size = f"{element.width * 1e9:.3g}x{element.height * 1e9:.3g} nm"
-            extra = "square"
+            mfd = f"{2.0 * element.mode_radius_x * 1e6:.3g}x{2.0 * element.mode_radius_y * 1e6:.3g} um"
+            extra = f"phys {element.width * 1e6:.3g}x{element.height * 1e6:.3g} um, n {element.facet_refractive_index:.3g}"
             x_text = f"{element.x_offset * 1e6:.3g} um"
-            power = f"rx {element.received_power * 1e3:.3g} mW"
+            y_text = f"{element.y_offset * 1e6:.3g} um"
         else:
-            size = f"MFD {element.mode_field_diameter * 1e6:.3g} um"
+            mfd = f"{element.mode_field_diameter * 1e6:.3g} um"
             extra = f"clad {element.cladding_diameter * 1e6:.3g} um"
             x_text = f"{element.x_offset * 1e6:.3g} um"
-            power = f"rx {element.received_power * 1e3:.3g} mW"
-        return (element.kind, f"{element.position * 1e2:.3g}", x_text, size, extra, power)
+            y_text = f"{element.y_offset * 1e6:.3g} um"
+        return (element.kind, f"{element.position * 1e6:.3g} um", x_text, y_text, mfd, extra)
 
     def _add_source(self) -> None:
         source_number = len(self.sources) + 1
@@ -2090,6 +2313,7 @@ class OpticalLayoutEditor(tk.Tk):
             position=0.0,
             x_offset=(source_number - 1) * 1.0e-3,
         )
+        self._push_undo()
         self.sources.append(source)
         self.selected_uid = source.uid
         self._register_nominal(source)
@@ -2109,6 +2333,7 @@ class OpticalLayoutEditor(tk.Tk):
             focal_length=0.025,
             aperture_radius=6.25e-3,
         )
+        self._push_undo()
         self.lenses.append(lens)
         self.selected_uid = lens.uid
         self._register_nominal(lens)
@@ -2126,6 +2351,7 @@ class OpticalLayoutEditor(tk.Tk):
             name=f"Sapphire ball {ball_number}",
             position=position,
         )
+        self._push_undo()
         self.balls.append(ball)
         self.selected_uid = ball.uid
         self._register_nominal(ball)
@@ -2143,6 +2369,7 @@ class OpticalLayoutEditor(tk.Tk):
             name=f"Taper detector {taper_number}",
             position=position,
         )
+        self._push_undo()
         self.tapers.append(taper)
         self.selected_uid = taper.uid
         self._register_nominal(taper)
@@ -2161,6 +2388,7 @@ class OpticalLayoutEditor(tk.Tk):
             position=position,
             x_offset=(fiber_number - 1) * 50e-6,
         )
+        self._push_undo()
         self.fibers.append(fiber)
         self.selected_uid = fiber.uid
         self._register_nominal(fiber)
@@ -2200,6 +2428,7 @@ class OpticalLayoutEditor(tk.Tk):
         if not confirmed:
             return False
 
+        self._push_undo()
         if isinstance(element, LaserSource):
             self.sources = [source for source in self.sources if source.uid != element.uid]
         elif isinstance(element, LensElement):
@@ -2277,6 +2506,8 @@ class OpticalLayoutEditor(tk.Tk):
         variables: dict[str, tk.StringVar],
     ) -> None:
         previous = {spec.attr: getattr(element, spec.attr) for spec in fields}
+        snapshot = self._layout_snapshot()
+        new_values: dict[str, str | float] = {}
         changed_attrs: set[str] = set()
         try:
             for spec in fields:
@@ -2287,7 +2518,9 @@ class OpticalLayoutEditor(tk.Tk):
                     value = float(raw_text) / spec.scale
                 if value != previous[spec.attr]:
                     changed_attrs.add(spec.attr)
-                setattr(element, spec.attr, value)
+                new_values[spec.attr] = value
+            for attr, value in new_values.items():
+                setattr(element, attr, value)
             if isinstance(element, LaserSource):
                 self._sync_source_gaussian_parameters(element, changed_attrs)
             self._validate_element(element)
@@ -2297,6 +2530,10 @@ class OpticalLayoutEditor(tk.Tk):
             messagebox.showerror("Invalid parameter", str(exc), parent=dialog)
             return
 
+        if changed_attrs:
+            self._undo_stack.append(snapshot)
+            if len(self._undo_stack) > 80:
+                del self._undo_stack[0 : len(self._undo_stack) - 80]
         self._clear_simulation_overlay()
         self._refresh_tree()
         self.redraw()
@@ -2372,18 +2609,31 @@ class OpticalLayoutEditor(tk.Tk):
                 raise ValueError("taper width must be positive")
             if element.height <= 0:
                 raise ValueError("taper height must be positive")
+            if element.mode_radius_x <= 0:
+                raise ValueError("taper mode radius x must be positive")
+            if element.mode_radius_y <= 0:
+                raise ValueError("taper mode radius y must be positive")
+            if not 0.0 <= element.extra_transmission <= 1.0:
+                raise ValueError("extra taper transmission must be between 0 and 1")
+            if element.facet_refractive_index <= 0:
+                raise ValueError("taper facet refractive index must be positive")
             if element.received_power < 0:
                 raise ValueError("received power must be non-negative")
 
     def _apply_final_z(self) -> None:
         try:
-            value = float(self.final_z_var.get()) / 1e2
+            value = float(self.final_z_var.get()) / 1e6
         except ValueError:
-            messagebox.showerror("Invalid final z", "Final z must be a number in cm.")
+            messagebox.showerror("Invalid final z", "Final z must be a number in um.")
             return
         if value <= 0 or not math.isfinite(value):
             messagebox.showerror("Invalid final z", "Final z must be positive and finite.")
             return
+        if math.isclose(value, self.final_z):
+            self._fit_view_bounds_to_layout()
+            self.redraw()
+            return
+        self._push_undo()
         self.final_z = value
         self._clear_simulation_overlay()
         self._fit_view_bounds_to_layout()
@@ -2409,13 +2659,14 @@ class OpticalLayoutEditor(tk.Tk):
 
     def _reset_defaults(self) -> None:
         default_balls, default_tapers, default_final_z = default_ball_lens_layout()
+        self._push_undo()
         self.sources = [LaserSource()]
         self.lenses = []
         self.balls = default_balls
         self.fibers = []
         self.tapers = default_tapers
         self.final_z = default_final_z
-        self.final_z_var.set(f"{self.final_z * 1e2:.2f}")
+        self.final_z_var.set(f"{self.final_z * 1e6:.2f}")
         self.selected_uid = None
         self._view_zoom = 1.0
         self._zoom_anchor_z = None
@@ -2532,7 +2783,7 @@ class OpticalLayoutEditor(tk.Tk):
                 self.output.tag_add("summary", start, end)
             elif line.startswith("BEST:") or line.startswith("BEST DETECTOR:"):
                 self.output.tag_add("best", start, end)
-            elif "COUPLING =" in line or "COLLECTION =" in line:
+            elif "COUPLING =" in line or "MODE =" in line or "TOTAL =" in line:
                 self.output.tag_add("coupling", start, end)
 
     def _configuration_snippet(self) -> str:
@@ -2625,6 +2876,10 @@ class OpticalLayoutEditor(tk.Tk):
                     f"        \"position\": {taper.position:.12g},",
                     f"        \"width\": {taper.width:.12g},",
                     f"        \"height\": {taper.height:.12g},",
+                    f"        \"mode_radius_x\": {taper.mode_radius_x:.12g},",
+                    f"        \"mode_radius_y\": {taper.mode_radius_y:.12g},",
+                    f"        \"extra_transmission\": {taper.extra_transmission:.12g},",
+                    f"        \"facet_refractive_index\": {taper.facet_refractive_index:.12g},",
                     f"        \"x_offset\": {taper.x_offset:.12g},",
                     f"        \"y_offset\": {taper.y_offset:.12g},",
                     f"        \"received_power\": {taper.received_power:.12g},",

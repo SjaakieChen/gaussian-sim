@@ -3,17 +3,25 @@
 import math
 import random
 import tkinter as tk
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 from interactive_setup import (
     BallLensElement,
-    L808H1_X_DIVERGENCE_FWHM,
-    L808H1_Y_DIVERGENCE_FWHM,
-    L808H1_WAVELENGTH,
-    L808H1_X_WAIST,
-    L808H1_Y_WAIST,
+    DEFAULT_BALL1_FRONT_GAP,
+    DEFAULT_BALL2_TAPER_GAP,
+    DEFAULT_BALL_DIAMETER,
+    DEFAULT_BALL_GAP,
+    DEFAULT_MODE_RADIUS_X,
+    DEFAULT_MODE_RADIUS_Y,
+    DEFAULT_SOURCE_POWER,
+    DEFAULT_TAPER_EXTRA_TRANSMISSION,
+    DEFAULT_TAPER_FACET_REFRACTIVE_INDEX,
+    DEFAULT_TAPER_PHYSICAL_THICKNESS,
+    DEFAULT_TAPER_PHYSICAL_WIDTH,
+    DEFAULT_WAVELENGTH,
     FiberElement,
     LaserSource,
     LensElement,
@@ -23,13 +31,15 @@ from interactive_setup import (
     AXIAL_TOLERANCE,
     TRANSVERSE_TOLERANCE,
     TaperDetectorElement,
-    _one_over_e2_half_angle_from_fwhm,
     apply_nominal_state,
     ball_lens_matrix,
     capture_element_nominal,
     default_ball_lens_layout,
+    elliptical_gaussian_mode_overlap_efficiency,
     fiber_to_spec,
     format_simulation_report,
+    fresnel_power_transmission,
+    fresnel_reflection_loss,
     lens_to_spec,
     propagate_astigmatic_through_balls,
     random_positive,
@@ -39,7 +49,6 @@ from interactive_setup import (
     simulate_source_to_fiber,
     source_to_alignment,
     source_to_beam,
-    square_detector_collection_fraction,
 )
 from layout import analyze_fiber_coupling, beam_center_at_z, gaussian_mode_overlap_efficiency
 
@@ -72,22 +81,54 @@ def test_interactive_elements_convert_to_physics_specs():
     assert np.isclose(fiber_spec.mode_field_diameter, fiber.mode_field_diameter)
 
 
-def test_default_source_uses_l808h1_astigmatic_waists():
+def test_default_source_uses_corrected_elliptical_gaussian_waist():
     source = LaserSource()
     fiber = FiberElement(position=0.0, mode_field_diameter=20e-6)
 
     results = simulate_layout([source], [], [fiber], final_z=0.01)
     report = format_simulation_report(results)
 
-    expected_x_theta = _one_over_e2_half_angle_from_fwhm(L808H1_X_DIVERGENCE_FWHM)
-    expected_y_theta = _one_over_e2_half_angle_from_fwhm(L808H1_Y_DIVERGENCE_FWHM)
-    assert np.isclose(source.wavelength, L808H1_WAVELENGTH)
-    assert np.isclose(source.waist_radius, L808H1_WAVELENGTH / (math.pi * expected_x_theta))
-    assert np.isclose(source.waist_radius_y, L808H1_WAVELENGTH / (math.pi * expected_y_theta))
+    assert np.isclose(source.wavelength, DEFAULT_WAVELENGTH)
+    assert np.isclose(source.waist_radius, DEFAULT_MODE_RADIUS_X)
+    assert np.isclose(source.waist_radius_y, DEFAULT_MODE_RADIUS_Y)
+    assert np.isclose(source.power, DEFAULT_SOURCE_POWER)
     assert np.isclose(source.rayleigh_range, math.pi * source.waist_radius**2 / source.wavelength)
     assert np.isclose(source.rayleigh_range_y, math.pi * source.waist_radius_y**2 / source.wavelength)
     assert "x/y waist radius:" in report
     assert "x/y Rayleigh length:" in report
+
+
+def test_default_two_ball_taper_geometry_matches_corrected_model():
+    balls, tapers, final_z = default_ball_lens_layout()
+    radius = 0.5 * DEFAULT_BALL_DIAMETER
+
+    assert len(balls) == 2
+    assert len(tapers) == 1
+    assert np.isclose(balls[0].diameter, DEFAULT_BALL_DIAMETER)
+    assert np.isclose(balls[1].diameter, DEFAULT_BALL_DIAMETER)
+    assert np.isclose(balls[0].entry_z, DEFAULT_BALL1_FRONT_GAP)
+    assert np.isclose(balls[0].exit_z, DEFAULT_BALL1_FRONT_GAP + DEFAULT_BALL_DIAMETER)
+    assert np.isclose(balls[1].entry_z - balls[0].exit_z, DEFAULT_BALL_GAP)
+    assert np.isclose(tapers[0].position - balls[1].exit_z, DEFAULT_BALL2_TAPER_GAP)
+    assert np.isclose(balls[1].position - balls[0].position, 700e-6)
+    assert np.isclose(balls[0].position, DEFAULT_BALL1_FRONT_GAP + radius)
+    assert np.isclose(final_z, 1278e-6)
+    assert np.isclose(tapers[0].width, DEFAULT_TAPER_PHYSICAL_WIDTH)
+    assert np.isclose(tapers[0].height, DEFAULT_TAPER_PHYSICAL_THICKNESS)
+    assert np.isclose(tapers[0].mode_radius_x, DEFAULT_MODE_RADIUS_X)
+    assert np.isclose(tapers[0].mode_radius_y, DEFAULT_MODE_RADIUS_Y)
+    assert np.isclose(tapers[0].extra_transmission, DEFAULT_TAPER_EXTRA_TRANSMISSION)
+    assert np.isclose(tapers[0].facet_refractive_index, DEFAULT_TAPER_FACET_REFRACTIVE_INDEX)
+
+
+def test_fresnel_helpers_return_normal_incidence_power_loss_and_transmission():
+    expected_sapphire_loss = ((1.0 - SAPPHIRE_REFRACTIVE_INDEX) / (1.0 + SAPPHIRE_REFRACTIVE_INDEX)) ** 2
+    expected_sin_loss = ((1.0 - DEFAULT_TAPER_FACET_REFRACTIVE_INDEX) / (1.0 + DEFAULT_TAPER_FACET_REFRACTIVE_INDEX)) ** 2
+
+    assert np.isclose(fresnel_reflection_loss(1.0, SAPPHIRE_REFRACTIVE_INDEX), expected_sapphire_loss)
+    assert np.isclose(fresnel_power_transmission(1.0, SAPPHIRE_REFRACTIVE_INDEX), 1.0 - expected_sapphire_loss)
+    assert np.isclose(fresnel_reflection_loss(1.0, DEFAULT_TAPER_FACET_REFRACTIVE_INDEX), expected_sin_loss)
+    assert np.isclose(fresnel_power_transmission(1.0, DEFAULT_TAPER_FACET_REFRACTIVE_INDEX), 1.0 - expected_sin_loss)
 
 
 def test_source_rayleigh_length_can_define_waist_radius():
@@ -127,6 +168,9 @@ def test_centered_astigmatic_beam_hits_ball_and_changes_q():
 
     assert not missed
     assert reports[0].status in {"OK", "CLIPPING"}
+    expected_surface = fresnel_power_transmission(1.0, ball.refractive_index)
+    assert np.isclose(reports[0].reflection_transmission, expected_surface**2)
+    assert np.isclose(reports[0].transmission, reports[0].aperture_transmission * reports[0].reflection_transmission)
     assert not np.isclose(state.q_x, before_q + (700e-6 - ball.entry_z))
 
 
@@ -138,9 +182,14 @@ def test_astigmatic_beam_missing_ball_skips_lens_and_reports_miss():
     result = simulate_source_to_taper(source, [ball], taper)
 
     assert result.ball_reports[0].status == "MISS"
-    assert result.aperture_transmission == 0.0
-    assert result.detector_fraction == 0.0
-    assert result.received_power == 0.0
+    assert result.aperture_transmission == 1.0
+    assert result.ball_reflection_transmission == 1.0
+    assert result.ball_reports[0].reflection_transmission == 1.0
+    assert result.mode_efficiency >= 0.0
+    assert np.isclose(
+        result.received_power,
+        source.power * result.mode_efficiency * result.extra_transmission * result.taper_reflection_transmission,
+    )
 
 
 def test_astigmatic_beam_near_ball_edge_reports_clipping():
@@ -152,28 +201,49 @@ def test_astigmatic_beam_near_ball_edge_reports_clipping():
     assert not missed
     assert reports[0].status == "CLIPPING"
     assert reports[0].transmission < 1.0
+    assert np.isclose(reports[0].transmission, reports[0].aperture_transmission * reports[0].reflection_transmission)
 
 
-def test_square_taper_collection_decreases_with_offset():
-    detector = TaperDetectorElement(width=200e-9, height=200e-9)
-    centered = square_detector_collection_fraction(
-        beam_x=0.0,
-        beam_y=0.0,
+def test_elliptical_taper_mode_overlap_decreases_with_offset():
+    centered = elliptical_gaussian_mode_overlap_efficiency(
         beam_radius_x=2e-6,
         beam_radius_y=1e-6,
-        detector=detector,
+        mode_radius_x=2e-6,
+        mode_radius_y=1e-6,
+        wavelength=808e-9,
     )
-    offset_detector = TaperDetectorElement(width=200e-9, height=200e-9, x_offset=500e-9)
-    offset = square_detector_collection_fraction(
-        beam_x=0.0,
-        beam_y=0.0,
+    offset = elliptical_gaussian_mode_overlap_efficiency(
         beam_radius_x=2e-6,
         beam_radius_y=1e-6,
-        detector=offset_detector,
+        mode_radius_x=2e-6,
+        mode_radius_y=1e-6,
+        wavelength=808e-9,
+        x_offset=500e-9,
     )
+    expected_offset = math.exp(-(500e-9 / 2e-6) ** 2)
 
+    assert np.isclose(centered, 1.0)
+    assert np.isclose(offset, expected_offset)
     assert centered > offset
-    assert centered > 0.0
+
+
+def test_elliptical_taper_angle_overlap_matches_gaussian_formula():
+    wavelength = 808e-9
+    mode_radius_x = 2.18e-6
+    mode_radius_y = 0.965e-6
+    angle = 0.03
+
+    efficiency = elliptical_gaussian_mode_overlap_efficiency(
+        beam_radius_x=mode_radius_x,
+        beam_radius_y=mode_radius_y,
+        mode_radius_x=mode_radius_x,
+        mode_radius_y=mode_radius_y,
+        wavelength=wavelength,
+        x_angle=angle,
+    )
+    expected = math.exp(-((math.pi * mode_radius_x * angle / wavelength) ** 2))
+
+    assert np.isclose(efficiency, expected)
 
 
 def test_matched_lateral_offset_matches_gaussian_formula():
@@ -248,6 +318,39 @@ def test_received_power_uses_source_power_aperture_and_coupling():
     expected = source.power * result.aperture_transmission * result.coupling_report.total_efficiency
     assert np.isclose(result.received_power, expected)
     assert result.aperture_transmission < 1.0
+
+
+def test_taper_received_power_uses_mode_overlap_and_extra_transmission():
+    source = LaserSource(
+        wavelength=DEFAULT_WAVELENGTH,
+        waist_radius=DEFAULT_MODE_RADIUS_X,
+        waist_radius_y=DEFAULT_MODE_RADIUS_Y,
+        power=1.0,
+    )
+    taper = TaperDetectorElement(position=0.0)
+
+    result = simulate_source_to_taper(source, [], taper)
+
+    assert np.isclose(result.mode_efficiency, 1.0)
+    assert np.isclose(result.extra_transmission, DEFAULT_TAPER_EXTRA_TRANSMISSION)
+    assert np.isclose(result.taper_reflection_transmission, fresnel_power_transmission(1.0, taper.facet_refractive_index))
+    expected = DEFAULT_TAPER_EXTRA_TRANSMISSION * result.taper_reflection_transmission
+    assert np.isclose(result.received_power, expected)
+
+
+def test_taper_facet_index_one_removes_taper_reflection_loss():
+    source = LaserSource(
+        wavelength=DEFAULT_WAVELENGTH,
+        waist_radius=DEFAULT_MODE_RADIUS_X,
+        waist_radius_y=DEFAULT_MODE_RADIUS_Y,
+        power=1.0,
+    )
+    taper = TaperDetectorElement(position=0.0, facet_refractive_index=1.0)
+
+    result = simulate_source_to_taper(source, [], taper)
+
+    assert np.isclose(result.taper_reflection_transmission, 1.0)
+    assert np.isclose(result.received_power, result.mode_efficiency * result.extra_transmission)
 
 
 def test_simulation_report_contains_source_lens_and_fiber_results():
@@ -327,8 +430,14 @@ def test_tk_app_simulate_updates_fiber_received_power():
         app._simulate()  # pylint: disable=protected-access
         assert len(app.balls) == 2
         assert len(app.tapers) == 1
-        assert app.tapers[0].width == 200e-9
+        assert np.isclose(app.tapers[0].width, DEFAULT_TAPER_PHYSICAL_WIDTH)
+        assert np.isclose(app.tapers[0].height, DEFAULT_TAPER_PHYSICAL_THICKNESS)
+        assert np.isclose(app.tapers[0].mode_radius_x, DEFAULT_MODE_RADIUS_X)
+        assert np.isclose(app.tapers[0].mode_radius_y, DEFAULT_MODE_RADIUS_Y)
+        assert np.isclose(app.tapers[0].extra_transmission, DEFAULT_TAPER_EXTRA_TRANSMISSION)
+        assert np.isclose(app.tapers[0].facet_refractive_index, DEFAULT_TAPER_FACET_REFRACTIVE_INDEX)
         assert app.tapers[0].received_power > 0.0
+        assert app.tapers[0].received_power < app.sources[0].power * DEFAULT_TAPER_EXTRA_TRANSMISSION
         assert app._beam_paths  # pylint: disable=protected-access
         path = app._beam_paths[0]  # pylint: disable=protected-access
         assert len(path.z) == len(path.x) == len(path.w)
@@ -337,7 +446,15 @@ def test_tk_app_simulate_updates_fiber_received_power():
         output = app.output.get("1.0", tk.END)
         assert "COUPLING SUMMARY" in output
         assert "Ball lens checks" in output
-        assert "Taper detector collection" in output
+        assert "Taper Gaussian mode matching" in output
+        assert "refl(%)" in output
+        assert "ball refl(%)" in output
+        canvas_text = "\n".join(
+            app.canvas.itemcget(item_id, "text")
+            for item_id in app.canvas.find_all()
+            if app.canvas.type(item_id) == "text"
+        )
+        assert "optical mode 2.18 x 0.965 um" in canvas_text
     finally:
         app.destroy()
 
@@ -357,6 +474,93 @@ def test_tk_app_zoom_changes_visible_range():
         assert zoomed_range < initial_range
         app._reset_view()  # pylint: disable=protected-access
         assert np.isclose(app._view_zoom, 1.0)  # pylint: disable=protected-access
+    finally:
+        app.destroy()
+
+
+def test_tk_app_undo_reverts_add_final_z_editor_save_drag_delete_and_reset(monkeypatch):
+    try:
+        app = OpticalLayoutEditor()
+    except tk.TclError as exc:
+        pytest.skip(f"Tk is not available: {exc}")
+
+    class DummyDialog:
+        def __init__(self):
+            self.destroyed = False
+
+        def destroy(self):
+            self.destroyed = True
+
+    try:
+        initial_ball_count = len(app.balls)
+        app._add_ball()  # pylint: disable=protected-access
+        assert len(app.balls) == initial_ball_count + 1
+        app._undo()  # pylint: disable=protected-access
+        assert len(app.balls) == initial_ball_count
+
+        original_final_z = app.final_z
+        app.final_z_var.set("2000")
+        app._apply_final_z()  # pylint: disable=protected-access
+        assert np.isclose(app.final_z, 2000e-6)
+        app._undo()  # pylint: disable=protected-access
+        assert np.isclose(app.final_z, original_final_z)
+        assert app.final_z_var.get() == f"{original_final_z * 1e6:.2f}"
+
+        source = app.sources[0]
+        fields = app._field_specs_for(source)  # pylint: disable=protected-access
+        variables = {}
+        for spec in fields:
+            raw_value = getattr(source, spec.attr)
+            display_value = str(raw_value) if spec.is_text else f"{raw_value * spec.scale:.9g}"
+            variables[spec.attr] = tk.StringVar(value=display_value)
+        variables["power"].set("123")
+        dialog = DummyDialog()
+        app._save_editor(dialog, source, fields, variables)  # pylint: disable=protected-access
+        assert dialog.destroyed
+        assert np.isclose(app.sources[0].power, 123e-3)
+        app._undo()  # pylint: disable=protected-access
+        assert np.isclose(app.sources[0].power, DEFAULT_SOURCE_POWER)
+
+        app.update_idletasks()
+        app.redraw()
+        ball = app.balls[0]
+        old_position = ball.position
+        old_x = ball.x_offset
+        undo_count = len(app._undo_stack)  # pylint: disable=protected-access
+        app._drag = {"uid": ball.uid, "mode": "move", "undo_pushed": False}  # pylint: disable=protected-access
+        app._on_canvas_drag(  # pylint: disable=protected-access
+            SimpleNamespace(
+                x=app._z_to_px(old_position + 10e-6),  # pylint: disable=protected-access
+                y=app._x_to_px(old_x + 5e-6),  # pylint: disable=protected-access
+            )
+        )
+        app._on_canvas_drag(  # pylint: disable=protected-access
+            SimpleNamespace(
+                x=app._z_to_px(old_position + 20e-6),  # pylint: disable=protected-access
+                y=app._x_to_px(old_x + 10e-6),  # pylint: disable=protected-access
+            )
+        )
+        app._on_canvas_release(None)  # pylint: disable=protected-access
+        assert len(app._undo_stack) == undo_count + 1  # pylint: disable=protected-access
+        assert not np.isclose(app.balls[0].position, old_position)
+        app._undo()  # pylint: disable=protected-access
+        restored_ball = app._element_by_uid(ball.uid)  # pylint: disable=protected-access
+        assert np.isclose(restored_ball.position, old_position)
+        assert np.isclose(restored_ball.x_offset, old_x)
+
+        monkeypatch.setattr("interactive_setup.messagebox.askyesno", lambda *args, **kwargs: True)
+        deleted_uid = app.balls[0].uid
+        assert app._delete_element(app.balls[0])  # pylint: disable=protected-access
+        assert app._element_by_uid(deleted_uid) is None  # pylint: disable=protected-access
+        app._undo()  # pylint: disable=protected-access
+        assert app._element_by_uid(deleted_uid) is not None  # pylint: disable=protected-access
+
+        app._add_ball()  # pylint: disable=protected-access
+        edited_ball_count = len(app.balls)
+        app._reset_defaults()  # pylint: disable=protected-access
+        assert len(app.balls) == 2
+        app._undo()  # pylint: disable=protected-access
+        assert len(app.balls) == edited_ball_count
     finally:
         app.destroy()
 
