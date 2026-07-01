@@ -15,6 +15,7 @@ def _maybe_scalar(value: np.ndarray, original: object):
     return value
 
 
+
 def real_part(z: ArrayLike) -> np.ndarray:
     """Return the real part of complex values without using ``.real``."""
 
