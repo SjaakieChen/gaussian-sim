@@ -19,7 +19,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from itertools import count
 from tkinter import messagebox, ttk
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -307,10 +307,14 @@ class BeamPathDisplay:
     source_name: str
     z: list[float]
     x: list[float]
+    y: list[float]
     w: list[float]
+    wy: list[float]
     waist_z: float
     waist_x: float
+    waist_y: float
     waist_radius: float
+    waist_radius_y: float
     color: str
 
 
@@ -754,6 +758,7 @@ def simulate_source_to_fiber(
     fiber: FiberElement,
     refractive_index: float = DEFAULT_REFRACTIVE_INDEX,
     clipping_radius_factor: float = DEFAULT_CLIPPING_RADIUS_FACTOR,
+    balls: list[BallLensElement] | None = None,
 ) -> FiberSimulationResult:
     if fiber.position < source.position:
         return FiberSimulationResult(
@@ -764,6 +769,25 @@ def simulate_source_to_fiber(
             aperture_transmission=0.0,
             received_power=0.0,
             warnings=["fiber is before this source"],
+        )
+
+    # The fiber path is a circular thin-lens model: it cannot propagate through
+    # ball lenses and only uses the x-axis waist. Warn instead of silently
+    # returning wrong physics.
+    model_warnings: list[str] = []
+    intervening_balls = [
+        ball for ball in (balls or []) if source.position <= ball.position <= fiber.position
+    ]
+    if intervening_balls:
+        names = ", ".join(ball.name for ball in intervening_balls)
+        model_warnings.append(
+            f"fiber coupling ignores ball lenses ({names}); the result treats them as absent"
+        )
+    if source.waist_radius_y is not None and not math.isclose(
+        source.waist_radius_y, source.waist_radius, rel_tol=1e-9
+    ):
+        model_warnings.append(
+            "fiber coupling uses the x-axis waist only; the elliptical y-axis beam parameters are ignored"
         )
 
     beam = source_to_beam(source)
@@ -795,12 +819,14 @@ def simulate_source_to_fiber(
             coupling_report=None,
             aperture_transmission=0.0,
             received_power=0.0,
-            warnings=[str(exc)],
+            warnings=model_warnings + [str(exc)],
         )
 
     aperture_transmission = aperture_transmission_product(lens_reports)
     received_power = source.power * aperture_transmission * coupling_report.total_efficiency
-    warnings = [f"clipping risk at {report.lens.position * 1e6:.3g} um" for report in lens_reports if report.clips]
+    warnings = model_warnings + [
+        f"clipping risk at {report.lens.position * 1e6:.3g} um" for report in lens_reports if report.clips
+    ]
 
     return FiberSimulationResult(
         source=source,
@@ -843,11 +869,18 @@ def simulate_source_to_taper(
             warnings=["taper detector is before this source"],
         )
 
+    sorted_balls = sorted(balls, key=lambda item: item.position)
     usable_balls = [
         ball
-        for ball in sorted(balls, key=lambda item: item.position)
+        for ball in sorted_balls
         if ball.exit_z <= taper.position and ball.entry_z >= source.position
     ]
+    excluded_warnings = []
+    for ball in sorted_balls:
+        if ball.entry_z < source.position:
+            excluded_warnings.append(f"{ball.name} skipped: it starts before the source")
+        elif ball.exit_z > taper.position:
+            excluded_warnings.append(f"{ball.name} skipped: it extends past the taper")
 
     try:
         state, ball_reports, missed_ball, _path = propagate_astigmatic_through_balls(
@@ -894,12 +927,12 @@ def simulate_source_to_taper(
             ball_reflection_transmission=0.0,
             aperture_transmission=0.0,
             received_power=0.0,
-            warnings=[str(exc)],
+            warnings=excluded_warnings + [str(exc)],
         )
 
     aperture_transmission = 1.0
     ball_reflection_transmission = 1.0
-    warnings: list[str] = []
+    warnings: list[str] = list(excluded_warnings)
     for report in ball_reports:
         aperture_transmission *= report.aperture_transmission
         ball_reflection_transmission *= report.reflection_transmission
@@ -968,6 +1001,11 @@ def simulate_source(
     else:
         try:
             if balls:
+                warnings.extend(
+                    f"{ball.name} skipped for final beam: final z is before its exit plane"
+                    for ball in balls
+                    if ball.exit_z > final_z
+                )
                 final_state, _ball_reports, _missed_ball, _path = propagate_astigmatic_through_balls(
                     source,
                     balls,
@@ -1004,6 +1042,7 @@ def simulate_source(
             fiber,
             refractive_index=refractive_index,
             clipping_radius_factor=clipping_radius_factor,
+            balls=balls,
         )
         for fiber in sorted(fibers, key=lambda item: item.position)
     ]
@@ -1391,7 +1430,7 @@ class OpticalLayoutEditor(tk.Tk):
 
         self.selected_uid: str | None = None
         self._drag: dict[str, Any] | None = None
-        self._item_actions: dict[int, tuple[str, str]] = {}
+        self._item_actions: dict[tuple[str, int], tuple[str, str, str]] = {}
         self._z_min = 0.0
         self._z_max = self.final_z
         self._x_limit = 0.015
@@ -1412,6 +1451,10 @@ class OpticalLayoutEditor(tk.Tk):
         self._plot_right = 36
         self._plot_top = 42
         self._plot_bottom = 70
+        self._active_plane = "x"
+        self._canvas_interactive = True
+        self._parameters_panel_open = True
+        self._output_panel_open = True
 
         self._fit_view_bounds_to_layout()
         self._capture_nominal_layout()
@@ -1427,11 +1470,19 @@ class OpticalLayoutEditor(tk.Tk):
         toolbar.grid(row=0, column=0, sticky="ew")
         toolbar.columnconfigure(14, weight=1)
 
-        ttk.Button(toolbar, text="Add source", command=self._add_source).grid(row=0, column=0, padx=(0, 6))
-        ttk.Button(toolbar, text="Add ball", command=self._add_ball).grid(row=0, column=1, padx=(0, 6))
-        ttk.Button(toolbar, text="Add taper", command=self._add_taper).grid(row=0, column=2, padx=(0, 6))
-        ttk.Button(toolbar, text="Edit selected", command=self._edit_selected).grid(row=0, column=3, padx=(0, 6))
-        ttk.Button(toolbar, text="Delete selected", command=self._delete_selected).grid(row=0, column=4, padx=(0, 14))
+        self._toolbar_buttons: dict[str, ttk.Button] = {}
+        self._toolbar_buttons["add_source"] = ttk.Button(toolbar, text="Add source", command=self._add_source)
+        self._toolbar_buttons["add_source"].grid(row=0, column=0, padx=(0, 6))
+        self._toolbar_buttons["add_ball"] = ttk.Button(toolbar, text="Add ball", command=self._add_ball)
+        self._toolbar_buttons["add_ball"].grid(row=0, column=1, padx=(0, 6))
+        self._toolbar_buttons["add_taper"] = ttk.Button(toolbar, text="Add taper", command=self._add_taper)
+        self._toolbar_buttons["add_taper"].grid(row=0, column=2, padx=(0, 6))
+        self._toolbar_buttons["edit_selected"] = ttk.Button(toolbar, text="Edit selected", command=self._edit_selected)
+        self._toolbar_buttons["edit_selected"].grid(row=0, column=3, padx=(0, 6))
+        self._toolbar_buttons["delete_selected"] = ttk.Button(
+            toolbar, text="Delete selected", command=self._delete_selected
+        )
+        self._toolbar_buttons["delete_selected"].grid(row=0, column=4, padx=(0, 14))
         ttk.Label(toolbar, text="Final z").grid(row=0, column=5, padx=(0, 4))
         self.final_z_var = tk.StringVar(value=f"{self.final_z * 1e6:.2f}")
         final_entry = ttk.Entry(toolbar, textvariable=self.final_z_var, width=8)
@@ -1440,8 +1491,10 @@ class OpticalLayoutEditor(tk.Tk):
         ttk.Label(toolbar, text="um").grid(row=0, column=7, padx=(0, 6))
         ttk.Button(toolbar, text="Apply", command=self._apply_final_z).grid(row=0, column=8, padx=(0, 14))
         ttk.Button(toolbar, text="Simulate", command=self._simulate).grid(row=0, column=9, padx=(0, 6))
-        ttk.Button(toolbar, text="Zoom -", command=self._zoom_out).grid(row=0, column=10, padx=(0, 6))
-        ttk.Button(toolbar, text="Zoom +", command=self._zoom_in).grid(row=0, column=11, padx=(0, 6))
+        self._toolbar_buttons["zoom_out"] = ttk.Button(toolbar, text="Zoom -", command=self._zoom_out)
+        self._toolbar_buttons["zoom_out"].grid(row=0, column=10, padx=(0, 6))
+        self._toolbar_buttons["zoom_in"] = ttk.Button(toolbar, text="Zoom +", command=self._zoom_in)
+        self._toolbar_buttons["zoom_in"].grid(row=0, column=11, padx=(0, 6))
         ttk.Button(toolbar, text="Reset view", command=self._reset_view).grid(row=0, column=12, padx=(0, 14))
         ttk.Button(toolbar, text="Align all", command=self._align_all).grid(row=1, column=0, padx=(0, 6), pady=(6, 0))
         ttk.Button(toolbar, text="Scramble laser/fibre", command=self._scramble_laser_fibre).grid(
@@ -1450,33 +1503,64 @@ class OpticalLayoutEditor(tk.Tk):
         ttk.Button(toolbar, text="Full scramble", command=self._scramble_full).grid(
             row=1, column=2, padx=(0, 6), pady=(6, 0)
         )
+        self.parameters_toggle_button = ttk.Button(
+            toolbar,
+            text="Hide layout parameters",
+            command=self._toggle_parameters_panel,
+        )
+        self.parameters_toggle_button.grid(row=1, column=3, padx=(8, 6), pady=(6, 0))
+        self.output_toggle_button = ttk.Button(
+            toolbar,
+            text="Hide simulate output",
+            command=self._toggle_output_panel,
+        )
+        self.output_toggle_button.grid(row=1, column=4, padx=(0, 6), pady=(6, 0))
 
         self.status_var = tk.StringVar(
             value=(
-                "Drag empty canvas to pan. Drag elements to change z and x. "
+                "Drag empty canvas to pan. Drag elements to change z and the shown x/y offset. "
                 "Drag aperture handles to resize. Double-click an element for exact parameters."
             )
         )
         ttk.Label(toolbar, textvariable=self.status_var, anchor="e").grid(row=0, column=14, sticky="ew")
 
         main = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        self._main_paned = main
         main.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 8))
 
         canvas_frame = ttk.Frame(main)
-        canvas_frame.rowconfigure(0, weight=1)
+        self._canvas_pane = canvas_frame
+        canvas_frame.rowconfigure(1, weight=1)
         canvas_frame.columnconfigure(0, weight=1)
+        canvas_frame.columnconfigure(1, weight=1)
+        ttk.Label(canvas_frame, text="X plane: z vs x").grid(row=0, column=0, sticky="w")
         self.canvas = tk.Canvas(canvas_frame, background="#fbfbfb", highlightthickness=1, highlightbackground="#c9c9c9")
-        self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.canvas.grid(row=1, column=0, sticky="nsew", padx=(0, 4), pady=(2, 0))
+        ttk.Label(canvas_frame, text="Y plane: z vs y").grid(row=0, column=1, sticky="w")
+        self.y_canvas = tk.Canvas(canvas_frame, background="#fbfbfb", highlightthickness=1, highlightbackground="#c9c9c9")
+        self.y_canvas.grid(row=1, column=1, sticky="nsew", padx=(4, 0), pady=(2, 0))
         main.add(canvas_frame, weight=3)
 
         side = ttk.Frame(main, padding=(8, 0, 0, 0))
+        self._side_pane = side
         side.rowconfigure(1, weight=1)
         side.rowconfigure(3, weight=1)
         side.columnconfigure(0, weight=1)
-        ttk.Label(side, text="Layout parameters").grid(row=0, column=0, sticky="w")
 
         columns = ("kind", "z", "x", "y", "mfd", "extra")
-        self.tree = ttk.Treeview(side, columns=columns, show="tree headings", height=10, selectmode="browse")
+        self.parameters_header = ttk.Label(side, text="Layout parameters")
+        self.parameters_header.grid(row=0, column=0, sticky="w")
+        self.parameters_frame = ttk.Frame(side)
+        self.parameters_frame.grid(row=1, column=0, sticky="nsew", pady=(4, 8))
+        self.parameters_frame.rowconfigure(0, weight=1)
+        self.parameters_frame.columnconfigure(0, weight=1)
+        self.tree = ttk.Treeview(
+            self.parameters_frame,
+            columns=columns,
+            show="tree headings",
+            height=10,
+            selectmode="browse",
+        )
         self.tree.heading("#0", text="Element")
         self.tree.heading("kind", text="Type")
         self.tree.heading("z", text="z")
@@ -1491,23 +1575,81 @@ class OpticalLayoutEditor(tk.Tk):
         self.tree.column("y", width=80, anchor="e")
         self.tree.column("mfd", width=110, anchor="e")
         self.tree.column("extra", width=150, anchor="e")
-        self.tree.grid(row=1, column=0, sticky="nsew", pady=(4, 8))
+        self.tree.grid(row=0, column=0, sticky="nsew")
 
-        ttk.Label(side, text="Simulate output").grid(row=2, column=0, sticky="w")
-        self.output = tk.Text(side, height=12, width=44, wrap="none", font=("Consolas", 9))
-        self.output.grid(row=3, column=0, sticky="nsew", pady=(4, 0))
+        self.output_header = ttk.Label(side, text="Simulate output")
+        self.output_header.grid(row=2, column=0, sticky="w")
+        self.output_frame = ttk.Frame(side)
+        self.output_frame.grid(row=3, column=0, sticky="nsew", pady=(4, 0))
+        self.output_frame.rowconfigure(0, weight=1)
+        self.output_frame.columnconfigure(0, weight=1)
+        self.output = tk.Text(self.output_frame, height=12, width=44, wrap="none", font=("Consolas", 9))
+        self.output.grid(row=0, column=0, sticky="nsew")
         main.add(side, weight=1)
+        self._side_panel_visible = True
 
         self.canvas.bind("<Configure>", lambda _event: self.redraw())
+        self.y_canvas.bind("<Configure>", lambda _event: self.redraw())
         self.canvas.bind("<ButtonPress-1>", self._on_canvas_press)
         self.canvas.bind("<B1-Motion>", self._on_canvas_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_canvas_release)
         self.canvas.bind("<Double-Button-1>", self._on_canvas_double_click)
         self.canvas.bind("<MouseWheel>", self._on_mouse_wheel)
+        self.y_canvas.bind("<ButtonPress-1>", self._on_canvas_press)
+        self.y_canvas.bind("<B1-Motion>", self._on_canvas_drag)
+        self.y_canvas.bind("<ButtonRelease-1>", self._on_canvas_release)
+        self.y_canvas.bind("<Double-Button-1>", self._on_canvas_double_click)
+        self.y_canvas.bind("<MouseWheel>", self._on_mouse_wheel)
         self.tree.bind("<<TreeviewSelect>>", self._on_tree_select)
         self.tree.bind("<Double-Button-1>", lambda _event: self._edit_selected())
         self.bind_all("<Control-z>", self._undo)
         self.bind_all("<Control-Z>", self._undo)
+
+    def _set_parameters_panel_open(self, open_: bool) -> None:
+        self._parameters_panel_open = bool(open_)
+        if self._parameters_panel_open:
+            self.parameters_header.grid()
+            self.parameters_frame.grid()
+            self.parameters_toggle_button.configure(text="Hide layout parameters")
+            self.parameters_frame.master.rowconfigure(1, weight=1)
+        else:
+            self.parameters_header.grid_remove()
+            self.parameters_frame.grid_remove()
+            self.parameters_toggle_button.configure(text="Show layout parameters")
+            self.parameters_frame.master.rowconfigure(1, weight=0)
+        self._sync_side_panel_visibility()
+
+    def _toggle_parameters_panel(self) -> None:
+        self._set_parameters_panel_open(not self._parameters_panel_open)
+
+    def _set_output_panel_open(self, open_: bool) -> None:
+        self._output_panel_open = bool(open_)
+        if self._output_panel_open:
+            self.output_header.grid()
+            self.output_frame.grid()
+            self.output_toggle_button.configure(text="Hide simulate output")
+            self.output_frame.master.rowconfigure(3, weight=1)
+        else:
+            self.output_header.grid_remove()
+            self.output_frame.grid_remove()
+            self.output_toggle_button.configure(text="Show simulate output")
+            self.output_frame.master.rowconfigure(3, weight=0)
+        self._sync_side_panel_visibility()
+
+    def _toggle_output_panel(self) -> None:
+        self._set_output_panel_open(not self._output_panel_open)
+
+    def _sync_side_panel_visibility(self) -> None:
+        if not hasattr(self, "_main_paned"):
+            return
+        should_show = self._parameters_panel_open or self._output_panel_open
+        panes = {str(pane) for pane in self._main_paned.panes()}
+        side_present = str(self._side_pane) in panes
+        if should_show and not side_present:
+            self._main_paned.add(self._side_pane, weight=1)
+        elif not should_show and side_present:
+            self._main_paned.forget(self._side_pane)
+        self._side_panel_visible = should_show
 
     def _all_elements(self) -> list[LaserSource | LensElement | BallLensElement | FiberElement | TaperDetectorElement]:
         elements: list[LaserSource | LensElement | BallLensElement | FiberElement | TaperDetectorElement] = [
@@ -1571,9 +1713,20 @@ class OpticalLayoutEditor(tk.Tk):
         return "break"
 
     def redraw(self) -> None:
-        self.canvas.delete("all")
-        self._item_actions.clear()
         self._update_view_bounds()
+        self._item_actions.clear()
+        self._redraw_plane_canvas(self.canvas, "x", interactive=True)
+        if hasattr(self, "y_canvas"):
+            self._redraw_plane_canvas(self.y_canvas, "y", interactive=True)
+
+    def _redraw_plane_canvas(self, canvas: tk.Canvas, plane: str, *, interactive: bool) -> None:
+        previous_canvas = self.canvas
+        previous_plane = self._active_plane
+        previous_interactive = self._canvas_interactive
+        self.canvas = canvas
+        self._active_plane = plane
+        self._canvas_interactive = interactive
+        self.canvas.delete("all")
         self._draw_grid()
         self._draw_beam_paths()
         for source in sorted(self.sources, key=lambda item: item.position):
@@ -1586,6 +1739,9 @@ class OpticalLayoutEditor(tk.Tk):
             self._draw_fiber(fiber)
         for taper in sorted(self.tapers, key=lambda item: item.position):
             self._draw_taper(taper)
+        self.canvas = previous_canvas
+        self._active_plane = previous_plane
+        self._canvas_interactive = previous_interactive
 
     def _update_view_bounds(self) -> None:
         base_z_min = self._base_z_min
@@ -1640,19 +1796,33 @@ class OpticalLayoutEditor(tk.Tk):
 
         x_limit = 50.0e-6
         for source in self.sources:
-            x_limit = max(x_limit, abs(source.x_offset) + source.waist_radius)
+            x_limit = max(
+                x_limit,
+                abs(source.x_offset) + source.waist_radius,
+                abs(source.y_offset) + source.waist_radius_y,
+            )
         for lens in self.lenses:
-            x_limit = max(x_limit, abs(lens.x_offset) + lens.aperture_radius)
+            x_limit = max(
+                x_limit,
+                abs(lens.x_offset) + lens.aperture_radius,
+                abs(lens.y_offset) + lens.aperture_radius,
+            )
         for ball in self.balls:
-            x_limit = max(x_limit, abs(ball.x_offset) + ball.radius)
+            x_limit = max(x_limit, abs(ball.x_offset) + ball.radius, abs(ball.y_offset) + ball.radius)
         for fiber in self.fibers:
             x_limit = max(
                 x_limit,
                 abs(fiber.x_offset) + fiber.cladding_radius,
                 abs(fiber.x_offset) + fiber.mode_radius,
+                abs(fiber.y_offset) + fiber.cladding_radius,
+                abs(fiber.y_offset) + fiber.mode_radius,
             )
         for taper in self.tapers:
-            x_limit = max(x_limit, abs(taper.x_offset) + 0.5 * taper.height)
+            x_limit = max(
+                x_limit,
+                abs(taper.x_offset) + 0.5 * taper.height,
+                abs(taper.y_offset) + 0.5 * taper.height,
+            )
         for path in self._beam_paths:
             if path.x:
                 x_limit = max(
@@ -1662,17 +1832,26 @@ class OpticalLayoutEditor(tk.Tk):
                         for center, radius in zip(path.x, path.w)
                     ),
                 )
+            if path.y:
+                x_limit = max(
+                    x_limit,
+                    max(
+                        max(abs(center + radius), abs(center - radius))
+                        for center, radius in zip(path.y, path.wy)
+                    ),
+                )
 
         base_x_half_range = max(x_limit * 1.18, 1e-9)
         base_x_min = -base_x_half_range
         base_x_max = base_x_half_range
         return base_z_min, base_z_max, base_x_min, base_x_max
 
-    def _canvas_size(self) -> tuple[int, int]:
-        return max(self.canvas.winfo_width(), 800), max(self.canvas.winfo_height(), 500)
+    def _canvas_size(self, canvas: tk.Canvas | None = None) -> tuple[int, int]:
+        target = canvas if canvas is not None else self.canvas
+        return max(target.winfo_width(), 360), max(target.winfo_height(), 300)
 
-    def _plot_pixel_bounds(self) -> tuple[float, float, float, float]:
-        width, height = self._canvas_size()
+    def _plot_pixel_bounds(self, canvas: tk.Canvas | None = None) -> tuple[float, float, float, float]:
+        width, height = self._canvas_size(canvas)
         return (
             float(self._plot_left),
             float(width - self._plot_right),
@@ -1680,8 +1859,8 @@ class OpticalLayoutEditor(tk.Tk):
             float(height - self._plot_bottom),
         )
 
-    def _store_zoom_anchor_from_canvas(self, px: float, py: float) -> None:
-        left, right, top, bottom = self._plot_pixel_bounds()
+    def _store_zoom_anchor_from_canvas(self, px: float, py: float, canvas: tk.Canvas | None = None) -> None:
+        left, right, top, bottom = self._plot_pixel_bounds(canvas)
         usable_z = right - left
         usable_x = bottom - top
         if usable_z <= 0 or usable_x <= 0:
@@ -1691,11 +1870,11 @@ class OpticalLayoutEditor(tk.Tk):
         clamped_py = min(max(float(py), top), bottom)
         self._zoom_anchor_z_fraction = (clamped_px - left) / usable_z
         self._zoom_anchor_x_fraction = (clamped_py - top) / usable_x
-        self._zoom_anchor_z = self._px_to_z(clamped_px)
-        self._zoom_anchor_x = self._px_to_x(clamped_py)
+        self._zoom_anchor_z = self._px_to_z(clamped_px, canvas)
+        self._zoom_anchor_x = self._px_to_x(clamped_py, canvas)
 
-    def _pan_view_by_pixels(self, dx: float, dy: float) -> None:
-        left, right, top, bottom = self._plot_pixel_bounds()
+    def _pan_view_by_pixels(self, dx: float, dy: float, canvas: tk.Canvas | None = None) -> None:
+        left, right, top, bottom = self._plot_pixel_bounds(canvas)
         usable_z = right - left
         usable_x = bottom - top
         if usable_z <= 0 or usable_x <= 0:
@@ -1711,27 +1890,47 @@ class OpticalLayoutEditor(tk.Tk):
         self._zoom_anchor_z -= float(dx) * z_range / usable_z
         self._zoom_anchor_x += float(dy) * x_range / usable_x
 
-    def _z_to_px(self, z_value: float) -> float:
-        width, _height = self._canvas_size()
+    def _z_to_px(self, z_value: float, canvas: tk.Canvas | None = None) -> float:
+        width, _height = self._canvas_size(canvas)
         usable = width - self._plot_left - self._plot_right
         return self._plot_left + usable * (z_value - self._z_min) / (self._z_max - self._z_min)
 
-    def _x_to_px(self, x_value: float) -> float:
-        _width, height = self._canvas_size()
+    def _x_to_px(self, x_value: float, canvas: tk.Canvas | None = None) -> float:
+        _width, height = self._canvas_size(canvas)
         usable = height - self._plot_top - self._plot_bottom
         return self._plot_top + usable * (self._x_max - x_value) / (self._x_max - self._x_min)
 
-    def _px_to_z(self, px: float) -> float:
-        width, _height = self._canvas_size()
+    def _px_to_z(self, px: float, canvas: tk.Canvas | None = None) -> float:
+        width, _height = self._canvas_size(canvas)
         usable = width - self._plot_left - self._plot_right
         raw = self._z_min + (px - self._plot_left) * (self._z_max - self._z_min) / usable
         return max(0.0, min(raw, self._z_max))
 
-    def _px_to_x(self, py: float) -> float:
-        _width, height = self._canvas_size()
+    def _px_to_x(self, py: float, canvas: tk.Canvas | None = None) -> float:
+        _width, height = self._canvas_size(canvas)
         usable = height - self._plot_top - self._plot_bottom
         raw = self._x_max - (py - self._plot_top) * (self._x_max - self._x_min) / usable
         return max(self._x_min, min(raw, self._x_max))
+
+    def _plane_label(self) -> str:
+        return "y" if self._active_plane == "y" else "x"
+
+    def _plane_offset(self, element: LayoutElement) -> float:
+        return element.y_offset if self._active_plane == "y" else element.x_offset
+
+    def _plane_angle(self, source: LaserSource) -> float:
+        return source.y_angle if self._active_plane == "y" else source.x_angle
+
+    def _plane_waist_radius(self, source: LaserSource) -> float:
+        return source.waist_radius_y if self._active_plane == "y" else source.waist_radius
+
+    def _plane_taper_mode_radius(self, taper: TaperDetectorElement) -> float:
+        return taper.mode_radius_y if self._active_plane == "y" else taper.mode_radius_x
+
+    def _plane_path_values(self, path: BeamPathDisplay) -> tuple[list[float], list[float], float, float]:
+        if self._active_plane == "y":
+            return path.y, path.wy, path.waist_y, path.waist_radius_y
+        return path.x, path.w, path.waist_x, path.waist_radius
 
     def _draw_grid(self) -> None:
         width, height = self._canvas_size()
@@ -1761,7 +1960,7 @@ class OpticalLayoutEditor(tk.Tk):
         self.canvas.create_text(
             18,
             (top + bottom) / 2.0,
-            text=f"x offset / aperture (um), zoom {self._view_zoom:.2g}x",
+            text=f"{self._plane_label()} offset / aperture (um), zoom {self._view_zoom:.2g}x",
             angle=90,
             fill="#333333",
         )
@@ -1770,12 +1969,13 @@ class OpticalLayoutEditor(tk.Tk):
         for path in self._beam_paths:
             if len(path.z) < 2:
                 continue
+            path_centers, path_radii, waist_center, waist_radius = self._plane_path_values(path)
             upper_points: list[tuple[float, float]] = []
             lower_points: list[tuple[float, float]] = []
             coords: list[float] = []
             upper_coords: list[float] = []
             lower_coords: list[float] = []
-            for z_value, x_value, radius in zip(path.z, path.x, path.w):
+            for z_value, x_value, radius in zip(path.z, path_centers, path_radii):
                 z_px = self._z_to_px(z_value)
                 center_px = self._x_to_px(x_value)
                 upper_px = self._x_to_px(x_value + radius)
@@ -1795,9 +1995,9 @@ class OpticalLayoutEditor(tk.Tk):
             self.canvas.create_line(*lower_coords, fill=path.color, width=1.2, dash=(3, 3), smooth=True)
             self.canvas.create_line(*coords, fill=path.color, width=1.8, smooth=True)
             waist_z_px = self._z_to_px(path.waist_z)
-            waist_x_px = self._x_to_px(path.waist_x)
-            waist_upper_px = self._x_to_px(path.waist_x + path.waist_radius)
-            waist_lower_px = self._x_to_px(path.waist_x - path.waist_radius)
+            waist_x_px = self._x_to_px(waist_center)
+            waist_upper_px = self._x_to_px(waist_center + waist_radius)
+            waist_lower_px = self._x_to_px(waist_center - waist_radius)
             self.canvas.create_line(waist_z_px, waist_upper_px, waist_z_px, waist_lower_px, fill=path.color, width=2)
             self.canvas.create_oval(
                 waist_z_px - 4,
@@ -1811,17 +2011,17 @@ class OpticalLayoutEditor(tk.Tk):
             self.canvas.create_text(
                 waist_z_px + 8,
                 min(waist_upper_px, waist_lower_px) - 10,
-                text=f"waist {path.waist_radius * 1e6:.3g} um",
+                text=f"{self._plane_label()} waist {waist_radius * 1e6:.3g} um",
                 fill=path.color,
                 font=("Segoe UI", 9, "bold"),
                 anchor="w",
             )
             end_z = self._z_to_px(path.z[-1])
-            end_x = self._x_to_px(path.x[-1])
+            end_x = self._x_to_px(path_centers[-1])
             self.canvas.create_text(
                 end_z,
                 end_x - 12,
-                text=f"{path.source_name} path",
+                text=f"{path.source_name} {self._plane_label()} path",
                 fill=path.color,
                 font=("Segoe UI", 9, "bold"),
                 anchor="e",
@@ -1829,14 +2029,17 @@ class OpticalLayoutEditor(tk.Tk):
 
     def _draw_laser(self, laser: LaserSource) -> None:
         z_px = self._z_to_px(laser.position)
-        x_px = self._x_to_px(laser.x_offset)
+        plane_offset = self._plane_offset(laser)
+        plane_angle = self._plane_angle(laser)
+        waist_radius = self._plane_waist_radius(laser)
+        x_px = self._x_to_px(plane_offset)
         uid = laser.uid
         selected = uid == self.selected_uid
         color = "#d33f49"
 
         dz = min(0.035, max(self._z_max * 0.12, 0.012))
         end_z = min(self._z_max, laser.position + dz)
-        end_x = laser.x_offset + laser.x_angle * (end_z - laser.position)
+        end_x = plane_offset + plane_angle * (end_z - laser.position)
         end_z_px = self._z_to_px(end_z)
         end_x_px = self._x_to_px(end_x)
 
@@ -1847,7 +2050,7 @@ class OpticalLayoutEditor(tk.Tk):
         label_text = f"{laser.name}\n{laser.power * 1e3:.3g} mW"
         label = self.canvas.create_text(z_px, x_px - 24, text=label_text, fill="#333333", font=("Segoe UI", 9, "bold"))
         self._register_canvas_item(label, uid, "move")
-        waist_px = self._x_to_px(laser.x_offset + laser.waist_radius)
+        waist_px = self._x_to_px(plane_offset + waist_radius)
         waist_radius_px = max(6.0, abs(waist_px - x_px))
         ring = self.canvas.create_oval(
             z_px - waist_radius_px,
@@ -1863,8 +2066,9 @@ class OpticalLayoutEditor(tk.Tk):
 
     def _draw_lens(self, lens: LensElement) -> None:
         z_px = self._z_to_px(lens.position)
-        x_px = self._x_to_px(lens.x_offset)
-        radius_px = abs(self._x_to_px(lens.x_offset + lens.aperture_radius) - x_px)
+        plane_offset = self._plane_offset(lens)
+        x_px = self._x_to_px(plane_offset)
+        radius_px = abs(self._x_to_px(plane_offset + lens.aperture_radius) - x_px)
         display_radius_px = max(12.0, radius_px)
         uid = lens.uid
         selected = uid == self.selected_uid
@@ -1894,9 +2098,10 @@ class OpticalLayoutEditor(tk.Tk):
 
     def _draw_ball(self, ball: BallLensElement) -> None:
         z_px = self._z_to_px(ball.position)
-        x_px = self._x_to_px(ball.x_offset)
+        plane_offset = self._plane_offset(ball)
+        x_px = self._x_to_px(plane_offset)
         z_radius_px = abs(self._z_to_px(ball.position + ball.radius) - z_px)
-        x_radius_px = abs(self._x_to_px(ball.x_offset + ball.radius) - x_px)
+        x_radius_px = abs(self._x_to_px(plane_offset + ball.radius) - x_px)
         display_z_radius_px = max(10.0, z_radius_px)
         display_x_radius_px = max(10.0, x_radius_px)
         uid = ball.uid
@@ -1964,10 +2169,11 @@ class OpticalLayoutEditor(tk.Tk):
 
     def _draw_fiber(self, fiber: FiberElement) -> None:
         z_px = self._z_to_px(fiber.position)
-        x_px = self._x_to_px(fiber.x_offset)
-        radius_px = abs(self._x_to_px(fiber.x_offset + fiber.cladding_radius) - x_px)
+        plane_offset = self._plane_offset(fiber)
+        x_px = self._x_to_px(plane_offset)
+        radius_px = abs(self._x_to_px(plane_offset + fiber.cladding_radius) - x_px)
         display_radius_px = max(12.0, radius_px)
-        mode_px = max(3.0, abs(self._x_to_px(fiber.x_offset + fiber.mode_radius) - x_px))
+        mode_px = max(3.0, abs(self._x_to_px(plane_offset + fiber.mode_radius) - x_px))
         uid = fiber.uid
         selected = uid == self.selected_uid
         color = "#707070"
@@ -2002,10 +2208,12 @@ class OpticalLayoutEditor(tk.Tk):
 
     def _draw_taper(self, taper: TaperDetectorElement) -> None:
         z_px = self._z_to_px(taper.position)
-        x_px = self._x_to_px(taper.x_offset)
+        plane_offset = self._plane_offset(taper)
+        mode_radius = self._plane_taper_mode_radius(taper)
+        x_px = self._x_to_px(plane_offset)
         half_width_px = max(5.0, abs(self._z_to_px(taper.position + 0.5 * taper.width) - z_px))
-        half_height_px = max(5.0, abs(self._x_to_px(taper.x_offset + 0.5 * taper.height) - x_px))
-        mode_radius_x_px = max(7.0, abs(self._x_to_px(taper.x_offset + taper.mode_radius_x) - x_px))
+        half_height_px = max(5.0, abs(self._x_to_px(plane_offset + 0.5 * taper.height) - x_px))
+        mode_radius_x_px = max(7.0, abs(self._x_to_px(plane_offset + mode_radius) - x_px))
         mode_half_width_px = max(8.0, half_width_px * 1.9)
         uid = taper.uid
         selected = uid == self.selected_uid
@@ -2071,7 +2279,9 @@ class OpticalLayoutEditor(tk.Tk):
             )
 
     def _register_canvas_item(self, item_id: int, uid: str, action: str) -> None:
-        self._item_actions[item_id] = (uid, action)
+        if not self._canvas_interactive:
+            return
+        self._item_actions[(str(self.canvas), item_id)] = (uid, action, self._active_plane)
 
     def _clear_simulation_overlay(self) -> None:
         self._beam_paths = []
@@ -2103,20 +2313,25 @@ class OpticalLayoutEditor(tk.Tk):
                     )
                 except ValueError:
                     continue
-                z_values, x_values, _y_values, wx_values, _wy_values = path_data
+                z_values, x_values, y_values, wx_values, wy_values = path_data
                 if len(z_values) < 2:
                     continue
                 waist_index = min(range(len(wx_values)), key=lambda item: wx_values[item])
+                waist_y_index = min(range(len(wy_values)), key=lambda item: wy_values[item])
                 paths.append(
                     BeamPathDisplay(
                         source_uid=source.uid,
                         source_name=source.name,
                         z=[float(value) for value in z_values],
                         x=[float(value) for value in x_values],
+                        y=[float(value) for value in y_values],
                         w=[float(value) for value in wx_values],
+                        wy=[float(value) for value in wy_values],
                         waist_z=float(z_values[waist_index]),
                         waist_x=float(x_values[waist_index]),
+                        waist_y=float(y_values[waist_y_index]),
                         waist_radius=float(wx_values[waist_index]),
+                        waist_radius_y=float(wy_values[waist_y_index]),
                         color=self._source_color(index),
                     )
                 )
@@ -2157,30 +2372,36 @@ class OpticalLayoutEditor(tk.Tk):
                     source_name=source.name,
                     z=z_values,
                     x=x_values,
+                    y=x_values,
                     w=w_values,
+                    wy=w_values,
                     waist_z=z_values[waist_index],
                     waist_x=x_values[waist_index],
+                    waist_y=x_values[waist_index],
                     waist_radius=w_values[waist_index],
+                    waist_radius_y=w_values[waist_index],
                     color=self._source_color(index),
                 )
             )
         return paths
 
     def _on_canvas_press(self, event: tk.Event) -> None:
-        self._store_zoom_anchor_from_canvas(event.x, event.y)
-        action = self._current_action()
+        canvas = self._event_canvas(event)
+        self._store_zoom_anchor_from_canvas(event.x, event.y, canvas)
+        action = self._current_action(event)
         if action is None:
             self.selected_uid = None
             self._drag = {
                 "mode": "pan",
                 "last_x": event.x,
                 "last_y": event.y,
+                "canvas": canvas,
             }
             self._refresh_tree()
             self.redraw()
             return
 
-        uid, mode = action
+        uid, mode, plane = action
         element = self._element_by_uid(uid)
         if element is None:
             return
@@ -2188,10 +2409,13 @@ class OpticalLayoutEditor(tk.Tk):
         self._drag = {
             "uid": uid,
             "mode": mode,
+            "plane": plane,
+            "canvas": canvas,
             "start_x": event.x,
             "start_y": event.y,
             "position": element.position,
             "x_offset": getattr(element, "x_offset", 0.0),
+            "y_offset": getattr(element, "y_offset", 0.0),
             "undo_pushed": False,
         }
         self._refresh_tree()
@@ -2200,10 +2424,11 @@ class OpticalLayoutEditor(tk.Tk):
     def _on_canvas_drag(self, event: tk.Event) -> None:
         if self._drag is None:
             return
+        canvas = cast(tk.Canvas, self._drag.get("canvas") or self._event_canvas(event))
         if self._drag["mode"] == "pan":
             dx = event.x - self._drag["last_x"]
             dy = event.y - self._drag["last_y"]
-            self._pan_view_by_pixels(dx, dy)
+            self._pan_view_by_pixels(dx, dy, canvas)
             self._drag["last_x"] = event.x
             self._drag["last_y"] = event.y
             self.redraw()
@@ -2216,11 +2441,18 @@ class OpticalLayoutEditor(tk.Tk):
             self._push_undo()
             self._drag["undo_pushed"] = True
 
+        plane = self._drag.get("plane", "x")
         if self._drag["mode"] == "radius":
-            self._resize_element_from_pointer(element, event.y)
+            self._resize_element_from_pointer(element, event.y, plane, canvas)
         else:
-            element.position = self._px_to_z(event.x)
-            element.x_offset = self._px_to_x(event.y)
+            element.position = self._px_to_z(event.x, canvas)
+            if plane == "y":
+                element.y_offset = self._px_to_x(event.y, canvas)
+            else:
+                element.x_offset = self._px_to_x(event.y, canvas)
+        # Clamp instead of letting _validate_element raise mid-drag.
+        min_position = element.radius if isinstance(element, BallLensElement) else 0.0
+        element.position = max(element.position, min_position)
 
         self._clear_simulation_overlay()
         self._validate_element(element)
@@ -2231,7 +2463,7 @@ class OpticalLayoutEditor(tk.Tk):
         self._drag = None
 
     def _on_canvas_double_click(self, _event: tk.Event) -> None:
-        action = self._current_action()
+        action = self._current_action(_event)
         if action is None:
             return
         self.selected_uid = action[0]
@@ -2240,24 +2472,32 @@ class OpticalLayoutEditor(tk.Tk):
         self._edit_selected()
 
     def _on_mouse_wheel(self, event: tk.Event) -> None:
-        self._store_zoom_anchor_from_canvas(event.x, event.y)
+        self._store_zoom_anchor_from_canvas(event.x, event.y, self._event_canvas(event))
         if event.delta > 0:
             self._zoom_in()
         elif event.delta < 0:
             self._zoom_out()
 
-    def _current_action(self) -> tuple[str, str] | None:
-        current = self.canvas.find_withtag("current")
+    def _event_canvas(self, event: tk.Event) -> tk.Canvas:
+        widget = getattr(event, "widget", self.canvas)
+        return widget if isinstance(widget, tk.Canvas) else self.canvas
+
+    def _current_action(self, event: tk.Event | None = None) -> tuple[str, str, str] | None:
+        canvas = self._event_canvas(event) if event is not None else self.canvas
+        current = canvas.find_withtag("current")
         if not current:
             return None
-        return self._item_actions.get(current[0])
+        return self._item_actions.get((str(canvas), current[0]))
 
     def _resize_element_from_pointer(
         self,
         element: LaserSource | LensElement | BallLensElement | FiberElement | TaperDetectorElement,
         pointer_y: float,
+        plane: str = "x",
+        canvas: tk.Canvas | None = None,
     ) -> None:
-        new_radius = abs(self._px_to_x(pointer_y) - element.x_offset)
+        offset = element.y_offset if plane == "y" else element.x_offset
+        new_radius = abs(self._px_to_x(pointer_y, canvas) - offset)
         if isinstance(element, LensElement):
             element.aperture_radius = max(new_radius, 1e-6)
         elif isinstance(element, BallLensElement):

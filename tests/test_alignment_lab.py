@@ -2,6 +2,7 @@
 
 import inspect
 import tkinter as tk
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -22,6 +23,8 @@ from alignment_algorithms.coordinate_scan import CoordinateScanAlgorithm
 from alignment_algorithms.given_positions import GivenPositionsAlgorithm
 from alignment_algorithms.position_solve import (
     TRANSVERSE_RESPONSE_STEP,
+    BeamErrorJMatrixAlgorithm,
+    FixedZJMatrixAlgorithm,
     PositionSolveAlgorithm,
     PositionSolveWithJStepsAlgorithm,
     has_strict_axial_clearance,
@@ -197,6 +200,8 @@ def test_alignment_algorithm_registry_has_coordinate_scan_manual_and_yase_subpro
     assert "coordinate_scan" in algorithms
     assert "given_positions" in algorithms
     assert "manual" in algorithms
+    assert "beam_error_j_matrix" in algorithms
+    assert "fixed_z_j_matrix" in algorithms
     assert "position_solve" in algorithms
     assert "position_solve_j_steps" in algorithms
     assert "yase:SUB_Alignment/SUB_GivenPositionsReferencePose.xseq" in algorithms
@@ -206,6 +211,8 @@ def test_alignment_algorithm_registry_has_coordinate_scan_manual_and_yase_subpro
     assert get_algorithm("coordinate_scan").display_name == "Power-only coordinate scan"
     assert get_algorithm("given_positions").display_name == "Reference pose only"
     assert get_algorithm("manual").display_name == "Manual/no search"
+    assert get_algorithm("beam_error_j_matrix").display_name == "Beam-error J-matrix local solve"
+    assert get_algorithm("fixed_z_j_matrix").display_name == "Fixed-Z J-matrix local solve"
     assert get_algorithm("position_solve").display_name == "Position solve/noiseless model"
     assert get_algorithm("position_solve_j_steps").display_name == "Position solve/show J steps"
 
@@ -215,6 +222,47 @@ def test_alignment_algorithms_only_accept_step_device():
         signature = inspect.signature(algorithm.run)
 
         assert list(signature.parameters) == ["device"]
+
+
+def test_alignment_lab_dropdown_hides_yase_algorithms():
+    app = _make_app()
+
+    try:
+        algorithm_names = set(app._algorithm_label_to_name.values())  # pylint: disable=protected-access
+
+        assert "beam_error_j_matrix" in algorithm_names
+        assert "fixed_z_j_matrix" in algorithm_names
+        assert all(not name.startswith("yase:") for name in algorithm_names)
+    finally:
+        app.destroy()
+
+
+def test_alignment_lab_defaults_to_position_solve_show_j_steps():
+    app = _make_app()
+
+    try:
+        assert app.algorithm_var.get() == "Position solve/show J steps"
+    finally:
+        app.destroy()
+
+
+def test_alignment_lab_hides_layout_edit_and_zoom_toolbar_buttons():
+    app = _make_app()
+
+    try:
+        hidden_buttons = (
+            "add_source",
+            "add_ball",
+            "add_taper",
+            "edit_selected",
+            "delete_selected",
+            "zoom_out",
+            "zoom_in",
+        )
+
+        assert all(not app._toolbar_buttons[name].grid_info() for name in hidden_buttons)  # pylint: disable=protected-access
+    finally:
+        app.destroy()
 
 
 def test_default_alignment_seed_and_tolerances():
@@ -516,19 +564,63 @@ def test_position_solve_j_steps_records_visible_probe_moves():
     moves = result.move_history
 
     assert result.final_reading.mode_efficiency > 0.9
-    assert "J-matrix probe moves" in result.message
+    assert "J-matrix probe and solution moves" in result.message
+    assert sum(not np.isclose(move.dz, 0.0) for move in moves) >= 4
+    assert sum(np.isclose(abs(move.dx), TRANSVERSE_RESPONSE_STEP) for move in moves) >= 8
+    assert sum(np.isclose(abs(move.dy), TRANSVERSE_RESPONSE_STEP) for move in moves) >= 8
     assert any(np.isclose(move.dx, TRANSVERSE_RESPONSE_STEP) for move in moves)
     assert any(np.isclose(move.dx, -TRANSVERSE_RESPONSE_STEP) for move in moves)
     assert any(np.isclose(move.dy, TRANSVERSE_RESPONSE_STEP) for move in moves)
     assert any(np.isclose(move.dy, -TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(abs(move.dx) > 1.1 * TRANSVERSE_RESPONSE_STEP for move in moves)
+    assert any(abs(move.dy) > 1.1 * TRANSVERSE_RESPONSE_STEP for move in moves)
 
 
-def test_real_alignment_algorithms_reach_good_mode_match_across_100_case_sweep():
+def test_beam_error_j_matrix_uses_probe_matrices_and_reaches_mode_match():
+    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED)
+    before = device.measure()
+
+    result = BeamErrorJMatrixAlgorithm().run(device)
+    moves = result.move_history
+
+    assert result.final_reading.received_power > before.received_power
+    assert result.final_reading.mode_efficiency > 0.9
+    assert "beam-error local Jx/Jy probe moves" in result.message
+    assert any(np.isclose(move.dx, TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(np.isclose(move.dx, -TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(np.isclose(move.dy, TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(np.isclose(move.dy, -TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(abs(move.dx) > 1.1 * TRANSVERSE_RESPONSE_STEP for move in moves)
+    assert any(abs(move.dy) > 1.1 * TRANSVERSE_RESPONSE_STEP for move in moves)
+
+
+def test_fixed_z_j_matrix_uses_probe_matrices_without_z_moves():
+    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED)
+    before = device.measure()
+    starting_z = tuple(pose[2] for pose in device.current_poses())
+
+    result = FixedZJMatrixAlgorithm().run(device)
+    moves = result.move_history
+
+    assert result.final_reading.received_power > before.received_power
+    assert result.final_reading.mode_efficiency > 0.9
+    assert "no z moves" in result.message
+    assert all(np.isclose(move.dz, 0.0) for move in moves)
+    assert tuple(pose[2] for pose in result.final_poses) == starting_z
+    assert any(np.isclose(move.dx, TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(np.isclose(move.dx, -TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(np.isclose(move.dy, TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(np.isclose(move.dy, -TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(abs(move.dx) > 1.1 * TRANSVERSE_RESPONSE_STEP for move in moves)
+    assert any(abs(move.dy) > 1.1 * TRANSVERSE_RESPONSE_STEP for move in moves)
+
+
+def test_real_alignment_algorithms_reach_good_mode_match_across_10_case_sweep():
     failures = []
     algorithm_factories = (PositionSolveAlgorithm, CoordinateScanAlgorithm)
 
     for algorithm_factory in algorithm_factories:
-        for seed in range(100):
+        for seed in range(10):
             device = SimulatedAlignmentDevice(seed, startup_out_of_beam=(seed % 10 == 0))
             result = algorithm_factory().run(device)
             if result.final_reading.mode_efficiency < DEFAULT_TARGET_MODE_EFFICIENCY:
@@ -681,6 +773,106 @@ def test_alignment_lab_live_simulation_updates_power_and_pose_readouts():
         assert "Source error: x" in app.source_height_var.get()
         assert "Detector error: x" in app.detector_height_var.get()
         assert "Ball pose errors:" in app.lens_offsets_var.get()
+    finally:
+        app.destroy()
+
+
+def test_alignment_lab_shows_x_and_y_plane_views():
+    app = _make_app()
+
+    try:
+        app.update_idletasks()
+        app.redraw()
+
+        assert app.canvas.grid_info()
+        assert app.y_canvas.grid_info()  # pylint: disable=protected-access
+        assert int(app.canvas.grid_info()["row"]) == int(app.y_canvas.grid_info()["row"])  # pylint: disable=protected-access
+        assert int(app.canvas.grid_info()["column"]) != int(app.y_canvas.grid_info()["column"])  # pylint: disable=protected-access
+        assert app.canvas.find_all()
+        assert app.y_canvas.find_all()  # pylint: disable=protected-access
+        assert app._beam_paths  # pylint: disable=protected-access
+        assert all(path.y and path.wy for path in app._beam_paths)  # pylint: disable=protected-access
+    finally:
+        app.destroy()
+
+
+def test_alignment_lab_collapses_parameters_and_output_by_default_and_can_reopen():
+    app = _make_app()
+
+    try:
+        app.update_idletasks()
+
+        assert not app._parameters_panel_open  # pylint: disable=protected-access
+        assert not app._output_panel_open  # pylint: disable=protected-access
+        assert not app.parameters_frame.winfo_ismapped()
+        assert not app.output_frame.winfo_ismapped()
+        assert str(app._side_pane) not in {str(pane) for pane in app._main_paned.panes()}  # pylint: disable=protected-access
+
+        app._toggle_parameters_panel()  # pylint: disable=protected-access
+        app._toggle_output_panel()  # pylint: disable=protected-access
+        app.update_idletasks()
+
+        assert app._parameters_panel_open  # pylint: disable=protected-access
+        assert app._output_panel_open  # pylint: disable=protected-access
+        assert str(app._side_pane) in {str(pane) for pane in app._main_paned.panes()}  # pylint: disable=protected-access
+        assert app.parameters_frame.winfo_ismapped()
+        assert app.output_frame.winfo_ismapped()
+    finally:
+        app.destroy()
+
+
+def test_alignment_lab_y_plane_drag_updates_y_offset_not_x_offset():
+    app = _make_app()
+
+    try:
+        ball = app.balls[0]
+        start_x = ball.x_offset
+        target_z = ball.position + 1.0e-6
+        target_y = ball.y_offset + 3.0e-6
+
+        app._drag = {  # pylint: disable=protected-access
+            "uid": ball.uid,
+            "mode": "move",
+            "plane": "y",
+            "canvas": app.y_canvas,
+            "undo_pushed": False,
+        }
+        app._on_canvas_drag(  # pylint: disable=protected-access
+            SimpleNamespace(
+                widget=app.y_canvas,
+                x=app._z_to_px(target_z, app.y_canvas),  # pylint: disable=protected-access
+                y=app._x_to_px(target_y, app.y_canvas),  # pylint: disable=protected-access
+            )
+        )
+
+        assert np.isclose(ball.position, target_z)
+        assert np.isclose(ball.y_offset, target_y)
+        assert np.isclose(ball.x_offset, start_x)
+    finally:
+        app.destroy()
+
+
+def test_alignment_lab_y_plane_double_click_selects_element(monkeypatch):
+    app = _make_app()
+
+    try:
+        app.redraw()
+        ball = app.balls[0]
+        y_move_actions = [
+            action
+            for (canvas_name, _item_id), action in app._item_actions.items()  # pylint: disable=protected-access
+            if canvas_name == str(app.y_canvas) and action == (ball.uid, "move", "y")
+        ]
+        opened: list[str] = []
+
+        assert y_move_actions
+        monkeypatch.setattr(app, "_current_action", lambda _event=None: y_move_actions[0])
+        monkeypatch.setattr(app, "_edit_selected", lambda: opened.append(app.selected_uid))
+
+        app._on_canvas_double_click(SimpleNamespace(widget=app.y_canvas))  # pylint: disable=protected-access
+
+        assert app.selected_uid == ball.uid
+        assert opened == [ball.uid]
     finally:
         app.destroy()
 

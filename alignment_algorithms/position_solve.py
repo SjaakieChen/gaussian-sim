@@ -29,6 +29,7 @@ POSITION_SOLVE_SEARCH_WINDOWS = (100e-6, 200e-6, 300e-6)
 AXIAL_SEARCH_STEPS = (25e-6, 5e-6, 1e-6, 0.25e-6)
 AXIAL_REFINEMENT_SPAN_STEPS = 5
 TRANSVERSE_RESPONSE_STEP = 1e-6
+J_MATRIX_MAX_AXIS_CORRECTION = 25e-6
 SINGULAR_CONDITION_LIMIT = 1.0e12
 POSITION_ABSOLUTE_TOLERANCE = 1.0e-15
 
@@ -159,14 +160,20 @@ def run_position_solve_with_j_steps_until_good(
         final_reading = move_to_starting_poses(device)
         geometry = device.model_geometry()
         search_window = search_windows[min(attempt_index, len(search_windows) - 1)]
-        candidate = solve_position_candidate(geometry, axial_search_window=search_window)
-        if candidate is None:
+        candidate_path = solve_position_candidate_path(geometry, axial_search_window=search_window)
+        if not candidate_path:
             final_reading = device.measure()
             continue
 
+        candidate = candidate_path[-1]
         last_candidate = candidate
-        final_reading = _move_z_to_target_poses(device, geometry, candidate.poses)
-        final_reading = _show_j_matrix_probe_moves(device)
+        for visible_candidate in _unique_candidate_pose_path(candidate_path):
+            z_only_poses = _zero_transverse_poses_for(visible_candidate.poses)
+            final_reading = _move_z_to_target_poses(device, geometry, z_only_poses)
+            final_reading = _move_transverse_to_target_poses(device, z_only_poses)
+            final_reading = _show_j_matrix_probe_moves(device)
+            final_reading = _move_transverse_to_target_poses(device, visible_candidate.poses)
+
         final_reading = move_to_target_poses(device, geometry, candidate.poses)
         if final_reading.mode_efficiency >= target_mode_efficiency:
             return PositionSolveAlignmentStatus(
@@ -182,6 +189,34 @@ def run_position_solve_with_j_steps_until_good(
         attempts=attempts,
         success=False,
     )
+
+
+def solve_position_candidate_path(
+    geometry: AlignmentModelGeometry,
+    axial_search_window: float = AXIAL_SEARCH_WINDOW,
+) -> tuple[PositionSolveCandidate, ...]:
+    if len(geometry.balls) != 2:
+        raise ValueError("position solve currently supports exactly two ball lenses")
+    solver = _PositionSolver(axial_search_window=axial_search_window)
+    return solver.find_candidate_path(geometry)
+
+
+def _unique_candidate_pose_path(
+    candidates: tuple[PositionSolveCandidate, ...],
+) -> tuple[PositionSolveCandidate, ...]:
+    path: list[PositionSolveCandidate] = []
+    for candidate in candidates:
+        key = tuple(round(value / 1e-12) for pose in candidate.poses for value in pose)
+        if path:
+            previous_key = tuple(round(value / 1e-12) for pose in path[-1].poses for value in pose)
+            if key == previous_key:
+                continue
+        path.append(candidate)
+    return tuple(path)
+
+
+def _zero_transverse_poses_for(poses: tuple[LensPose, ...]) -> tuple[LensPose, ...]:
+    return tuple((0.0, 0.0, pose[2]) for pose in poses)
 
 
 def _move_z_to_target_poses(
@@ -220,6 +255,47 @@ def _move_z_to_target_poses(
     return reading if reading is not None else device.measure()
 
 
+def _move_transverse_to_target_poses(
+    device: AlignmentDevice,
+    target_poses: tuple[LensPose, ...],
+) -> PowerReading:
+    reading: PowerReading | None = None
+    for index, target_pose in enumerate(target_poses):
+        current_pose = device.current_poses()[index]
+        dx = target_pose[0] - current_pose[0]
+        dy = target_pose[1] - current_pose[1]
+        if (
+            math.isclose(dx, 0.0, rel_tol=0.0, abs_tol=POSITION_ABSOLUTE_TOLERANCE)
+            and math.isclose(dy, 0.0, rel_tol=0.0, abs_tol=POSITION_ABSOLUTE_TOLERANCE)
+        ):
+            continue
+        reading = device.move_lens(index, dx=dx, dy=dy)
+    return reading if reading is not None else device.measure()
+
+
+def _move_transverse_to_starting_poses_fixed_z(
+    device: AlignmentDevice,
+    starting_poses: tuple[LensPose, ...] | None = None,
+) -> PowerReading:
+    target_poses = device.starting_poses() if starting_poses is None else starting_poses
+    current_poses = device.current_poses()
+    if len(target_poses) != len(current_poses):
+        raise ValueError("starting pose count does not match the current lens count")
+
+    reading: PowerReading | None = None
+    for lens_index, target_pose in enumerate(target_poses):
+        current_pose = device.current_poses()[lens_index]
+        dx = target_pose[0] - current_pose[0]
+        dy = target_pose[1] - current_pose[1]
+        if (
+            math.isclose(dx, 0.0, rel_tol=0.0, abs_tol=POSITION_ABSOLUTE_TOLERANCE)
+            and math.isclose(dy, 0.0, rel_tol=0.0, abs_tol=POSITION_ABSOLUTE_TOLERANCE)
+        ):
+            continue
+        reading = device.move_lens(lens_index, dx=dx, dy=dy)
+    return reading if reading is not None else device.measure()
+
+
 def _show_j_matrix_probe_moves(device: AlignmentDevice) -> PowerReading:
     reading: PowerReading | None = None
     for dimension in (0, 1):
@@ -230,6 +306,88 @@ def _show_j_matrix_probe_moves(device: AlignmentDevice) -> PowerReading:
             else:
                 reading = device.move_lens(lens_index, dy=TRANSVERSE_RESPONSE_STEP)
                 reading = device.move_lens(lens_index, dy=-TRANSVERSE_RESPONSE_STEP)
+    return reading if reading is not None else device.measure()
+
+
+def _beam_axis_error(device: AlignmentDevice, axis: str) -> np.ndarray | None:
+    geometry = device.model_geometry()
+    source = _source_from_geometry(geometry.source)
+    taper = _taper_from_geometry(geometry.taper)
+    balls = _balls_from_geometry(geometry.balls, geometry.current_poses)
+    result = simulate_source_to_taper(
+        source,
+        balls,
+        taper,
+        clipping_radius_factor=geometry.clipping_radius_factor,
+    )
+    if _is_miss(result.warnings):
+        return None
+    if axis == "x":
+        values = (result.beam_x, result.beam_x_angle, geometry.taper.x_offset)
+    else:
+        values = (result.beam_y, result.beam_y_angle, geometry.taper.y_offset)
+    beam_position, beam_angle, taper_offset = values
+    if beam_position is None or beam_angle is None:
+        return None
+    if not math.isfinite(beam_position) or not math.isfinite(beam_angle):
+        return None
+    return np.array([beam_position - taper_offset, beam_angle], dtype=float)
+
+
+def _move_j_axis(
+    device: AlignmentDevice,
+    lens_index: int,
+    axis: str,
+    delta: float,
+) -> PowerReading:
+    if axis == "x":
+        return device.move_lens(lens_index, dx=delta)
+    if axis == "y":
+        return device.move_lens(lens_index, dy=delta)
+    raise ValueError(f"unsupported J-matrix axis: {axis}")
+
+
+def _apply_beam_error_axis_j_correction(
+    device: AlignmentDevice,
+    axis: str,
+    *,
+    response_step: float,
+    max_axis_correction: float,
+) -> PowerReading | None:
+    base = _beam_axis_error(device, axis)
+    if base is None:
+        return None
+
+    columns = []
+    reading: PowerReading | None = None
+    for lens_index in (0, 1):
+        reading = _move_j_axis(device, lens_index, axis, response_step)
+        probe = _beam_axis_error(device, axis)
+        reading = _move_j_axis(device, lens_index, axis, -response_step)
+        if probe is None:
+            return None
+        columns.append((probe - base) / response_step)
+
+    response = np.column_stack(columns)
+    if not np.all(np.isfinite(response)) or np.linalg.cond(response) > SINGULAR_CONDITION_LIMIT:
+        return None
+
+    target_error = np.negative(base)
+    try:
+        correction = np.linalg.solve(response, target_error)
+    except np.linalg.LinAlgError:
+        return None
+    if not np.all(np.isfinite(correction)):
+        return None
+
+    largest = float(np.max(np.abs(correction)))
+    if largest > max_axis_correction:
+        correction *= max_axis_correction / largest
+
+    for lens_index, delta in enumerate(correction):
+        if math.isclose(delta, 0.0, rel_tol=0.0, abs_tol=POSITION_ABSOLUTE_TOLERANCE):
+            continue
+        reading = _move_j_axis(device, lens_index, axis, float(delta))
     return reading if reading is not None else device.measure()
 
 
@@ -343,8 +501,13 @@ class _PositionSolver:
         self.axial_search_window = axial_search_window
 
     def find_best_candidate(self, geometry: AlignmentModelGeometry) -> PositionSolveCandidate | None:
+        candidate_path = self.find_candidate_path(geometry)
+        return candidate_path[-1] if candidate_path else None
+
+    def find_candidate_path(self, geometry: AlignmentModelGeometry) -> tuple[PositionSolveCandidate, ...]:
         best: PositionSolveCandidate | None = None
         seen: set[tuple[int, int]] = set()
+        path: list[PositionSolveCandidate] = []
 
         anchors = self._unique_z_anchors(geometry)
         for anchor in anchors:
@@ -358,7 +521,8 @@ class _PositionSolver:
             )
 
         if best is None:
-            return None
+            return tuple(path)
+        path.append(best)
 
         center = tuple(pose[2] for pose in best.poses)
         for step in AXIAL_SEARCH_STEPS[1:]:
@@ -366,7 +530,8 @@ class _PositionSolver:
             best = self._search_grid(geometry, center=center, step=step, span=span, best=best, seen=seen)
             if best is not None:
                 center = tuple(pose[2] for pose in best.poses)
-        return best
+                path.append(best)
+        return tuple(path)
 
     def _unique_z_anchors(self, geometry: AlignmentModelGeometry) -> tuple[tuple[float, float], ...]:
         anchors: list[tuple[float, float]] = []
@@ -611,9 +776,154 @@ class PositionSolveWithJStepsAlgorithm:
             final_reading=status.final_reading,
             move_history=device.move_history(),
             message=(
-                "Reference-pose bootstrap, visible J-matrix probe moves, then "
-                "noiseless geometry solve using source/taper/lens positions; "
+                "Reference-pose bootstrap, visible J-matrix probe and solution moves "
+                "at z search refinements, then noiseless geometry solve using "
+                "source/taper/lens positions; "
                 f"{outcome} {self.target_mode_efficiency * 100:.0f}% mode match "
                 f"in {status.attempts} attempt(s); {model_message}."
+            ),
+        )
+
+
+class FixedZJMatrixAlgorithm:
+    name = "fixed_z_j_matrix"
+    display_name = "Fixed-Z J-matrix local solve"
+
+    def __init__(
+        self,
+        *,
+        target_mode_efficiency: float = DEFAULT_TARGET_MODE_EFFICIENCY,
+        max_attempts: int = DEFAULT_MAX_ALIGNMENT_ATTEMPTS,
+        response_step: float = TRANSVERSE_RESPONSE_STEP,
+        max_axis_correction: float = J_MATRIX_MAX_AXIS_CORRECTION,
+    ) -> None:
+        self.target_mode_efficiency = target_mode_efficiency
+        self.max_attempts = max(1, max_attempts)
+        self.response_step = response_step
+        self.max_axis_correction = max_axis_correction
+
+    def run(self, device: AlignmentDevice) -> AlignmentAlgorithmResult:
+        starting_poses = device.starting_poses()
+        current_poses = device.current_poses()
+        if len(starting_poses) != len(current_poses):
+            raise ValueError("starting pose count does not match the current lens count")
+        if len(current_poses) != 2:
+            raise ValueError("fixed-Z J-matrix local solve currently supports exactly two lenses")
+
+        final_reading = _move_transverse_to_starting_poses_fixed_z(device, starting_poses)
+        success = False
+        attempts_used = 0
+        failure_reason = ""
+
+        while attempts_used < self.max_attempts:
+            attempts_used += 1
+            for axis in ("x", "y"):
+                reading = _apply_beam_error_axis_j_correction(
+                    device,
+                    axis,
+                    response_step=self.response_step,
+                    max_axis_correction=self.max_axis_correction,
+                )
+                if reading is None:
+                    failure_reason = f"could not build a stable fixed-Z local J{axis} matrix"
+                    final_reading = device.measure()
+                    break
+                final_reading = reading
+            if failure_reason:
+                break
+
+            final_reading = device.measure()
+            if final_reading.mode_efficiency >= self.target_mode_efficiency:
+                success = True
+                break
+
+        outcome = "reached" if success else "did not reach"
+        detail = (
+            "Fixed-Z x/y reference bootstrap, then beam-error local Jx/Jy probe moves "
+            "and matrix corrections; no z moves"
+        )
+        if failure_reason:
+            detail = f"{detail}; {failure_reason}"
+        return AlignmentAlgorithmResult(
+            name=self.name,
+            display_name=self.display_name,
+            final_poses=device.current_poses(),
+            final_reading=final_reading,
+            move_history=device.move_history(),
+            message=(
+                f"{detail}; {outcome} {self.target_mode_efficiency * 100:.0f}% "
+                f"mode match in {attempts_used} attempt(s)."
+            ),
+        )
+
+
+class BeamErrorJMatrixAlgorithm:
+    name = "beam_error_j_matrix"
+    display_name = "Beam-error J-matrix local solve"
+
+    def __init__(
+        self,
+        *,
+        target_mode_efficiency: float = DEFAULT_TARGET_MODE_EFFICIENCY,
+        max_attempts: int = DEFAULT_MAX_ALIGNMENT_ATTEMPTS,
+        response_step: float = TRANSVERSE_RESPONSE_STEP,
+        max_axis_correction: float = J_MATRIX_MAX_AXIS_CORRECTION,
+    ) -> None:
+        self.target_mode_efficiency = target_mode_efficiency
+        self.max_attempts = max(1, max_attempts)
+        self.response_step = response_step
+        self.max_axis_correction = max_axis_correction
+
+    def run(self, device: AlignmentDevice) -> AlignmentAlgorithmResult:
+        starting_poses = device.starting_poses()
+        current_poses = device.current_poses()
+        if len(starting_poses) != len(current_poses):
+            raise ValueError("starting pose count does not match the current lens count")
+        if len(current_poses) != 2:
+            raise ValueError("beam-error J-matrix local solve currently supports exactly two lenses")
+
+        final_reading = move_to_starting_poses(device, starting_poses)
+        success = False
+        attempts_used = 0
+        failure_reason = ""
+
+        while attempts_used < self.max_attempts:
+            attempts_used += 1
+            for axis in ("x", "y"):
+                reading = _apply_beam_error_axis_j_correction(
+                    device,
+                    axis,
+                    response_step=self.response_step,
+                    max_axis_correction=self.max_axis_correction,
+                )
+                if reading is None:
+                    failure_reason = f"could not build a stable local J{axis} matrix"
+                    final_reading = device.measure()
+                    break
+                final_reading = reading
+            if failure_reason:
+                break
+
+            final_reading = device.measure()
+            if final_reading.mode_efficiency >= self.target_mode_efficiency:
+                success = True
+                break
+
+        outcome = "reached" if success else "did not reach"
+        detail = (
+            "Reference-pose bootstrap, then beam-error local Jx/Jy probe moves "
+            "and matrix corrections"
+        )
+        if failure_reason:
+            detail = f"{detail}; {failure_reason}"
+        return AlignmentAlgorithmResult(
+            name=self.name,
+            display_name=self.display_name,
+            final_poses=device.current_poses(),
+            final_reading=final_reading,
+            move_history=device.move_history(),
+            message=(
+                f"{detail}; {outcome} {self.target_mode_efficiency * 100:.0f}% "
+                f"mode match in {attempts_used} attempt(s)."
             ),
         )

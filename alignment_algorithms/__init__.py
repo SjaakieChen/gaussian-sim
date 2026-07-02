@@ -19,7 +19,12 @@ from .base import (
 from .coordinate_scan import CoordinateScanAlgorithm
 from .given_positions import GivenPositionsAlgorithm
 from .manual import ManualAlignmentAlgorithm
-from .position_solve import PositionSolveAlgorithm, PositionSolveWithJStepsAlgorithm
+from .position_solve import (
+    BeamErrorJMatrixAlgorithm,
+    FixedZJMatrixAlgorithm,
+    PositionSolveAlgorithm,
+    PositionSolveWithJStepsAlgorithm,
+)
 from .yase import YaseAlignmentAlgorithm, discover_yase_algorithms
 
 
@@ -29,6 +34,8 @@ _ALGORITHMS: dict[str, AlignmentAlgorithm] = {
         CoordinateScanAlgorithm(),
         GivenPositionsAlgorithm(),
         ManualAlignmentAlgorithm(),
+        BeamErrorJMatrixAlgorithm(),
+        FixedZJMatrixAlgorithm(),
         PositionSolveAlgorithm(),
         PositionSolveWithJStepsAlgorithm(),
     )
@@ -55,9 +62,11 @@ __all__ = [
     "AlignmentModelGeometry",
     "AlignmentMove",
     "BallLensGeometry",
+    "BeamErrorJMatrixAlgorithm",
     "CoordinateScanAlgorithm",
     "DEFAULT_MAX_ALIGNMENT_ATTEMPTS",
     "DEFAULT_TARGET_MODE_EFFICIENCY",
+    "FixedZJMatrixAlgorithm",
     "GivenPositionsAlgorithm",
     "LensPose",
     "ManualAlignmentAlgorithm",

@@ -155,6 +155,8 @@ class YaseInterpreter:
         max_steps: int = 10000,
     ) -> RunResult:
         sequence = self.load_sequence(sequence_path)
+        self.trace.clear()
+        self.warnings.clear()
         frame = Frame(sequence=sequence, input_parameters=dict(parameters or {}))
         self._init_frame_variables(frame)
         self._step_budget = max_steps
@@ -277,13 +279,15 @@ class YaseInterpreter:
 
     def _display_extended_selection_dialog(self, frame: Frame, statement: YaseStatement) -> None:
         policy = self.machine.dialog_policy
-        if policy in {"button2", "skip", "move", "continue"}:
-            frame.pc += 1
-        elif policy in {"button1", "ok", "abort"}:
-            return
+        if policy in {"button1", "ok", "abort"}:
+            button1 = True
+        elif policy in {"button2", "skip", "move", "continue"}:
+            button1 = False
         else:
             self.warn(f"Unknown dialog policy {policy!r}; using button2/skip behavior.")
-            frame.pc += 1
+            button1 = False
+        # Button1 runs the next statement/block; button2 skips it (ELSE/BEGIN aware).
+        self._conditional_jump(frame, button1)
 
     def _display_extended_dialog(self, frame: Frame, statement: YaseStatement) -> None:
         return None
@@ -633,9 +637,30 @@ class YaseInterpreter:
                 frame.pc += 1
 
     def _else(self, frame: Frame) -> None:
+        # Reached only after the true branch executed; skip the else branch.
         else_index = frame.pc - 1
-        _, end_index = self._find_block_bounds_from_else(frame, else_index)
-        frame.pc = end_index + 1
+        statements = frame.sequence.statements
+        next_index = else_index + 1
+        if next_index >= len(statements):
+            frame.pc = len(statements)
+            return
+        if statements[next_index].name == "BEGIN":
+            _, end_index = self._find_block_bounds(frame, next_index)
+            frame.pc = end_index + 1
+            return
+        # Block form: ifnum/BEGIN ... ELSE ... END. Skip to after the enclosing END.
+        depth = 1
+        for scan_index in range(next_index, len(statements)):
+            name = statements[scan_index].name
+            if name == "BEGIN":
+                depth += 1
+            elif name == "END":
+                depth -= 1
+                if depth == 0:
+                    frame.pc = scan_index + 1
+                    return
+        # Inline form: ifnum, <true stmt>, ELSE, <else stmt>. Skip one statement.
+        frame.pc = else_index + 2
 
     def _find_block_bounds(self, frame: Frame, begin_index: int) -> tuple[int | None, int]:
         depth = 0
@@ -653,21 +678,6 @@ class YaseInterpreter:
         if else_index is not None and depth == 1:
             return else_index, else_index
         raise RuntimeError(f"BEGIN at {begin_index} has no matching END in {frame.sequence.path}")
-
-    def _find_block_bounds_from_else(self, frame: Frame, else_index: int) -> tuple[int | None, int]:
-        depth = 1
-        statements = frame.sequence.statements
-        for index in range(else_index + 1, len(statements)):
-            name = statements[index].name
-            if name == "BEGIN":
-                depth += 1
-            elif name == "END":
-                depth -= 1
-                if depth == 0:
-                    return else_index, index
-            elif depth == 1 and name == "Goto":
-                return else_index, index
-        return else_index, len(statements) - 1
 
     def _goto(self, frame: Frame, statement: YaseStatement) -> None:
         target = normalize_label(self._str(frame, statement.param("Label")))

@@ -233,6 +233,9 @@ class AlignmentLabEditor(OpticalLayoutEditor):
 
     def _build_ui(self) -> None:
         super()._build_ui()
+        self._hide_layout_editor_toolbar_buttons()
+        self._set_parameters_panel_open(False)
+        self._set_output_panel_open(False)
         self.rowconfigure(2, weight=0)
 
         panel = ttk.Frame(self, padding=(8, 0, 8, 8))
@@ -262,10 +265,12 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         ttk.Button(panel, text="Rescramble", command=self._rescramble_alignment_errors).grid(row=0, column=8, padx=(0, 14))
 
         self._algorithm_label_to_name = {
-            algorithm.display_name: name for name, algorithm in self._alignment_algorithms.items()
+            algorithm.display_name: name
+            for name, algorithm in self._alignment_algorithms.items()
+            if not name.startswith("yase:")
         }
         algorithm_labels = list(self._algorithm_label_to_name)
-        default_algorithm = self._alignment_algorithms.get("coordinate_scan") or next(
+        default_algorithm = self._alignment_algorithms.get("position_solve_j_steps") or next(
             iter(self._alignment_algorithms.values())
         )
         self.algorithm_var = tk.StringVar(value=default_algorithm.display_name)
@@ -326,6 +331,18 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         ttk.Label(panel, textvariable=self.best_offsets_var).grid(row=3, column=7, columnspan=8, sticky="w")
 
         self._alignment_ui_ready = True
+
+    def _hide_layout_editor_toolbar_buttons(self) -> None:
+        for button_name in (
+            "add_source",
+            "add_ball",
+            "add_taper",
+            "edit_selected",
+            "delete_selected",
+            "zoom_out",
+            "zoom_in",
+        ):
+            self._toolbar_buttons[button_name].grid_remove()
 
     def _parse_alignment_controls(self) -> tuple[int, float, float]:
         seed = int(self.seed_var.get().strip())
