@@ -115,6 +115,7 @@ class YaseInterpreter:
             "SetAnalogOut": self._set_analog_out,
             "GetAnalogIn": self._get_analog_in,
             "GetPower": self._get_power,
+            "GaussianSim_PositionSolve": self._gaussian_sim_position_solve,
             "TIARange": self._tia_range,
             "DeclareNumParam": self._declare_num_param,
             "DeclareStrParam": self._declare_str_param,
@@ -509,6 +510,54 @@ class YaseInterpreter:
         meter = self._str(frame, statement.param("PowerMeter"))
         mw, _, _ = self.machine.read_average_power(meter, 1)
         self._write_named_output(frame, statement, "Power", mw)
+
+    def _gaussian_sim_position_solve(self, frame: Frame, statement: YaseStatement) -> None:
+        solve = getattr(self.machine, "solve_position_alignment", None)
+        if solve is None:
+            message = "Machine does not support GaussianSim_PositionSolve."
+            self.warn(message)
+            self._write_optional_named_output(frame, statement, "ErrorType", 1.0)
+            self._write_optional_named_output(frame, statement, "ErrorMessage", message)
+            return
+        try:
+            kwargs = {}
+            if self._has_named_parameter(statement, "TargetMode"):
+                kwargs["target_mode_efficiency"] = self._num(frame, statement.param("TargetMode"))
+            if self._has_named_parameter(statement, "MaxAttempts"):
+                kwargs["max_attempts"] = int(max(1, self._num(frame, statement.param("MaxAttempts"))))
+            summary = solve(**kwargs)
+        except Exception as exc:  # pragma: no cover - exercised by machine-specific failures.
+            message = str(exc)
+            self.warn(message)
+            self._write_optional_named_output(frame, statement, "ErrorType", 1.0)
+            self._write_optional_named_output(frame, statement, "ErrorMessage", message)
+            return
+        if isinstance(summary, dict):
+            model_power_mw = float(summary.get("model_power_mw", 0.0))
+            final_power_mw = float(summary.get("final_power_mw", model_power_mw))
+            final_mode = float(summary.get("final_mode_efficiency", 0.0))
+            attempts = float(summary.get("attempts", 0.0))
+            success = float(summary.get("success", 0.0))
+        else:
+            model_power_mw = float(summary)
+            final_power_mw = model_power_mw
+            final_mode = 0.0
+            attempts = 1.0
+            success = 1.0
+        self._write_optional_named_output(frame, statement, "ModelPower", model_power_mw)
+        self._write_optional_named_output(frame, statement, "FinalPower", final_power_mw)
+        self._write_optional_named_output(frame, statement, "FinalMode", final_mode)
+        self._write_optional_named_output(frame, statement, "Attempts", attempts)
+        self._write_optional_named_output(frame, statement, "Success", success)
+        self._write_optional_named_output(frame, statement, "ErrorType", 0.0)
+        self._write_optional_named_output(frame, statement, "ErrorMessage", "")
+
+    def _has_named_parameter(self, statement: YaseStatement, name: str) -> bool:
+        return any(parameter.name == name for parameter in statement.parameters)
+
+    def _write_optional_named_output(self, frame: Frame, statement: YaseStatement, name: str, value: Any) -> None:
+        if self._has_named_parameter(statement, name):
+            self._write_named_output(frame, statement, name, value)
 
     def _tia_range(self, frame: Frame, statement: YaseStatement) -> None:
         meter = self._str(frame, statement.param("Meter"))

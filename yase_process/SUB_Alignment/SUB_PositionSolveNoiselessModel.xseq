@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_PositionSolveNoiselessModel</Comment>
+   <Comment>Simulation-only model alignment. Solves ball-lens positions from known source/taper/lens geometry without using measured power for the calculation.</Comment>
+   <Statement Label="@L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_PositionSolveNoiselessModel" />
+      <Parameter Name="String 2" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Type="String" Direction="Output" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="TIA1" />
+      <Parameter Name="String 2" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Type="String" Direction="Output" ValueType="Variable" VariableName="s_PowerMeter" />
+   </Statement>
+   <Statement Label="@L_ModelSolve" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="GaussianSim_PositionSolve" Library="GaussianSim">
+      <Parameter Name="TargetMode" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.5" StringValue="0.5" />
+      <Parameter Name="MaxAttempts" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="3.0" StringValue="3.0" />
+      <Parameter Name="ModelPower" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ModelPower" />
+      <Parameter Name="FinalPower" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_FinalPower" />
+      <Parameter Name="FinalMode" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_FinalMode" />
+      <Parameter Name="Attempts" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_Attempts" />
+      <Parameter Name="Success" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_Success" />
+      <Parameter Name="ErrorType" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="ErrorMessage" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error" />
+   </Statement>
+   <Statement Label="@L_ReadFinalPower" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="GetPower" Library="PowerMeter">
+      <Parameter Name="PowerMeter" Type="String" Direction="Input" ValueType="Variable" VariableName="s_PowerMeter" />
+      <Parameter Name="Power" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_FinalPower" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ModelPower" />
+      <Parameter Name="Value" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ModelPower" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="FinalPower" />
+      <Parameter Name="Value" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_FinalPower" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="FinalMode" />
+      <Parameter Name="Value" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_FinalMode" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Attempts" />
+      <Parameter Name="Value" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Attempts" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Success" />
+      <Parameter Name="Value" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Success" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
+      <Parameter Name="Value" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
+      <Parameter Name="Value" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SequenceName" />
+      <Parameter Name="Value" Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   </Statement>
+   <Statement Label="@L_Error" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
+      <Parameter Name="Value" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
+      <Parameter Name="Value" Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQFlowControl">
+      <Parameter Name="Name" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SequenceName" />
+      <Parameter Name="Value" Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   </Statement>
+</Sequence>

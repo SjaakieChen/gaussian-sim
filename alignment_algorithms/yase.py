@@ -10,7 +10,14 @@ from typing import Any
 from yase_sim import SimulationMachine, YaseInterpreter
 from yase_sim.machine import MoveEvent, PowerReadEvent, parse_number
 
-from .base import AlignmentAlgorithmResult, AlignmentDevice, PowerReading
+from .base import (
+    DEFAULT_MAX_ALIGNMENT_ATTEMPTS,
+    DEFAULT_TARGET_MODE_EFFICIENCY,
+    AlignmentAlgorithmResult,
+    AlignmentDevice,
+    PowerReading,
+)
+from .position_solve import run_position_solve_until_good
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +26,11 @@ DEFAULT_YASE_CONFIG = DEFAULT_YASE_ROOT / "examples" / "yase_sim_config.json"
 DEFAULT_LENS_ACTOR_MAP = ("Align1", "Align2")
 DEFAULT_STAGE_UM_TO_M = 1e-6
 YASE_ALGORITHM_PREFIX = "yase:"
+SIM_AXIS_TO_MACHINE_AXIS = {
+    "x": "X",
+    "y": "Z",
+    "z": "Y",
+}
 
 
 def _power_dbm(mw: float) -> float:
@@ -41,6 +53,14 @@ def _power_model_lens_mapping(power_config: dict[str, Any]) -> tuple[tuple[str, 
     return DEFAULT_LENS_ACTOR_MAP, DEFAULT_STAGE_UM_TO_M
 
 
+def _stage_name_for_actor_axis(actor: str, sim_axis: str) -> str | None:
+    if not actor.startswith("Align"):
+        return None
+    suffix = actor.removeprefix("Align")
+    machine_axis = SIM_AXIS_TO_MACHINE_AXIS[sim_axis]
+    return f"Align_{machine_axis}{suffix}"
+
+
 @dataclass
 class DeviceBackedYaseMachine(SimulationMachine):
     """YASE machine state whose alignment moves are applied to an AlignmentDevice."""
@@ -60,12 +80,14 @@ class DeviceBackedYaseMachine(SimulationMachine):
         base = SimulationMachine.from_config(root, config_path)
         base_kwargs = {field.name: getattr(base, field.name) for field in fields(SimulationMachine)}
         lens_actor_map, stage_um_to_m = _power_model_lens_mapping(base.power_config)
-        return cls(
+        machine = cls(
             **base_kwargs,
             device=device,
             lens_actor_map=lens_actor_map,
             stage_um_to_m=stage_um_to_m,
         )
+        machine._sync_stage_positions_from_device_reference()
+        return machine
 
     def move_stage(self, stage: str, distance: float, velocity: float, sync: str, mode: str) -> MoveEvent:
         event = super().move_stage(stage, distance, velocity, sync, mode)
@@ -91,6 +113,57 @@ class DeviceBackedYaseMachine(SimulationMachine):
             return PowerReading(received_power=0.0, total_efficiency=0.0, mode_efficiency=0.0)
         self.last_reading = self.device.measure()
         return self.last_reading
+
+    def _sync_stage_positions_from_device_reference(self) -> None:
+        if self.device is None or self.stage_um_to_m == 0:
+            return
+        current_poses = self.device.current_poses()
+        starting_poses = self.device.starting_poses()
+        for lens_index, actor in enumerate(self.lens_actor_map):
+            if lens_index >= len(current_poses) or lens_index >= len(starting_poses):
+                break
+            current_pose = current_poses[lens_index]
+            starting_pose = starting_poses[lens_index]
+            offsets_um = {
+                "x": (current_pose[0] - starting_pose[0]) / self.stage_um_to_m,
+                "y": (current_pose[1] - starting_pose[1]) / self.stage_um_to_m,
+                "z": (current_pose[2] - starting_pose[2]) / self.stage_um_to_m,
+            }
+            for sim_axis, value in offsets_um.items():
+                stage = _stage_name_for_actor_axis(actor, sim_axis)
+                if stage is not None:
+                    self.set_stage_position(stage, value)
+
+    def solve_position_alignment(
+        self,
+        *,
+        target_mode_efficiency: float = DEFAULT_TARGET_MODE_EFFICIENCY,
+        max_attempts: int = DEFAULT_MAX_ALIGNMENT_ATTEMPTS,
+    ) -> dict[str, float]:
+        if self.device is None:
+            return {
+                "model_power_mw": 0.0,
+                "final_power_mw": 0.0,
+                "final_mode_efficiency": 0.0,
+                "attempts": 0.0,
+                "success": 0.0,
+            }
+        status = run_position_solve_until_good(
+            self.device,
+            target_mode_efficiency=target_mode_efficiency,
+            max_attempts=max_attempts,
+        )
+        if status.candidate is None:
+            raise RuntimeError("no valid noiseless position-solve candidate was found")
+        self.last_reading = status.final_reading
+        self._sync_stage_positions_from_device_reference()
+        return {
+            "model_power_mw": status.candidate.reading.received_power * 1e3,
+            "final_power_mw": status.final_reading.received_power * 1e3,
+            "final_mode_efficiency": status.final_reading.mode_efficiency,
+            "attempts": float(status.attempts),
+            "success": 1.0 if status.success else 0.0,
+        }
 
     def _apply_alignment_move(self, event: MoveEvent) -> None:
         if self.device is None or event.sim_body is None or event.sim_axis is None:

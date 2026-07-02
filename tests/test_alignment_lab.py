@@ -6,8 +6,32 @@ import tkinter as tk
 import numpy as np
 import pytest
 
+import alignment_algorithms.position_solve as position_solve_module
 from alignment_algorithms import available_algorithms, get_algorithm
-from alignment_algorithms.base import AlignmentAlgorithmResult, PowerReading
+from alignment_algorithms.base import (
+    DEFAULT_TARGET_MODE_EFFICIENCY,
+    AlignmentModelGeometry,
+    AlignmentMove,
+    AlignmentAlgorithmResult,
+    BallLensGeometry,
+    PowerReading,
+    SourceGeometry,
+    TaperGeometry,
+)
+from alignment_algorithms.coordinate_scan import CoordinateScanAlgorithm
+from alignment_algorithms.given_positions import GivenPositionsAlgorithm
+from alignment_algorithms.position_solve import (
+    TRANSVERSE_RESPONSE_STEP,
+    PositionSolveAlgorithm,
+    PositionSolveWithJStepsAlgorithm,
+    has_strict_axial_clearance,
+)
+from alignment_algorithms.yase import (
+    DEFAULT_YASE_CONFIG,
+    DEFAULT_YASE_ROOT,
+    DeviceBackedYaseMachine,
+    YaseAlignmentAlgorithm,
+)
 import alignment_lab as alignment_lab_module
 from alignment_lab import (
     DEFAULT_ALIGNMENT_SEED,
@@ -17,6 +41,14 @@ from alignment_lab import (
     AlignmentLabEditor,
     seeded_alignment_errors,
 )
+from interactive_setup import (
+    DEFAULT_CLIPPING_RADIUS_FACTOR,
+    DEFAULT_REFRACTIVE_INDEX,
+    LaserSource,
+    default_ball_lens_layout,
+    simulate_layout,
+)
+from yase_sim import YaseInterpreter
 
 
 def _make_app():
@@ -32,12 +64,150 @@ def _assert_pose_close(actual, expected):
         assert np.allclose(actual_pose, expected_pose)
 
 
-def test_alignment_algorithm_registry_has_manual_and_yase_subprocesses():
+class SimulatedAlignmentDevice:
+    def __init__(self, seed: int, *, startup_out_of_beam: bool = False) -> None:
+        self.source = LaserSource()
+        self.balls, tapers, self.final_z = default_ball_lens_layout()
+        self.taper = tapers[0]
+        self._starting_poses = tuple((ball.x_offset, ball.y_offset, ball.position) for ball in self.balls)
+        self._moves: list[AlignmentMove] = []
+        self._move_count = 0
+        self._measurement_count = 0
+
+        if startup_out_of_beam:
+            for ball in self.balls:
+                ball.x_offset = DEFAULT_INITIAL_BALL_X_OFFSET
+            return
+
+        scramble = seeded_alignment_errors(seed, lens_count=len(self.balls))
+        self.source.x_offset = scramble.source_x_offset
+        self.source.y_offset = scramble.source_y_offset
+        self.taper.x_offset = scramble.taper_x_offset
+        self.taper.y_offset = scramble.taper_y_offset
+        for ball, starting_pose, pose_offset in zip(self.balls, self._starting_poses, scramble.ball_pose_offsets):
+            ball.x_offset = starting_pose[0] + pose_offset[0]
+            ball.y_offset = starting_pose[1] + pose_offset[1]
+            ball.position = starting_pose[2] + pose_offset[2]
+
+    def starting_poses(self):
+        return self._starting_poses
+
+    def current_poses(self):
+        return tuple((ball.x_offset, ball.y_offset, ball.position) for ball in self.balls)
+
+    def model_geometry(self):
+        source = self.source
+        taper = self.taper
+        return AlignmentModelGeometry(
+            source=SourceGeometry(
+                name=source.name,
+                position=source.position,
+                wavelength=source.wavelength,
+                waist_radius=source.waist_radius,
+                waist_radius_y=source.waist_radius_y,
+                rayleigh_range=source.rayleigh_range,
+                rayleigh_range_y=source.rayleigh_range_y,
+                waist_position=source.waist_position,
+                power=source.power,
+                x_offset=source.x_offset,
+                y_offset=source.y_offset,
+                x_angle=source.x_angle,
+                y_angle=source.y_angle,
+            ),
+            taper=TaperGeometry(
+                name=taper.name,
+                position=taper.position,
+                width=taper.width,
+                height=taper.height,
+                mode_radius_x=taper.mode_radius_x,
+                mode_radius_y=taper.mode_radius_y,
+                extra_transmission=taper.extra_transmission,
+                facet_refractive_index=taper.facet_refractive_index,
+                x_offset=taper.x_offset,
+                y_offset=taper.y_offset,
+            ),
+            balls=tuple(
+                BallLensGeometry(
+                    name=ball.name,
+                    position=ball.position,
+                    diameter=ball.diameter,
+                    refractive_index=ball.refractive_index,
+                    x_offset=ball.x_offset,
+                    y_offset=ball.y_offset,
+                )
+                for ball in self.balls
+            ),
+            current_poses=self.current_poses(),
+            starting_poses=self.starting_poses(),
+            clipping_radius_factor=DEFAULT_CLIPPING_RADIUS_FACTOR,
+        )
+
+    def measure(self):
+        self._measurement_count += 1
+        return self._reading()
+
+    def move_lens(self, lens_index, dx=0.0, dy=0.0, dz=0.0):
+        ball = self.balls[lens_index]
+        ball.x_offset += dx
+        ball.y_offset += dy
+        ball.position += dz
+        self._move_count += 1
+        self._measurement_count += 1
+        reading = self._reading()
+        self._moves.append(
+            AlignmentMove(
+                lens_index=lens_index,
+                dx=dx,
+                dy=dy,
+                dz=dz,
+                poses=self.current_poses(),
+                reading=reading,
+            )
+        )
+        return reading
+
+    def move_history(self):
+        return tuple(self._moves)
+
+    def _reading(self):
+        results = simulate_layout(
+            [self.source],
+            [],
+            [],
+            self.final_z,
+            balls=self.balls,
+            tapers=[self.taper],
+            refractive_index=DEFAULT_REFRACTIVE_INDEX,
+            clipping_radius_factor=DEFAULT_CLIPPING_RADIUS_FACTOR,
+        )
+        taper_result = results[0].taper_results[0]
+        total_efficiency = taper_result.received_power / self.source.power
+        return PowerReading(
+            received_power=taper_result.received_power,
+            total_efficiency=total_efficiency,
+            mode_efficiency=taper_result.mode_efficiency,
+            move_count=self._move_count,
+            measurement_count=self._measurement_count,
+        )
+
+
+def test_alignment_algorithm_registry_has_coordinate_scan_manual_and_yase_subprocesses():
     algorithms = available_algorithms()
 
+    assert "coordinate_scan" in algorithms
+    assert "given_positions" in algorithms
     assert "manual" in algorithms
+    assert "position_solve" in algorithms
+    assert "position_solve_j_steps" in algorithms
+    assert "yase:SUB_Alignment/SUB_GivenPositionsReferencePose.xseq" in algorithms
+    assert "yase:SUB_Alignment/SUB_PositionSolveNoiselessModel.xseq" in algorithms
+    assert "yase:SUB_Alignment/SUB_PowerOnlyCoordinateScan.xseq" in algorithms
     assert "yase:SUB_Positioning/SUB_Test_DrawCircle_AlignX1Z1.xseq" in algorithms
+    assert get_algorithm("coordinate_scan").display_name == "Power-only coordinate scan"
+    assert get_algorithm("given_positions").display_name == "Reference pose only"
     assert get_algorithm("manual").display_name == "Manual/no search"
+    assert get_algorithm("position_solve").display_name == "Position solve/noiseless model"
+    assert get_algorithm("position_solve_j_steps").display_name == "Position solve/show J steps"
 
 
 def test_alignment_algorithms_only_accept_step_device():
@@ -148,7 +318,7 @@ def test_alignment_device_move_lens_updates_xyz_and_counts_one_step():
         app.destroy()
 
 
-def test_alignment_lab_algorithm_handoff_hides_source_and_detector_positions(monkeypatch):
+def test_alignment_lab_algorithm_handoff_exposes_power_only_reference_interface(monkeypatch):
     app = _make_app()
 
     class InterfaceCheckingAlgorithm:
@@ -161,10 +331,15 @@ def test_alignment_lab_algorithm_handoff_hides_source_and_detector_positions(mon
                 for name in dir(device)
                 if not name.startswith("_") and callable(getattr(device, name))
             }
-            assert public_methods == {"current_poses", "measure", "move_history", "move_lens"}
+            assert public_methods == {"current_poses", "measure", "model_geometry", "move_history", "move_lens", "starting_poses"}
 
             expected_poses = app.current_poses()
             assert device.current_poses() == expected_poses
+            assert device.starting_poses() == app.starting_poses()
+            geometry = device.model_geometry()
+            assert geometry.source.position == app.sources[0].position
+            assert geometry.taper.position == app.tapers[0].position
+            assert geometry.current_poses == expected_poses
 
             first = device.measure()
             moved = device.move_lens(0, dx=1.0e-6, dy=-0.5e-6, dz=0.25e-6)
@@ -200,6 +375,278 @@ def test_alignment_lab_algorithm_handoff_hides_source_and_detector_positions(mon
         app.destroy()
 
 
+def test_alignment_lab_show_replays_last_run_from_captured_current_position(monkeypatch):
+    app = _make_app()
+
+    class ReplayCheckingAlgorithm:
+        name = "replay_check"
+        display_name = "Replay check"
+
+        def __init__(self):
+            self.run_count = 0
+
+        def run(self, device):
+            self.run_count += 1
+            first = device.move_lens(0, dx=2.0e-6)
+            second = device.move_lens(1, dy=-1.0e-6)
+            assert first.received_power >= 0.0
+            return AlignmentAlgorithmResult(
+                name=self.name,
+                display_name=self.display_name,
+                final_poses=device.current_poses(),
+                final_reading=second,
+                move_history=device.move_history(),
+                message="replay checked",
+            )
+
+    algorithm = ReplayCheckingAlgorithm()
+    monkeypatch.setattr(alignment_lab_module, "get_algorithm", lambda _name: algorithm)
+
+    try:
+        run_start = app.current_poses()
+        app.run_alignment_algorithm("replay_check")
+        run_final = app.current_poses()
+
+        assert algorithm.run_count == 1
+        assert app._last_algorithm_run is not None  # pylint: disable=protected-access
+        _assert_pose_close(app._last_algorithm_run.initial_poses, run_start)  # pylint: disable=protected-access
+
+        disturbed = list(run_final)
+        disturbed[0] = (disturbed[0][0] + 20.0e-6, disturbed[0][1], disturbed[0][2])
+        app._apply_lens_poses(tuple(disturbed))  # pylint: disable=protected-access
+
+        app.show_alignment_algorithm(delay_ms=0)
+        for _index in range(10):
+            app.update()
+            if app._algorithm_animation_after_id is None:  # pylint: disable=protected-access
+                break
+
+        assert algorithm.run_count == 1
+        _assert_pose_close(app.current_poses(), run_final)
+        assert "Replay check" in app.algorithm_status_var.get()
+    finally:
+        app.destroy()
+
+
+def test_coordinate_scan_improves_startup_out_of_beam_alignment():
+    app = _make_app()
+
+    try:
+        before = app.evaluate_current_alignment()
+        evaluation = app.run_alignment_algorithm("coordinate_scan")
+
+        assert evaluation.received_power > before.received_power
+        assert evaluation.mode_efficiency > 0.95
+    finally:
+        app.destroy()
+
+
+def test_position_solve_is_selectable_and_runs_from_simulation_ui():
+    app = _make_app()
+
+    try:
+        app._rescramble_alignment_errors()  # pylint: disable=protected-access
+        before = app.evaluate_current_alignment()
+
+        assert app._algorithm_label_to_name["Position solve/noiseless model"] == "position_solve"  # pylint: disable=protected-access
+        app.algorithm_var.set("Position solve/noiseless model")
+        evaluation = app.run_alignment_algorithm()
+
+        assert evaluation.received_power > before.received_power
+        assert evaluation.mode_efficiency > 0.9
+        assert "Position solve/noiseless model" in app.algorithm_status_var.get()
+    finally:
+        app.destroy()
+
+
+def test_given_positions_moves_to_reference_pose_without_scan():
+    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED, startup_out_of_beam=True)
+    before = device.measure()
+
+    result = GivenPositionsAlgorithm().run(device)
+
+    assert result.final_reading.received_power > before.received_power
+    assert result.final_reading.mode_efficiency > 0.5
+    _assert_pose_close(result.final_poses, device.starting_poses())
+    assert len(result.move_history) == 2
+
+
+def test_reference_pose_only_does_not_solve_seeded_source_taper_offsets():
+    device = SimulatedAlignmentDevice(3)
+
+    result = GivenPositionsAlgorithm().run(device)
+
+    _assert_pose_close(result.final_poses, device.starting_poses())
+    assert result.final_reading.mode_efficiency < DEFAULT_TARGET_MODE_EFFICIENCY
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_coordinate_scan_reaches_mode_match_from_seeded_power_only_simulation(seed):
+    device = SimulatedAlignmentDevice(seed)
+    before = device.measure()
+
+    result = CoordinateScanAlgorithm().run(device)
+
+    assert result.final_reading.received_power > before.received_power
+    assert result.final_reading.mode_efficiency > 0.9
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_position_solve_reaches_mode_match_from_seeded_noiseless_model(seed):
+    device = SimulatedAlignmentDevice(seed)
+    before = device.measure()
+
+    result = PositionSolveAlgorithm().run(device)
+    geometry = device.model_geometry()
+
+    assert result.final_reading.received_power > before.received_power
+    assert result.final_reading.mode_efficiency > 0.9
+    assert has_strict_axial_clearance(
+        result.final_poses,
+        geometry.balls,
+        geometry.source.position,
+        geometry.taper.position,
+    )
+
+
+def test_position_solve_j_steps_records_visible_probe_moves():
+    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED)
+
+    result = PositionSolveWithJStepsAlgorithm().run(device)
+    moves = result.move_history
+
+    assert result.final_reading.mode_efficiency > 0.9
+    assert "J-matrix probe moves" in result.message
+    assert any(np.isclose(move.dx, TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(np.isclose(move.dx, -TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(np.isclose(move.dy, TRANSVERSE_RESPONSE_STEP) for move in moves)
+    assert any(np.isclose(move.dy, -TRANSVERSE_RESPONSE_STEP) for move in moves)
+
+
+def test_real_alignment_algorithms_reach_good_mode_match_across_100_case_sweep():
+    failures = []
+    algorithm_factories = (PositionSolveAlgorithm, CoordinateScanAlgorithm)
+
+    for algorithm_factory in algorithm_factories:
+        for seed in range(100):
+            device = SimulatedAlignmentDevice(seed, startup_out_of_beam=(seed % 10 == 0))
+            result = algorithm_factory().run(device)
+            if result.final_reading.mode_efficiency < DEFAULT_TARGET_MODE_EFFICIENCY:
+                failures.append(
+                    (
+                        result.name,
+                        seed,
+                        result.final_reading.mode_efficiency,
+                        result.final_reading.received_power * 1e3,
+                    )
+                )
+
+    assert failures == []
+
+
+def test_position_solve_retries_after_low_mode_attempt(monkeypatch):
+    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED)
+    search_windows = []
+    move_modes = iter((0.1, 0.75))
+
+    def fake_solve_candidate(geometry, axial_search_window=0.0):
+        search_windows.append(axial_search_window)
+        return position_solve_module.PositionSolveCandidate(
+            poses=geometry.starting_poses,
+            reading=PowerReading(
+                received_power=1.0e-3,
+                total_efficiency=1.0,
+                mode_efficiency=1.0,
+            ),
+        )
+
+    def fake_move_to_target_poses(fake_device, _geometry, target_poses):
+        apply_test_poses(target_poses)
+        mode = next(move_modes)
+        return PowerReading(
+            received_power=mode * 1.0e-3,
+            total_efficiency=mode,
+            mode_efficiency=mode,
+            move_count=len(fake_device.move_history()),
+            measurement_count=999,
+        )
+
+    def apply_test_poses(poses):
+        for ball, pose in zip(device.balls, poses):
+            ball.x_offset, ball.y_offset, ball.position = pose
+
+    monkeypatch.setattr(position_solve_module, "solve_position_candidate", fake_solve_candidate)
+    monkeypatch.setattr(position_solve_module, "move_to_target_poses", fake_move_to_target_poses)
+
+    result = PositionSolveAlgorithm(search_windows=(1.0, 2.0, 3.0)).run(device)
+
+    assert result.final_reading.mode_efficiency == 0.75
+    assert search_windows == [1.0, 2.0]
+    assert "2 attempt" in result.message
+
+
+def test_yase_given_positions_runs_from_startup_out_of_beam_simulation():
+    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED, startup_out_of_beam=True)
+    before = device.measure()
+    algorithm = YaseAlignmentAlgorithm(
+        "SUB_Alignment/SUB_GivenPositionsReferencePose.xseq",
+        root=DEFAULT_YASE_ROOT,
+        config_path=DEFAULT_YASE_CONFIG,
+    )
+
+    result = algorithm.run(device)
+
+    assert result.final_reading.received_power > before.received_power
+    assert result.final_reading.mode_efficiency > 0.5
+    _assert_pose_close(result.final_poses, device.starting_poses())
+
+
+def test_yase_position_solve_runs_in_seeded_simulation():
+    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED)
+    before = device.measure()
+    algorithm = YaseAlignmentAlgorithm(
+        "SUB_Alignment/SUB_PositionSolveNoiselessModel.xseq",
+        root=DEFAULT_YASE_ROOT,
+        config_path=DEFAULT_YASE_CONFIG,
+        max_steps=20000,
+    )
+
+    result = algorithm.run(device)
+
+    assert result.final_reading.received_power > before.received_power
+    assert result.final_reading.mode_efficiency > 0.9
+
+
+def test_yase_position_solve_returns_robust_alignment_fields():
+    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED)
+    machine = DeviceBackedYaseMachine.from_config_and_device(DEFAULT_YASE_ROOT, DEFAULT_YASE_CONFIG, device)
+    interpreter = YaseInterpreter(machine)
+
+    result = interpreter.run("SUB_Alignment/SUB_PositionSolveNoiselessModel.xseq", max_steps=20000)
+
+    assert result.return_parameters["Success"] == 1.0
+    assert result.return_parameters["Attempts"] >= 1.0
+    assert result.return_parameters["FinalMode"] >= DEFAULT_TARGET_MODE_EFFICIENCY
+    assert result.return_parameters["FinalPower"] > 0.0
+    assert result.return_parameters["ModelPower"] > 0.0
+
+
+def test_yase_power_only_coordinate_scan_runs_in_seeded_simulation():
+    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED)
+    before = device.measure()
+    algorithm = YaseAlignmentAlgorithm(
+        "SUB_Alignment/SUB_PowerOnlyCoordinateScan.xseq",
+        root=DEFAULT_YASE_ROOT,
+        config_path=DEFAULT_YASE_CONFIG,
+        max_steps=20000,
+    )
+
+    result = algorithm.run(device)
+
+    assert result.final_reading.received_power > before.received_power
+    assert result.final_reading.mode_efficiency > 0.9
+
+
 def test_moving_lens_in_x_changes_evaluated_power():
     app = _make_app()
 
@@ -225,7 +672,7 @@ def test_alignment_lab_live_simulation_updates_power_and_pose_readouts():
         assert evaluation.received_power > 0.0
         assert np.isclose(app.tapers[0].received_power, evaluation.received_power)
         assert "RECEIVED:" in app.power_percent_var.get()
-        assert "MODE:" in app.power_percent_var.get()
+        assert "MODE MATCH:" in app.power_percent_var.get()
         assert "%" in app.power_percent_var.get()
         assert "mW" in app.power_percent_var.get()
         assert "Received power:" in app.received_power_var.get()

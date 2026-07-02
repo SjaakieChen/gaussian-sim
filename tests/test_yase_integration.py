@@ -24,6 +24,9 @@ class FakeAlignmentDevice:
     def current_poses(self) -> tuple[LensPose, ...]:
         return tuple(self._poses)
 
+    def starting_poses(self) -> tuple[LensPose, ...]:
+        return ((0.0, 0.0, 0.0), (10e-6, 0.0, 1e-3))
+
     def move_lens(
         self,
         lens_index: int,
@@ -114,4 +117,3 @@ def test_yase_subprocess_runs_as_alignment_algorithm():
     assert np.allclose(result.final_poses, ((0.0, 0.0, 0.0), (10e-6, 0.0, 1e-3)))
     assert result.move_count == 20
     assert result.evaluations == 20
-

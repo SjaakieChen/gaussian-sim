@@ -6,18 +6,31 @@ from .base import (
     AlignmentAlgorithm,
     AlignmentAlgorithmResult,
     AlignmentDevice,
+    AlignmentModelGeometry,
     AlignmentMove,
+    BallLensGeometry,
+    DEFAULT_MAX_ALIGNMENT_ATTEMPTS,
+    DEFAULT_TARGET_MODE_EFFICIENCY,
     LensPose,
     PowerReading,
+    SourceGeometry,
+    TaperGeometry,
 )
+from .coordinate_scan import CoordinateScanAlgorithm
+from .given_positions import GivenPositionsAlgorithm
 from .manual import ManualAlignmentAlgorithm
+from .position_solve import PositionSolveAlgorithm, PositionSolveWithJStepsAlgorithm
 from .yase import YaseAlignmentAlgorithm, discover_yase_algorithms
 
 
 _ALGORITHMS: dict[str, AlignmentAlgorithm] = {
     algorithm.name: algorithm
     for algorithm in (
+        CoordinateScanAlgorithm(),
+        GivenPositionsAlgorithm(),
         ManualAlignmentAlgorithm(),
+        PositionSolveAlgorithm(),
+        PositionSolveWithJStepsAlgorithm(),
     )
 }
 _ALGORITHMS.update(discover_yase_algorithms())
@@ -39,10 +52,20 @@ __all__ = [
     "AlignmentAlgorithm",
     "AlignmentAlgorithmResult",
     "AlignmentDevice",
+    "AlignmentModelGeometry",
     "AlignmentMove",
+    "BallLensGeometry",
+    "CoordinateScanAlgorithm",
+    "DEFAULT_MAX_ALIGNMENT_ATTEMPTS",
+    "DEFAULT_TARGET_MODE_EFFICIENCY",
+    "GivenPositionsAlgorithm",
     "LensPose",
     "ManualAlignmentAlgorithm",
+    "PositionSolveAlgorithm",
+    "PositionSolveWithJStepsAlgorithm",
     "PowerReading",
+    "SourceGeometry",
+    "TaperGeometry",
     "YaseAlignmentAlgorithm",
     "available_algorithms",
     "get_algorithm",

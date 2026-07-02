@@ -8,6 +8,72 @@ from typing import Protocol, TypeAlias
 
 LensPose: TypeAlias = tuple[float, float, float]
 
+DEFAULT_TARGET_MODE_EFFICIENCY = 0.50
+DEFAULT_MAX_ALIGNMENT_ATTEMPTS = 3
+
+
+@dataclass(frozen=True)
+class SourceGeometry:
+    name: str
+    position: float
+    wavelength: float
+    waist_radius: float
+    waist_radius_y: float
+    rayleigh_range: float
+    rayleigh_range_y: float
+    waist_position: float
+    power: float
+    x_offset: float
+    y_offset: float
+    x_angle: float
+    y_angle: float
+
+
+@dataclass(frozen=True)
+class BallLensGeometry:
+    name: str
+    position: float
+    diameter: float
+    refractive_index: float
+    x_offset: float
+    y_offset: float
+
+    @property
+    def radius(self) -> float:
+        return 0.5 * self.diameter
+
+    @property
+    def entry_z(self) -> float:
+        return self.position - self.radius
+
+    @property
+    def exit_z(self) -> float:
+        return self.position + self.radius
+
+
+@dataclass(frozen=True)
+class TaperGeometry:
+    name: str
+    position: float
+    width: float
+    height: float
+    mode_radius_x: float
+    mode_radius_y: float
+    extra_transmission: float
+    facet_refractive_index: float
+    x_offset: float
+    y_offset: float
+
+
+@dataclass(frozen=True)
+class AlignmentModelGeometry:
+    source: SourceGeometry
+    taper: TaperGeometry
+    balls: tuple[BallLensGeometry, ...]
+    current_poses: tuple[LensPose, ...]
+    starting_poses: tuple[LensPose, ...]
+    clipping_radius_factor: float
+
 
 @dataclass(frozen=True)
 class PowerReading:
@@ -59,8 +125,14 @@ class AlignmentAlgorithmResult:
 
 
 class AlignmentDevice(Protocol):
+    def starting_poses(self) -> tuple[LensPose, ...]:
+        """Return known aligned/reference lens poses as (x_offset, y_offset, z_position)."""
+
     def current_poses(self) -> tuple[LensPose, ...]:
         """Return current lens poses as (x_offset, y_offset, z_position)."""
+
+    def model_geometry(self) -> AlignmentModelGeometry:
+        """Return a read-only geometry snapshot for noiseless model-based algorithms."""
 
     def move_lens(
         self,

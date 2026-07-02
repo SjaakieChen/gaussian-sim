@@ -17,7 +17,19 @@ import tkinter as tk
 from dataclasses import dataclass
 from tkinter import messagebox, ttk
 
-from alignment_algorithms import AlignmentMove, LensPose, PowerReading, available_algorithms, get_algorithm
+from alignment_algorithms import (
+    AlignmentAlgorithm,
+    AlignmentAlgorithmResult,
+    AlignmentModelGeometry,
+    AlignmentMove,
+    BallLensGeometry,
+    LensPose,
+    PowerReading,
+    SourceGeometry,
+    TaperGeometry,
+    available_algorithms,
+    get_algorithm,
+)
 from interactive_setup import (
     DEFAULT_CLIPPING_RADIUS_FACTOR,
     DEFAULT_REFRACTIVE_INDEX,
@@ -58,6 +70,14 @@ class AlignmentScramble:
     taper_x_offset: float
     taper_y_offset: float
     ball_pose_offsets: tuple[LensPose, ...]
+
+
+@dataclass(frozen=True)
+class AlignmentAlgorithmRun:
+    algorithm: AlignmentAlgorithm
+    result: AlignmentAlgorithmResult
+    moves: tuple[AlignmentMove, ...]
+    initial_poses: tuple[LensPose, ...]
 
 
 def _validate_tolerance(name: str, tolerance: float) -> None:
@@ -117,6 +137,12 @@ class AlignmentLabDevice:
 
     def current_poses(self) -> tuple[LensPose, ...]:
         return self._app.current_poses()
+
+    def starting_poses(self) -> tuple[LensPose, ...]:
+        return self._app.starting_poses()
+
+    def model_geometry(self) -> AlignmentModelGeometry:
+        return self._app.model_geometry()
 
     def measure(self) -> PowerReading:
         self._measurement_count += 1
@@ -192,6 +218,7 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         self._algorithm_animation_after_id: str | None = None
         self._last_evaluation: AlignmentEvaluation | None = None
         self._best_evaluation: AlignmentEvaluation | None = None
+        self._last_algorithm_run: AlignmentAlgorithmRun | None = None
         super().__init__()
         self.title("Optical Alignment Lab")
         self._capture_nominal_ball_poses()
@@ -265,7 +292,7 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         self.received_power_var = tk.StringVar(value="Received power: n/a")
         self.total_efficiency_var = tk.StringVar(value="Coupling total: n/a")
         self.mode_efficiency_var = tk.StringVar(value="Mode match: n/a")
-        self.power_percent_var = tk.StringVar(value="RECEIVED: n/a")
+        self.power_percent_var = tk.StringVar(value="MODE MATCH: n/a")
         self.source_height_var = tk.StringVar(value="Source height error: n/a")
         self.detector_height_var = tk.StringVar(value="Detector height error: n/a")
         self.best_power_var = tk.StringVar(value="Best so far: n/a")
@@ -278,12 +305,25 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         )
         ttk.Label(panel, textvariable=self.source_height_var).grid(row=0, column=11, padx=(0, 12), sticky="w")
         ttk.Label(panel, textvariable=self.detector_height_var).grid(row=0, column=12, padx=(0, 12), sticky="w")
-        ttk.Label(panel, textvariable=self.received_power_var, font=("Segoe UI", 10, "bold")).grid(row=1, column=6, padx=(0, 12), sticky="w")
-        ttk.Label(panel, textvariable=self.total_efficiency_var, font=("Segoe UI", 10, "bold")).grid(row=1, column=7, padx=(0, 12), sticky="w")
-        ttk.Label(panel, textvariable=self.mode_efficiency_var, font=("Segoe UI", 10, "bold")).grid(row=1, column=8, padx=(0, 12), sticky="w")
-        ttk.Label(panel, textvariable=self.lens_offsets_var).grid(row=2, column=0, columnspan=6, sticky="w")
-        ttk.Label(panel, textvariable=self.best_power_var, font=("Segoe UI", 10, "bold")).grid(row=2, column=6, padx=(0, 12), sticky="w")
-        ttk.Label(panel, textvariable=self.best_offsets_var).grid(row=2, column=7, columnspan=8, sticky="w")
+
+        metrics = ttk.Frame(panel)
+        metrics.grid(row=2, column=0, columnspan=14, sticky="ew", pady=(4, 0))
+        for column in range(3):
+            metrics.columnconfigure(column, weight=1, uniform="alignment_metrics")
+        metric_font = ("Segoe UI", 10, "bold")
+        ttk.Label(metrics, textvariable=self.mode_efficiency_var, font=metric_font).grid(
+            row=0, column=0, padx=(0, 12), sticky="w"
+        )
+        ttk.Label(metrics, textvariable=self.received_power_var, font=metric_font).grid(
+            row=0, column=1, padx=(0, 12), sticky="w"
+        )
+        ttk.Label(metrics, textvariable=self.total_efficiency_var, font=metric_font).grid(
+            row=0, column=2, sticky="w"
+        )
+
+        ttk.Label(panel, textvariable=self.lens_offsets_var).grid(row=3, column=0, columnspan=6, sticky="w")
+        ttk.Label(panel, textvariable=self.best_power_var, font=("Segoe UI", 10, "bold")).grid(row=3, column=6, padx=(0, 12), sticky="w")
+        ttk.Label(panel, textvariable=self.best_offsets_var).grid(row=3, column=7, columnspan=8, sticky="w")
 
         self._alignment_ui_ready = True
 
@@ -306,6 +346,66 @@ class AlignmentLabEditor(OpticalLayoutEditor):
 
     def current_poses(self) -> tuple[LensPose, ...]:
         return tuple((ball.x_offset, ball.y_offset, ball.position) for ball in self.balls)
+
+    def starting_poses(self) -> tuple[LensPose, ...]:
+        self._ensure_nominal_ball_poses()
+        return self._nominal_ball_poses
+
+    def model_geometry(self) -> AlignmentModelGeometry:
+        if not self.sources:
+            raise ValueError("No laser source is available for model-based alignment.")
+        if not self.tapers:
+            raise ValueError("No taper detector is available for model-based alignment.")
+        self._ensure_nominal_ball_poses()
+
+        source = self.sources[0]
+        taper = self.tapers[0]
+        if source.rayleigh_range is None or source.rayleigh_range_y is None or source.waist_radius_y is None:
+            raise ValueError("The laser source is missing Gaussian beam parameters.")
+
+        return AlignmentModelGeometry(
+            source=SourceGeometry(
+                name=source.name,
+                position=source.position,
+                wavelength=source.wavelength,
+                waist_radius=source.waist_radius,
+                waist_radius_y=source.waist_radius_y,
+                rayleigh_range=source.rayleigh_range,
+                rayleigh_range_y=source.rayleigh_range_y,
+                waist_position=source.waist_position,
+                power=source.power,
+                x_offset=source.x_offset,
+                y_offset=source.y_offset,
+                x_angle=source.x_angle,
+                y_angle=source.y_angle,
+            ),
+            taper=TaperGeometry(
+                name=taper.name,
+                position=taper.position,
+                width=taper.width,
+                height=taper.height,
+                mode_radius_x=taper.mode_radius_x,
+                mode_radius_y=taper.mode_radius_y,
+                extra_transmission=taper.extra_transmission,
+                facet_refractive_index=taper.facet_refractive_index,
+                x_offset=taper.x_offset,
+                y_offset=taper.y_offset,
+            ),
+            balls=tuple(
+                BallLensGeometry(
+                    name=ball.name,
+                    position=ball.position,
+                    diameter=ball.diameter,
+                    refractive_index=ball.refractive_index,
+                    x_offset=ball.x_offset,
+                    y_offset=ball.y_offset,
+                )
+                for ball in self.balls
+            ),
+            current_poses=self.current_poses(),
+            starting_poses=self.starting_poses(),
+            clipping_radius_factor=DEFAULT_CLIPPING_RADIUS_FACTOR,
+        )
 
     def _apply_lens_poses(self, poses: tuple[LensPose, ...]) -> None:
         if len(poses) != len(self.balls):
@@ -468,7 +568,7 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         received_percent = evaluation.total_efficiency * 100
         mode_percent = evaluation.mode_efficiency * 100
         self.power_percent_var.set(
-            f"RECEIVED: {received_percent:.6g}%  |  MODE: {mode_percent:.6g}%  |  {received_mw:.6g} mW"
+            f"MODE MATCH: {mode_percent:.6g}%  |  RECEIVED: {received_percent:.6g}%  |  {received_mw:.6g} mW"
         )
         self.received_power_var.set(f"Received power: {evaluation.received_power * 1e3:.6g} mW")
         self.total_efficiency_var.set(f"Coupling total: {evaluation.total_efficiency * 100:.6g}%")
@@ -601,7 +701,12 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         result = algorithm.run(device)
         if len(result.final_poses) != len(self.balls):
             raise ValueError("algorithm result has the wrong number of lens poses")
-        return algorithm, result, device.move_history(), initial_poses
+        return AlignmentAlgorithmRun(
+            algorithm=algorithm,
+            result=result,
+            moves=device.move_history(),
+            initial_poses=initial_poses,
+        )
 
     def _set_algorithm_complete_status(self, algorithm, result, evaluation: AlignmentEvaluation) -> None:
         detail = (
@@ -619,13 +724,15 @@ class AlignmentLabEditor(OpticalLayoutEditor):
     def run_alignment_algorithm(self, name: str | None = None) -> AlignmentEvaluation:
         self._cancel_algorithm_animation()
         undo_snapshot = self._layout_snapshot()
-        algorithm, result, _moves, initial_poses = self._solve_alignment_algorithm(name, update_display=False)
-        if result.final_poses != initial_poses:
+        algorithm_run = self._solve_alignment_algorithm(name, update_display=False)
+        self._last_algorithm_run = algorithm_run
+        result = algorithm_run.result
+        if result.final_poses != algorithm_run.initial_poses:
             self._push_undo_snapshot(undo_snapshot)
         self._apply_lens_poses(result.final_poses)
 
         evaluation = self._run_alignment_simulation(update_report=True)
-        self._set_algorithm_complete_status(algorithm, result, evaluation)
+        self._set_algorithm_complete_status(algorithm_run.algorithm, result, evaluation)
         return evaluation
 
     def show_alignment_algorithm(
@@ -635,7 +742,18 @@ class AlignmentLabEditor(OpticalLayoutEditor):
     ) -> None:
         self._cancel_algorithm_animation()
         undo_snapshot = self._layout_snapshot()
-        algorithm, result, moves, initial_poses = self._solve_alignment_algorithm(name, update_display=False)
+        if name is None:
+            if self._last_algorithm_run is None:
+                raise RuntimeError("Run an algorithm before using Show.")
+            algorithm_run = self._last_algorithm_run
+        else:
+            algorithm_run = self._solve_alignment_algorithm(name, update_display=False)
+            self._last_algorithm_run = algorithm_run
+
+        algorithm = algorithm_run.algorithm
+        result = algorithm_run.result
+        moves = algorithm_run.moves
+        initial_poses = algorithm_run.initial_poses
         self._apply_lens_poses(initial_poses)
 
         if result.final_poses != initial_poses:
