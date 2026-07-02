@@ -47,6 +47,14 @@ DEFAULT_SOURCE_DETECTOR_TOLERANCE = 5.0e-6
 DEFAULT_LENS_POSE_TOLERANCE = 2.0e-6
 DEFAULT_HEIGHT_TOLERANCE = DEFAULT_SOURCE_DETECTOR_TOLERANCE
 DEFAULT_ALGORITHM_SHOW_DELAY_MS = 180
+DEFAULT_POWER_NOISE_PERCENT = 0.0
+LAB_ALGORITHM_NAMES = frozenset(
+    (
+        "fixed_z_j_matrix",
+        "position_solve",
+        "position_solve_j_steps",
+    )
+)
 
 
 @dataclass(frozen=True)
@@ -134,6 +142,8 @@ class AlignmentLabDevice:
         self._move_count = 0
         self._measurement_count = 0
         self._move_history: list[AlignmentMove] = []
+        self._power_noise_enabled = app.power_noise_enabled()
+        self._power_noise_fraction = app.power_noise_fraction() if self._power_noise_enabled else 0.0
 
     def current_poses(self) -> tuple[LensPose, ...]:
         return self._app.current_poses()
@@ -194,9 +204,17 @@ class AlignmentLabDevice:
         return tuple(self._move_history)
 
     def _reading_from_evaluation(self, evaluation: AlignmentEvaluation) -> PowerReading:
+        received_power = evaluation.received_power
+        total_efficiency = evaluation.total_efficiency
+        if self._power_noise_enabled and self._power_noise_fraction > 0.0:
+            max_coupled_power = self._app.max_coupled_power()
+            noise_amplitude = self._power_noise_fraction * max_coupled_power
+            noisy_power = received_power + self._app.next_power_noise(noise_amplitude)
+            received_power = min(max(noisy_power, 0.0), max_coupled_power)
+            total_efficiency = received_power / max_coupled_power if max_coupled_power > 0.0 else 0.0
         return PowerReading(
-            received_power=evaluation.received_power,
-            total_efficiency=evaluation.total_efficiency,
+            received_power=received_power,
+            total_efficiency=total_efficiency,
             mode_efficiency=evaluation.mode_efficiency,
             move_count=self._move_count,
             measurement_count=self._measurement_count,
@@ -219,6 +237,7 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         self._last_evaluation: AlignmentEvaluation | None = None
         self._best_evaluation: AlignmentEvaluation | None = None
         self._last_algorithm_run: AlignmentAlgorithmRun | None = None
+        self._power_noise_rng = random.Random(DEFAULT_ALIGNMENT_SEED)
         super().__init__()
         self.title("Optical Alignment Lab")
         self._capture_nominal_ball_poses()
@@ -262,12 +281,17 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         )
         ttk.Label(panel, text="um").grid(row=0, column=7, padx=(0, 10), sticky="w")
 
-        ttk.Button(panel, text="Rescramble", command=self._rescramble_alignment_errors).grid(row=0, column=8, padx=(0, 14))
+        self.return_to_start_button = ttk.Button(
+            panel,
+            text="Return to start",
+            command=self._return_to_simulation_start,
+        )
+        self.return_to_start_button.grid(row=0, column=8, padx=(0, 14))
 
         self._algorithm_label_to_name = {
             algorithm.display_name: name
             for name, algorithm in self._alignment_algorithms.items()
-            if not name.startswith("yase:")
+            if name in LAB_ALGORITHM_NAMES
         }
         algorithm_labels = list(self._algorithm_label_to_name)
         default_algorithm = self._alignment_algorithms.get("position_solve_j_steps") or next(
@@ -290,8 +314,21 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         ttk.Button(panel, text="Show", command=self._show_selected_algorithm).grid(
             row=1, column=4, padx=(0, 8), sticky="w"
         )
-        ttk.Label(panel, textvariable=self.algorithm_status_var).grid(
-            row=1, column=5, padx=(0, 12), sticky="w"
+        self.power_noise_enabled_var = tk.BooleanVar(value=False)
+        self.power_noise_percent_var = tk.StringVar(value=f"{DEFAULT_POWER_NOISE_PERCENT:.3g}")
+        self.power_noise_enabled_check = ttk.Checkbutton(
+            panel,
+            text="Noise",
+            variable=self.power_noise_enabled_var,
+            command=self._update_noise_status,
+        )
+        self.power_noise_enabled_check.grid(row=1, column=5, padx=(0, 6), sticky="w")
+        self.power_noise_percent_entry = ttk.Entry(panel, textvariable=self.power_noise_percent_var, width=7)
+        self.power_noise_percent_entry.grid(row=1, column=6, padx=(0, 4), sticky="w")
+        ttk.Label(panel, text="%").grid(row=1, column=7, padx=(0, 8), sticky="w")
+        self.power_noise_status_var = tk.StringVar(value="OFF")
+        ttk.Label(panel, textvariable=self.power_noise_status_var, font=("Segoe UI", 9, "bold")).grid(
+            row=1, column=8, padx=(0, 12), sticky="w"
         )
 
         self.received_power_var = tk.StringVar(value="Received power: n/a")
@@ -329,6 +366,13 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         ttk.Label(panel, textvariable=self.lens_offsets_var).grid(row=3, column=0, columnspan=6, sticky="w")
         ttk.Label(panel, textvariable=self.best_power_var, font=("Segoe UI", 10, "bold")).grid(row=3, column=6, padx=(0, 12), sticky="w")
         ttk.Label(panel, textvariable=self.best_offsets_var).grid(row=3, column=7, columnspan=8, sticky="w")
+        self.algorithm_status_label = ttk.Label(
+            panel,
+            textvariable=self.algorithm_status_var,
+            anchor="w",
+            wraplength=1400,
+        )
+        self.algorithm_status_label.grid(row=4, column=0, columnspan=15, sticky="ew", pady=(4, 0))
 
         self._alignment_ui_ready = True
 
@@ -353,6 +397,32 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         _validate_tolerance("source/detector", source_detector_tolerance)
         _validate_tolerance("lens pose", lens_pose_tolerance)
         return seed, source_detector_tolerance, lens_pose_tolerance
+
+    def power_noise_enabled(self) -> bool:
+        variable = getattr(self, "power_noise_enabled_var", None)
+        return bool(variable.get()) if variable is not None else False
+
+    def _update_noise_status(self) -> None:
+        if hasattr(self, "power_noise_status_var"):
+            self.power_noise_status_var.set("ON" if self.power_noise_enabled() else "OFF")
+
+    def power_noise_fraction(self) -> float:
+        variable = getattr(self, "power_noise_percent_var", None)
+        percent_text = variable.get().strip() if variable is not None else "0"
+        percent = float(percent_text)
+        if not math.isfinite(percent) or percent < 0.0:
+            raise ValueError("Power noise must be a non-negative percentage.")
+        return percent / 100.0
+
+    def max_coupled_power(self) -> float:
+        if not self.sources:
+            return 0.0
+        return max(float(self.sources[0].power), 0.0)
+
+    def next_power_noise(self, amplitude: float) -> float:
+        if amplitude <= 0.0:
+            return 0.0
+        return self._power_noise_rng.uniform(-amplitude, amplitude)
 
     def _capture_nominal_ball_poses(self) -> None:
         self._nominal_ball_poses = self.current_poses()
@@ -487,6 +557,12 @@ class AlignmentLabEditor(OpticalLayoutEditor):
 
     def _apply_seeded_height_errors(self, push_undo: bool) -> None:
         self._apply_seeded_alignment_errors(push_undo=push_undo)
+
+    def _return_to_simulation_start(self) -> None:
+        self._apply_seeded_alignment_errors(push_undo=True)
+        self._best_evaluation = None
+        self._run_alignment_simulation(update_report=True)
+        self.status_var.set("Returned to simulation start position.")
 
     def _rescramble_alignment_errors(self) -> None:
         try:
@@ -726,12 +802,7 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         )
 
     def _set_algorithm_complete_status(self, algorithm, result, evaluation: AlignmentEvaluation) -> None:
-        detail = (
-            f"{algorithm.display_name}: {result.move_count} moves, {result.evaluations} reads, "
-            f"best {evaluation.received_power * 1e3:.6g} mW"
-        )
-        if result.message:
-            detail = f"{detail} | {result.message}"
+        detail = f"{algorithm.display_name}: {result.move_count} moves, {result.evaluations} reads, {evaluation.received_power * 1e3:.6g} mW"
         if self._alignment_ui_ready:
             self.algorithm_status_var.set(detail)
         self.status_var.set(

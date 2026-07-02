@@ -40,7 +40,9 @@ from alignment_lab import (
     DEFAULT_ALIGNMENT_SEED,
     DEFAULT_INITIAL_BALL_X_OFFSET,
     DEFAULT_LENS_POSE_TOLERANCE,
+    DEFAULT_POWER_NOISE_PERCENT,
     DEFAULT_SOURCE_DETECTOR_TOLERANCE,
+    LAB_ALGORITHM_NAMES,
     AlignmentLabEditor,
     seeded_alignment_errors,
 )
@@ -230,8 +232,7 @@ def test_alignment_lab_dropdown_hides_yase_algorithms():
     try:
         algorithm_names = set(app._algorithm_label_to_name.values())  # pylint: disable=protected-access
 
-        assert "beam_error_j_matrix" in algorithm_names
-        assert "fixed_z_j_matrix" in algorithm_names
+        assert algorithm_names == LAB_ALGORITHM_NAMES
         assert all(not name.startswith("yase:") for name in algorithm_names)
     finally:
         app.destroy()
@@ -269,6 +270,16 @@ def test_default_alignment_seed_and_tolerances():
     assert DEFAULT_ALIGNMENT_SEED == 42
     assert DEFAULT_SOURCE_DETECTOR_TOLERANCE == 5.0e-6
     assert DEFAULT_LENS_POSE_TOLERANCE == 2.0e-6
+    assert DEFAULT_POWER_NOISE_PERCENT == 0.0
+
+
+def test_alignment_lab_uses_return_to_start_button_not_lower_rescramble():
+    app = _make_app()
+
+    try:
+        assert app.return_to_start_button["text"] == "Return to start"
+    finally:
+        app.destroy()
 
 
 def test_seeded_alignment_errors_are_repeatable_and_bounded():
@@ -326,6 +337,33 @@ def test_rescramble_does_not_accumulate_lens_pose_drift():
         app.destroy()
 
 
+def test_return_to_simulation_start_restores_seeded_start_pose():
+    app = _make_app()
+
+    try:
+        app.seed_var.set(str(DEFAULT_ALIGNMENT_SEED))
+        app.source_detector_tolerance_var.set("5")
+        app.lens_tolerance_var.set("2")
+        app._rescramble_alignment_errors()  # pylint: disable=protected-access
+        start_source = (app.sources[0].x_offset, app.sources[0].y_offset)
+        start_taper = (app.tapers[0].x_offset, app.tapers[0].y_offset)
+        start_poses = app.current_poses()
+
+        app.sources[0].x_offset += 10e-6
+        app.tapers[0].y_offset -= 7e-6
+        app.balls[0].x_offset += 20e-6
+        app.balls[1].position += 15e-6
+
+        app._return_to_simulation_start()  # pylint: disable=protected-access
+
+        assert np.allclose((app.sources[0].x_offset, app.sources[0].y_offset), start_source)
+        assert np.allclose((app.tapers[0].x_offset, app.tapers[0].y_offset), start_taper)
+        _assert_pose_close(app.current_poses(), start_poses)
+        assert "Returned to simulation start" in app.status_var.get()
+    finally:
+        app.destroy()
+
+
 def test_alignment_device_measure_does_not_move_or_increment_move_count():
     app = _make_app()
 
@@ -342,6 +380,124 @@ def test_alignment_device_measure_does_not_move_or_increment_move_count():
         assert second.move_count == 0
         assert second.measurement_count == 2
         _assert_pose_close(app.current_poses(), before)
+    finally:
+        app.destroy()
+
+
+def test_alignment_device_noise_disabled_matches_noiseless_power():
+    app = _make_app()
+
+    try:
+        app.power_noise_enabled_var.set(False)
+        device = app.create_alignment_device()
+        noiseless = app.evaluate_current_alignment()
+
+        reading = device.measure()
+
+        assert np.isclose(reading.received_power, noiseless.received_power)
+        assert np.isclose(reading.total_efficiency, noiseless.total_efficiency)
+        assert np.isclose(reading.mode_efficiency, noiseless.mode_efficiency)
+    finally:
+        app.destroy()
+
+
+def test_alignment_device_noise_enabled_fluctuates_power_against_max_coupling():
+    app = _make_app()
+
+    try:
+        app.power_noise_enabled_var.set(True)
+        app.power_noise_percent_var.set("10")
+        app._power_noise_rng.seed(123)  # pylint: disable=protected-access
+        app._apply_lens_poses(app.starting_poses())  # pylint: disable=protected-access
+        device = app.create_alignment_device()
+        noiseless = app.evaluate_current_alignment()
+        amplitude = 0.10 * app.max_coupled_power()
+
+        first = device.measure()
+        second = device.measure()
+
+        assert first.received_power != second.received_power
+        assert abs(first.received_power - noiseless.received_power) <= amplitude
+        assert abs(second.received_power - noiseless.received_power) <= amplitude
+        assert 0.0 <= first.received_power <= app.max_coupled_power()
+        assert 0.0 <= second.received_power <= app.max_coupled_power()
+        assert np.isclose(first.total_efficiency, first.received_power / app.max_coupled_power())
+        assert np.isclose(second.total_efficiency, second.received_power / app.max_coupled_power())
+        assert np.isclose(first.mode_efficiency, noiseless.mode_efficiency)
+        assert np.isclose(second.mode_efficiency, noiseless.mode_efficiency)
+    finally:
+        app.destroy()
+
+
+def test_alignment_device_move_lens_applies_power_noise():
+    app = _make_app()
+
+    try:
+        app.power_noise_enabled_var.set(True)
+        app.power_noise_percent_var.set("10")
+        app._power_noise_rng.seed(456)  # pylint: disable=protected-access
+        app._apply_lens_poses(app.starting_poses())  # pylint: disable=protected-access
+        device = app.create_alignment_device()
+        amplitude = 0.10 * app.max_coupled_power()
+
+        noisy = device.move_lens(0, dx=0.25e-6)
+        noiseless = app.evaluate_current_alignment()
+
+        assert noisy.received_power != noiseless.received_power
+        assert abs(noisy.received_power - noiseless.received_power) <= amplitude
+        assert np.isclose(noisy.mode_efficiency, noiseless.mode_efficiency)
+    finally:
+        app.destroy()
+
+
+def test_alignment_lab_noise_controls_stay_editable_after_algorithm_run():
+    app = _make_app()
+
+    try:
+        app.run_alignment_algorithm("fixed_z_j_matrix")
+
+        assert app.power_noise_enabled_check.grid_info()
+        assert app.power_noise_percent_entry.grid_info()
+        assert int(app.power_noise_percent_entry.grid_info()["row"]) != int(
+            app.algorithm_status_label.grid_info()["row"]
+        )
+
+        app.power_noise_enabled_var.set(True)
+        app.power_noise_percent_var.set("7.5")
+        app._update_noise_status()  # pylint: disable=protected-access
+
+        assert app.power_noise_enabled()
+        assert np.isclose(app.power_noise_fraction(), 0.075)
+        assert app.power_noise_status_var.get() == "ON"
+        assert "Reference-pose bootstrap" not in app.algorithm_status_var.get()
+    finally:
+        app.destroy()
+
+
+def test_alignment_lab_noise_status_words_are_on_off():
+    app = _make_app()
+
+    try:
+        assert app.power_noise_enabled_check["text"] == "Noise"
+        assert app.power_noise_status_var.get() == "OFF"
+
+        app.power_noise_enabled_var.set(True)
+        app._update_noise_status()  # pylint: disable=protected-access
+
+        assert app.power_noise_status_var.get() == "ON"
+    finally:
+        app.destroy()
+
+
+def test_alignment_device_rejects_negative_power_noise_percent():
+    app = _make_app()
+
+    try:
+        app.power_noise_enabled_var.set(True)
+        app.power_noise_percent_var.set("-1")
+
+        with pytest.raises(ValueError, match="Power noise"):
+            app.create_alignment_device()
     finally:
         app.destroy()
 
