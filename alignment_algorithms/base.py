@@ -52,6 +52,46 @@ class BallLensGeometry:
 
 
 @dataclass(frozen=True)
+class BallLensNoGoZone:
+    name: str
+    z_min: float
+    z_max: float
+    x_min: float | None = None
+    x_max: float | None = None
+    y_min: float | None = None
+    y_max: float | None = None
+    applies_to_all_x: bool = True
+    label: str = ""
+
+    @property
+    def z_low(self) -> float:
+        return min(self.z_min, self.z_max)
+
+    @property
+    def z_high(self) -> float:
+        return max(self.z_min, self.z_max)
+
+    def overlaps_z_span(self, entry_z: float, exit_z: float) -> bool:
+        return exit_z > self.z_low and entry_z < self.z_high
+
+    def intersects_ball_pose(self, pose: LensPose, radius: float) -> bool:
+        x_offset, y_offset, z_position = pose
+        if not self.overlaps_z_span(z_position - radius, z_position + radius):
+            return False
+        ball_x_min = x_offset - radius
+        ball_x_max = x_offset + radius
+        zone_x_min = float("-inf") if self.x_min is None else self.x_min
+        zone_x_max = float("inf") if self.x_max is None else self.x_max
+        if not (ball_x_max > zone_x_min and ball_x_min < zone_x_max):
+            return False
+        ball_y_min = y_offset - radius
+        ball_y_max = y_offset + radius
+        zone_y_min = float("-inf") if self.y_min is None else self.y_min
+        zone_y_max = float("inf") if self.y_max is None else self.y_max
+        return ball_y_max > zone_y_min and ball_y_min < zone_y_max
+
+
+@dataclass(frozen=True)
 class TaperGeometry:
     name: str
     position: float
@@ -73,6 +113,7 @@ class AlignmentModelGeometry:
     current_poses: tuple[LensPose, ...]
     starting_poses: tuple[LensPose, ...]
     clipping_radius_factor: float
+    no_go_zones: tuple[BallLensNoGoZone, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -82,6 +123,8 @@ class PowerReading:
     mode_efficiency: float
     move_count: int = 0
     measurement_count: int = 0
+    noise_delta: float = 0.0
+    noise_delta: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -92,6 +135,7 @@ class AlignmentMove:
     dz: float
     poses: tuple[LensPose, ...]
     reading: PowerReading
+    direction_method: str | None = None
 
 
 @dataclass(frozen=True)

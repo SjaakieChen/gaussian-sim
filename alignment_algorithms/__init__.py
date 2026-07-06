@@ -9,12 +9,19 @@ from .base import (
     AlignmentModelGeometry,
     AlignmentMove,
     BallLensGeometry,
+    BallLensNoGoZone,
     DEFAULT_MAX_ALIGNMENT_ATTEMPTS,
     DEFAULT_TARGET_MODE_EFFICIENCY,
     LensPose,
     PowerReading,
     SourceGeometry,
     TaperGeometry,
+)
+from .blind_power_j import (
+    BlindPowerJAlgorithm,
+    BlindPowerJBestOf9Algorithm,
+    BlindPowerJGradientAlgorithm,
+    BlindPowerJNewtonAlgorithm,
 )
 from .coordinate_scan import CoordinateScanAlgorithm
 from .given_positions import GivenPositionsAlgorithm
@@ -32,6 +39,10 @@ _ALGORITHMS: dict[str, AlignmentAlgorithm] = {
     algorithm.name: algorithm
     for algorithm in (
         CoordinateScanAlgorithm(),
+        BlindPowerJAlgorithm(),
+        BlindPowerJNewtonAlgorithm(),
+        BlindPowerJGradientAlgorithm(),
+        BlindPowerJBestOf9Algorithm(),
         GivenPositionsAlgorithm(),
         ManualAlignmentAlgorithm(),
         BeamErrorJMatrixAlgorithm(),
@@ -62,7 +73,12 @@ __all__ = [
     "AlignmentModelGeometry",
     "AlignmentMove",
     "BallLensGeometry",
+    "BallLensNoGoZone",
     "BeamErrorJMatrixAlgorithm",
+    "BlindPowerJAlgorithm",
+    "BlindPowerJBestOf9Algorithm",
+    "BlindPowerJGradientAlgorithm",
+    "BlindPowerJNewtonAlgorithm",
     "CoordinateScanAlgorithm",
     "DEFAULT_MAX_ALIGNMENT_ATTEMPTS",
     "DEFAULT_TARGET_MODE_EFFICIENCY",

@@ -57,6 +57,7 @@ DEFAULT_BALL2_TAPER_GAP = 39e-6
 # Maximum random offsets applied relative to the stored nominal (perfectly aligned) pose.
 AXIAL_TOLERANCE = 5e-6
 TRANSVERSE_TOLERANCE = 50e-6
+LASER_FIBRE_TRANSVERSE_TOLERANCE = 5e-6
 
 
 def _new_uid(prefix: str) -> str:
@@ -1376,6 +1377,8 @@ def scramble_element_positive(
     *,
     axial_tolerance: float = AXIAL_TOLERANCE,
     transverse_tolerance: float = TRANSVERSE_TOLERANCE,
+    x_tolerance: float | None = None,
+    y_tolerance: float | None = None,
     scramble_axial: bool | None = None,
     rng: random.Random | None = None,
 ) -> None:
@@ -1392,8 +1395,8 @@ def scramble_element_positive(
         element.position = nominal.position + random_positive(axial_tolerance, rng)
     else:
         element.position = nominal.position
-    element.x_offset = random_positive(transverse_tolerance, rng)
-    element.y_offset = random_positive(transverse_tolerance, rng)
+    element.x_offset = random_positive(transverse_tolerance if x_tolerance is None else x_tolerance, rng)
+    element.y_offset = random_positive(transverse_tolerance if y_tolerance is None else y_tolerance, rng)
 
 
 def default_ball_lens_layout() -> tuple[list[BallLensElement], list[TaperDetectorElement], float]:
@@ -1440,6 +1443,10 @@ class OpticalLayoutEditor(tk.Tk):
         self._base_z_max = self.final_z * 1.08
         self._base_x_min = -self._x_limit
         self._base_x_max = self._x_limit
+        self._limit_z_min = self._base_z_min
+        self._limit_z_max = self._base_z_max
+        self._limit_x_min = self._base_x_min
+        self._limit_x_max = self._base_x_max
         self._view_zoom = 1.0
         self._zoom_anchor_z: float | None = None
         self._zoom_anchor_x: float | None = None
@@ -1467,6 +1474,7 @@ class OpticalLayoutEditor(tk.Tk):
         self.rowconfigure(1, weight=1)
 
         toolbar = ttk.Frame(self, padding=(8, 8, 8, 4))
+        self._toolbar = toolbar
         toolbar.grid(row=0, column=0, sticky="ew")
         toolbar.columnconfigure(14, weight=1)
 
@@ -1728,6 +1736,7 @@ class OpticalLayoutEditor(tk.Tk):
         self._canvas_interactive = interactive
         self.canvas.delete("all")
         self._draw_grid()
+        self._draw_background_overlays()
         self._draw_beam_paths()
         for source in sorted(self.sources, key=lambda item: item.position):
             self._draw_laser(source)
@@ -1743,48 +1752,75 @@ class OpticalLayoutEditor(tk.Tk):
         self._active_plane = previous_plane
         self._canvas_interactive = previous_interactive
 
+    def _draw_background_overlays(self) -> None:
+        pass
+
     def _update_view_bounds(self) -> None:
         base_z_min = self._base_z_min
         base_z_max = max(self._base_z_max, base_z_min + 1e-6)
         base_x_min = self._base_x_min
         base_x_max = max(self._base_x_max, base_x_min + 1e-9)
+        limit_z_min = min(self._limit_z_min, base_z_min)
+        limit_z_max = max(self._limit_z_max, base_z_max)
+        limit_x_min = min(self._limit_x_min, base_x_min)
+        limit_x_max = max(self._limit_x_max, base_x_max)
 
-        zoom = max(self._view_zoom, 1.0)
         base_z_range = max(base_z_max - base_z_min, 1e-6)
-        zoomed_z_range = base_z_range / zoom
+        limit_z_range = max(limit_z_max - limit_z_min, 1e-6)
+        base_x_range = max(base_x_max - base_x_min, 1e-9)
+        limit_x_range = max(limit_x_max - limit_x_min, 1e-9)
+        min_zoom = self._minimum_view_zoom()
+        zoom = min(max(self._view_zoom, min_zoom), 80.0)
+        self._view_zoom = zoom
+        zoomed_z_range = min(base_z_range / zoom, limit_z_range)
         z_anchor = self._zoom_anchor_z
         if z_anchor is None:
             z_anchor = 0.5 * (base_z_min + base_z_max)
-        z_anchor = min(max(z_anchor, base_z_min), base_z_max)
+        z_anchor = min(max(z_anchor, limit_z_min), limit_z_max)
         self._z_min = z_anchor - self._zoom_anchor_z_fraction * zoomed_z_range
         self._z_max = self._z_min + zoomed_z_range
-        if self._z_min < base_z_min:
-            self._z_min = base_z_min
+        if self._z_min < limit_z_min:
+            self._z_min = limit_z_min
             self._z_max = self._z_min + zoomed_z_range
-        if self._z_max > base_z_max:
-            self._z_max = base_z_max
+        if self._z_max > limit_z_max:
+            self._z_max = limit_z_max
             self._z_min = self._z_max - zoomed_z_range
-        self._z_min = max(self._z_min, base_z_min)
+        self._z_min = max(self._z_min, limit_z_min)
 
-        base_x_range = max(base_x_max - base_x_min, 1e-9)
-        zoomed_x_range = base_x_range / zoom
+        zoomed_x_range = min(base_x_range / zoom, limit_x_range)
         x_anchor = self._zoom_anchor_x
         if x_anchor is None:
             x_anchor = 0.5 * (base_x_min + base_x_max)
-        x_anchor = min(max(x_anchor, base_x_min), base_x_max)
+        x_anchor = min(max(x_anchor, limit_x_min), limit_x_max)
         self._x_min = x_anchor - (1.0 - self._zoom_anchor_x_fraction) * zoomed_x_range
         self._x_max = self._x_min + zoomed_x_range
-        if self._x_min < base_x_min:
-            self._x_min = base_x_min
+        if self._x_min < limit_x_min:
+            self._x_min = limit_x_min
             self._x_max = self._x_min + zoomed_x_range
-        if self._x_max > base_x_max:
-            self._x_max = base_x_max
+        if self._x_max > limit_x_max:
+            self._x_max = limit_x_max
             self._x_min = self._x_max - zoomed_x_range
-        self._x_min = max(self._x_min, base_x_min)
+        self._x_min = max(self._x_min, limit_x_min)
         self._x_limit = max(0.5 * (self._x_max - self._x_min), 1e-9)
 
     def _fit_view_bounds_to_layout(self) -> None:
         self._base_z_min, self._base_z_max, self._base_x_min, self._base_x_max = self._layout_view_bounds()
+        (
+            self._limit_z_min,
+            self._limit_z_max,
+            self._limit_x_min,
+            self._limit_x_max,
+        ) = self._view_limit_bounds()
+
+    def _view_limit_bounds(self) -> tuple[float, float, float, float]:
+        return self._layout_view_bounds()
+
+    def _minimum_view_zoom(self) -> float:
+        base_z_range = max(self._base_z_max - self._base_z_min, 1e-6)
+        limit_z_range = max(self._limit_z_max - self._limit_z_min, 1e-6)
+        base_x_range = max(self._base_x_max - self._base_x_min, 1e-9)
+        limit_x_range = max(self._limit_x_max - self._limit_x_min, 1e-9)
+        return min(1.0, base_z_range / limit_z_range, base_x_range / limit_x_range)
 
     def _layout_view_bounds(self) -> tuple[float, float, float, float]:
         positions = [element.position for element in self._all_elements()]
@@ -1904,7 +1940,7 @@ class OpticalLayoutEditor(tk.Tk):
         width, _height = self._canvas_size(canvas)
         usable = width - self._plot_left - self._plot_right
         raw = self._z_min + (px - self._plot_left) * (self._z_max - self._z_min) / usable
-        return max(0.0, min(raw, self._z_max))
+        return max(self._z_min, min(raw, self._z_max))
 
     def _px_to_x(self, py: float, canvas: tk.Canvas | None = None) -> float:
         _width, height = self._canvas_size(canvas)
@@ -1931,6 +1967,12 @@ class OpticalLayoutEditor(tk.Tk):
         if self._active_plane == "y":
             return path.y, path.wy, path.waist_y, path.waist_radius_y
         return path.x, path.w, path.waist_x, path.waist_radius
+
+    def _minimum_element_position(self, element: LayoutElement) -> float:
+        return element.radius if isinstance(element, BallLensElement) else 0.0
+
+    def _minimum_ball_entry_z(self, _ball: BallLensElement) -> float:
+        return 0.0
 
     def _draw_grid(self) -> None:
         width, height = self._canvas_size()
@@ -2451,8 +2493,7 @@ class OpticalLayoutEditor(tk.Tk):
             else:
                 element.x_offset = self._px_to_x(event.y, canvas)
         # Clamp instead of letting _validate_element raise mid-drag.
-        min_position = element.radius if isinstance(element, BallLensElement) else 0.0
-        element.position = max(element.position, min_position)
+        element.position = max(element.position, self._minimum_element_position(element))
 
         self._clear_simulation_overlay()
         self._validate_element(element)
@@ -2823,8 +2864,9 @@ class OpticalLayoutEditor(tk.Tk):
             if not is_finite:
                 raise ValueError(f"{attr} must be finite")
 
-        if element.position < 0:
-            raise ValueError("z position must be non-negative")
+        min_position = self._minimum_element_position(element)
+        if element.position < min_position:
+            raise ValueError(f"z position must be at least {min_position * 1e6:.3g} um")
         if isinstance(element, LaserSource):
             if element.wavelength <= 0:
                 raise ValueError("wavelength must be positive")
@@ -2848,8 +2890,9 @@ class OpticalLayoutEditor(tk.Tk):
                 raise ValueError("ball diameter must be positive")
             if element.refractive_index <= 1.0:
                 raise ValueError("ball refractive index must be greater than 1")
-            if element.entry_z < 0:
-                raise ValueError("ball entry plane must be non-negative")
+            min_entry_z = self._minimum_ball_entry_z(element)
+            if element.entry_z < min_entry_z:
+                raise ValueError(f"ball entry plane must be at least {min_entry_z * 1e6:.3g} um")
         elif isinstance(element, FiberElement):
             if element.mode_field_diameter <= 0:
                 raise ValueError("mode-field diameter must be positive")
@@ -2899,7 +2942,7 @@ class OpticalLayoutEditor(tk.Tk):
         self._zoom_by(1.0 / 1.35)
 
     def _zoom_by(self, factor: float) -> None:
-        self._view_zoom = min(max(self._view_zoom * factor, 1.0), 80.0)
+        self._view_zoom = min(max(self._view_zoom * factor, self._minimum_view_zoom()), 80.0)
         self.redraw()
 
     def _reset_view(self) -> None:
@@ -2969,42 +3012,104 @@ class OpticalLayoutEditor(tk.Tk):
             apply_nominal_state(element, self._nominal_for(element))
         self._apply_layout_change("All elements restored to nominal aligned positions.")
 
-    def _scramble_transverse_message(self, scope: str) -> str:
-        transverse_um = TRANSVERSE_TOLERANCE * 1e6
+    def _scramble_laser_fibre_axis_tolerances(self, _element: LayoutElement) -> tuple[float, float, float]:
+        return LASER_FIBRE_TRANSVERSE_TOLERANCE, LASER_FIBRE_TRANSVERSE_TOLERANCE, 0.0
+
+    def _scramble_laser_fibre_elements(self) -> list[LayoutElement]:
+        return [*self.sources, *self.fibers, *self.tapers]
+
+    def _scramble_full_lens_axis_tolerances(self, _element: LayoutElement) -> tuple[float, float, float]:
+        return TRANSVERSE_TOLERANCE, TRANSVERSE_TOLERANCE, AXIAL_TOLERANCE
+
+    def _scramble_full_source_axis_tolerances(self, _element: LayoutElement) -> tuple[float, float, float]:
+        return TRANSVERSE_TOLERANCE, TRANSVERSE_TOLERANCE, 0.0
+
+    def _scramble_transverse_message(self, scope: str, transverse_tolerance: float | None = None) -> str:
+        transverse_um = (TRANSVERSE_TOLERANCE if transverse_tolerance is None else transverse_tolerance) * 1e6
         return (
             f"{scope} scrambled relative to perfect alignment "
             f"(+0 to {transverse_um:g} µm x/y from nominal)."
         )
 
-    def _scramble_lens_message(self, scope: str) -> str:
-        axial_um = AXIAL_TOLERANCE * 1e6
-        transverse_um = TRANSVERSE_TOLERANCE * 1e6
+    def _scramble_lens_message(
+        self,
+        scope: str,
+        axial_tolerance: float | None = None,
+        transverse_tolerance: float | None = None,
+    ) -> str:
+        axial_um = (AXIAL_TOLERANCE if axial_tolerance is None else axial_tolerance) * 1e6
+        transverse_um = (TRANSVERSE_TOLERANCE if transverse_tolerance is None else transverse_tolerance) * 1e6
         return (
             f"{scope} scrambled relative to perfect alignment "
             f"(+0 to {axial_um:g} µm z, +0 to {transverse_um:g} µm x/y from nominal)."
         )
 
     def _scramble_laser_fibre(self) -> None:
-        rng = random.Random()
-        for element in [*self.sources, *self.fibers, *self.tapers]:
-            scramble_element_positive(element, self._nominal_for(element), rng=rng)
-        if not self._validate_layout():
+        try:
+            elements = self._scramble_laser_fibre_elements()
+            axis_tolerances = {
+                element.uid: self._scramble_laser_fibre_axis_tolerances(element)
+                for element in elements
+            }
+        except ValueError as exc:
+            messagebox.showerror("Invalid scramble tolerance", str(exc))
             return
-        self._apply_layout_change(self._scramble_transverse_message("Laser, fibre, and taper positions"))
-
-    def _scramble_full(self) -> None:
         rng = random.Random()
-        for element in [*self.lenses, *self.balls]:
-            scramble_element_positive(element, self._nominal_for(element), rng=rng)
-        for element in [*self.sources, *self.fibers, *self.tapers]:
-            scramble_element_positive(element, self._nominal_for(element), rng=rng)
+        for element in elements:
+            x_tolerance, y_tolerance, z_tolerance = axis_tolerances[element.uid]
+            scramble_element_positive(
+                element,
+                self._nominal_for(element),
+                axial_tolerance=z_tolerance,
+                x_tolerance=x_tolerance,
+                y_tolerance=y_tolerance,
+                scramble_axial=z_tolerance > 0.0,
+                rng=rng,
+            )
         if not self._validate_layout():
             return
         self._apply_layout_change(
-            "All elements scrambled relative to perfect alignment "
-            f"(lenses: +0 to {AXIAL_TOLERANCE * 1e6:g} µm z and +0 to {TRANSVERSE_TOLERANCE * 1e6:g} µm x/y from nominal; "
-            f"laser/fibre/taper: +0 to {TRANSVERSE_TOLERANCE * 1e6:g} µm x/y from nominal only)."
+            self._scramble_transverse_message("Laser, fibre, and taper positions")
         )
+
+    def _scramble_full(self) -> None:
+        try:
+            lens_axis_tolerances = {
+                element.uid: self._scramble_full_lens_axis_tolerances(element)
+                for element in [*self.lenses, *self.balls]
+            }
+            source_axis_tolerances = {
+                element.uid: self._scramble_full_source_axis_tolerances(element)
+                for element in [*self.sources, *self.fibers, *self.tapers]
+            }
+        except ValueError as exc:
+            messagebox.showerror("Invalid scramble tolerance", str(exc))
+            return
+        rng = random.Random()
+        for element in [*self.lenses, *self.balls]:
+            x_tolerance, y_tolerance, z_tolerance = lens_axis_tolerances[element.uid]
+            scramble_element_positive(
+                element,
+                self._nominal_for(element),
+                axial_tolerance=z_tolerance,
+                x_tolerance=x_tolerance,
+                y_tolerance=y_tolerance,
+                rng=rng,
+            )
+        for element in [*self.sources, *self.fibers, *self.tapers]:
+            x_tolerance, y_tolerance, z_tolerance = source_axis_tolerances[element.uid]
+            scramble_element_positive(
+                element,
+                self._nominal_for(element),
+                axial_tolerance=z_tolerance,
+                x_tolerance=x_tolerance,
+                y_tolerance=y_tolerance,
+                scramble_axial=z_tolerance > 0.0,
+                rng=rng,
+            )
+        if not self._validate_layout():
+            return
+        self._apply_layout_change("All elements scrambled relative to perfect alignment.")
 
     def _simulate(self) -> None:
         results = simulate_layout(
