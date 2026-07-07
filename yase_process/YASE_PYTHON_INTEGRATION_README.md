@@ -12,6 +12,11 @@ For general YASE programming and hardware-facing statement details, see:
 - `YASE_2_LENS_AUTO_ALIGNMENT_FUNCTION_REFERENCE.md`
 - `YASE_MACHINE_INTERFACE_AUDIT.md`
 
+For ready-to-copy Python statement files and per-algorithm JSON examples, see:
+
+- `../testmaster_python_alignment_algorithm/README.md`
+- `../testmaster_python_alignment_algorithm/SUBPROCESS_MAP.md`
+
 ## 1. Purpose
 
 The intended architecture is:
@@ -57,11 +62,11 @@ Use the TestMaster Python extension and the YASE statement:
 TMPython_ExecuteScript
 ```
 
-The examples in this document standardize on:
+For the copy-ready package in this repo, the default blind example uses:
 
 ```text
 Interpreter: Python_310
-Module:      alignment_step
+Module:      testmaster_python_alignment_algorithm.alignment_step
 Class:       BlindAlignStep
 ```
 
@@ -73,7 +78,7 @@ Conceptually, each call provides:
 
 ```text
 Interpreter name  -> Python_310
-Python module     -> alignment_step
+Python module     -> testmaster_python_alignment_algorithm.alignment_step
 Python class      -> BlindAlignStep
 Input JSON        -> current alignment state
 Output JSON       -> next action requested by Python
@@ -111,7 +116,7 @@ L_Loop
 
   TMPython_ExecuteScript
     Interpreter = Python_310
-    Module      = alignment_step
+    Module      = testmaster_python_alignment_algorithm.alignment_step
     Class       = BlindAlignStep
     Input JSON  = s_PythonInputJson
     Result JSON = s_PythonResultJson
@@ -171,21 +176,26 @@ adding motion.
 
 ## 4. Input JSON Contract
 
-All Python calls should use this input format.
+All Python calls should use this input format. The Python package also accepts
+the older flat `power_mw`, `positions_um`, and `target_positions_um` keys for
+early bench tests, but new YASE subprocesses should prefer the nested form.
 
 ```json
 {
   "schema_version": 1,
+  "run_id": "operator-or-process-run-id",
   "phase": "blind_align",
   "iteration": 0,
-  "power_mw": 0.0123,
-  "positions_um": {
-    "Align_X1": 10.0,
-    "Align_Z1": -2.0,
-    "Align_Y1": 100.0,
-    "Align_X2": 5.0,
-    "Align_Z2": 1.0,
-    "Align_Y2": 250.0
+  "machine": {
+    "power_mw": 0.0123,
+    "positions_um": {
+      "Align_X1": 10.0,
+      "Align_Z1": -2.0,
+      "Align_Y1": 100.0,
+      "Align_X2": 5.0,
+      "Align_Z2": 1.0,
+      "Align_Y2": 250.0
+    }
   },
   "vision": {
     "source": "vision_assistant",
@@ -197,6 +207,8 @@ All Python calls should use this input format.
     "waveguide_y_px": 1001.0,
     "confidence": 0.92
   },
+  "targets": {},
+  "model": {},
   "limits": {
     "allowed_stages": [
       "Align_X1",
@@ -222,9 +234,11 @@ Field meanings:
 | `schema_version` | yes | Contract version. Use `1` for this document. |
 | `phase` | yes | Current alignment phase, for example `vision_coarse` or `blind_align`. |
 | `iteration` | yes | Loop count controlled by YASE. |
-| `power_mw` | yes | Latest measured optical power in mW. |
-| `positions_um` | yes | Latest absolute axis positions from `QueryStage`. |
+| `machine.power_mw` | yes | Latest measured optical power in mW. |
+| `machine.positions_um` | yes | Latest absolute axis positions from `QueryStage`. |
 | `vision` | yes | Vision-derived values. Use `{}` if no vision data is available. |
+| `targets` | no | Absolute target positions or path points for non-blind algorithms. |
+| `model` | no | Optional model/J-matrix values from an upstream calculation. |
 | `limits` | yes | Limits that Python should respect before proposing a move. |
 
 YASE must still enforce limits after Python returns. The `limits` block helps
@@ -251,6 +265,18 @@ Move example:
   "distance1_um": 1.0,
   "stage2": "Align_X2",
   "distance2_um": -1.0,
+  "moves": [
+    {
+      "stage": "Align_X1",
+      "distance_um": 1.0,
+      "mode": "relative"
+    },
+    {
+      "stage": "Align_X2",
+      "distance_um": -1.0,
+      "mode": "relative"
+    }
+  ],
   "message": "sample differential X at +1 um",
   "state": {
     "step_um": 1.0,
@@ -269,6 +295,7 @@ Done example:
   "move_count": 0,
   "stage1": "",
   "distance1_um": 0.0,
+  "moves": [],
   "message": "alignment complete",
   "state": {
     "best_power_mw": 0.145,
@@ -286,6 +313,7 @@ Abort example:
   "move_count": 0,
   "stage1": "",
   "distance1_um": 0.0,
+  "moves": [],
   "message": "power dropped below allowed floor",
   "state": {
     "last_power_mw": 0.0
@@ -304,6 +332,7 @@ Field meanings:
 | `distance1_um` | yes | First relative movement in um. |
 | `stage2` | no | Optional second stage to move. |
 | `distance2_um` | no | Optional second relative movement in um. |
+| `moves` | recommended | Structured list of relative moves for logging or future parsing. |
 | `message` | yes | Human-readable reason/status for logs. |
 | `state` | no | Python-owned diagnostic or algorithm state. |
 
@@ -312,14 +341,17 @@ relative moves in micrometres. YASE should use `MoveStage ... Relative`.
 
 ## 6. Python Code Format
 
-The Python module should be placed in the working directory configured in
-`TMPython.ini`.
+The Python package should be placed under the working directory configured in
+`TMPython.ini`. The copy-ready package in this repo is:
 
-Expected file:
+Expected folder:
 
 ```text
-#SM_SYSTEM#\Python\alignment_step.py
+#SM_SYSTEM#\Python\testmaster_python_alignment_algorithm\
 ```
+
+The code below is only an illustrative minimal statement. For the real files to
+copy, use `../testmaster_python_alignment_algorithm/`.
 
 Minimal Python statement:
 

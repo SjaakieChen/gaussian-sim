@@ -25,11 +25,10 @@ from alignment_algorithms.blind_power_j import (
     DIRECTION_METHOD_GRADIENT,
     DIRECTION_METHOD_NEWTON,
     BlindPowerJAlgorithm,
-    BlindPowerJBestOf9Algorithm,
-    BlindPowerJGradientAlgorithm,
-    BlindPowerJNewtonAlgorithm,
 )
-from alignment_algorithms.coordinate_scan import CoordinateScanAlgorithm
+from alignment_algorithms.blind_power_j_best_of_9 import BlindPowerJBestOf9Algorithm
+from alignment_algorithms.blind_power_j_gradient import BlindPowerJGradientAlgorithm
+from alignment_algorithms.blind_power_j_newton import BlindPowerJNewtonAlgorithm
 from alignment_algorithms.given_positions import GivenPositionsAlgorithm
 from alignment_algorithms.position_solve import (
     TRANSVERSE_RESPONSE_STEP,
@@ -271,32 +270,14 @@ class SimulatedAlignmentDevice:
         )
 
 
-def test_alignment_algorithm_registry_has_coordinate_scan_manual_and_yase_subprocesses():
+def test_alignment_algorithm_registry_matches_dropdown_algorithms():
     algorithms = available_algorithms()
 
-    assert "blind_power_j" in algorithms
-    assert "blind_power_j_newton" in algorithms
-    assert "blind_power_j_gradient" in algorithms
-    assert "blind_power_j_best_of_9" in algorithms
-    assert "coordinate_scan" in algorithms
-    assert "given_positions" in algorithms
-    assert "manual" in algorithms
-    assert "beam_error_j_matrix" in algorithms
-    assert "fixed_z_j_matrix" in algorithms
-    assert "position_solve" in algorithms
-    assert "position_solve_j_steps" in algorithms
-    assert "yase:SUB_Alignment/SUB_GivenPositionsReferencePose.xseq" in algorithms
-    assert "yase:SUB_Alignment/SUB_PositionSolveNoiselessModel.xseq" in algorithms
-    assert "yase:SUB_Alignment/SUB_PowerOnlyCoordinateScan.xseq" in algorithms
-    assert "yase:SUB_Positioning/SUB_Test_DrawCircle_AlignX1Z1.xseq" in algorithms
+    assert set(algorithms) == alignment_lab_module.LAB_ALGORITHM_NAMES
     assert get_algorithm("blind_power_j").display_name == "Blind power J"
     assert get_algorithm("blind_power_j_newton").display_name == "Blind power J: Newton"
     assert get_algorithm("blind_power_j_gradient").display_name == "Blind power J: Gradient"
     assert get_algorithm("blind_power_j_best_of_9").display_name == "Blind power J: Best-of-9"
-    assert get_algorithm("coordinate_scan").display_name == "Power-only coordinate scan"
-    assert get_algorithm("given_positions").display_name == "Reference pose only"
-    assert get_algorithm("manual").display_name == "Manual/no search"
-    assert get_algorithm("beam_error_j_matrix").display_name == "Beam-error J-matrix local solve"
     assert get_algorithm("fixed_z_j_matrix").display_name == "Fixed-Z J-matrix local solve"
     assert get_algorithm("position_solve").display_name == "Position solve/noiseless model"
     assert get_algorithm("position_solve_j_steps").display_name == "Position solve/show J steps"
@@ -1617,19 +1598,6 @@ def test_alignment_lab_algorithms_capture_current_setup_position_as_run_start(al
         app.destroy()
 
 
-def test_coordinate_scan_improves_startup_out_of_beam_alignment():
-    app = _make_app()
-
-    try:
-        before = app.evaluate_current_alignment()
-        evaluation = app.run_alignment_algorithm("coordinate_scan")
-
-        assert evaluation.received_power > before.received_power
-        assert evaluation.mode_efficiency > 0.95
-    finally:
-        app.destroy()
-
-
 def test_position_solve_is_selectable_and_runs_from_simulation_ui():
     app = _make_app()
 
@@ -1667,17 +1635,6 @@ def test_reference_pose_only_does_not_solve_seeded_source_taper_offsets():
 
     _assert_pose_close(result.final_poses, device.starting_poses())
     assert result.final_reading.mode_efficiency < DEFAULT_TARGET_MODE_EFFICIENCY
-
-
-@pytest.mark.parametrize("seed", range(8))
-def test_coordinate_scan_reaches_mode_match_from_seeded_power_only_simulation(seed):
-    device = SimulatedAlignmentDevice(seed)
-    before = device.measure()
-
-    result = CoordinateScanAlgorithm().run(device)
-
-    assert result.final_reading.received_power > before.received_power
-    assert result.final_reading.mode_efficiency > 0.9
 
 
 def test_blind_power_j_uses_only_power_and_ball_coordinates():
@@ -1959,21 +1916,19 @@ def test_fixed_z_j_matrix_uses_probe_matrices_without_z_moves():
 
 def test_real_alignment_algorithms_reach_good_mode_match_across_10_case_sweep():
     failures = []
-    algorithm_factories = (PositionSolveAlgorithm, CoordinateScanAlgorithm)
 
-    for algorithm_factory in algorithm_factories:
-        for seed in range(10):
-            device = SimulatedAlignmentDevice(seed, startup_out_of_beam=(seed % 10 == 0))
-            result = algorithm_factory().run(device)
-            if result.final_reading.mode_efficiency < DEFAULT_TARGET_MODE_EFFICIENCY:
-                failures.append(
-                    (
-                        result.name,
-                        seed,
-                        result.final_reading.mode_efficiency,
-                        result.final_reading.received_power * 1e3,
-                    )
+    for seed in range(10):
+        device = SimulatedAlignmentDevice(seed, startup_out_of_beam=(seed % 10 == 0))
+        result = PositionSolveAlgorithm().run(device)
+        if result.final_reading.mode_efficiency < DEFAULT_TARGET_MODE_EFFICIENCY:
+            failures.append(
+                (
+                    result.name,
+                    seed,
+                    result.final_reading.mode_efficiency,
+                    result.final_reading.received_power * 1e3,
                 )
+            )
 
     assert failures == []
 
@@ -2357,18 +2312,3 @@ def test_alignment_lab_parameter_table_shows_y_units_and_mfd_without_size_or_pow
         app.destroy()
 
 
-def test_alignment_lab_show_manual_algorithm_completes_without_hanging():
-    app = _make_app()
-
-    try:
-        before = app.evaluate_current_alignment()
-
-        app.show_alignment_algorithm("manual", delay_ms=0)
-        app.update()
-
-        evaluation = app.evaluate_current_alignment()
-        assert np.isclose(evaluation.received_power, before.received_power)
-        assert app._algorithm_animation_after_id is None  # pylint: disable=protected-access
-        assert "Manual/no search" in app.algorithm_status_var.get()
-    finally:
-        app.destroy()

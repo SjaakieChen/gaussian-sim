@@ -17,41 +17,30 @@ from .base import (
     SourceGeometry,
     TaperGeometry,
 )
-from .blind_power_j import (
-    BlindPowerJAlgorithm,
-    BlindPowerJBestOf9Algorithm,
-    BlindPowerJGradientAlgorithm,
-    BlindPowerJNewtonAlgorithm,
-)
-from .coordinate_scan import CoordinateScanAlgorithm
-from .given_positions import GivenPositionsAlgorithm
-from .manual import ManualAlignmentAlgorithm
+from .blind_power_j import BlindPowerJAlgorithm
+from .blind_power_j_best_of_9 import BlindPowerJBestOf9Algorithm
+from .blind_power_j_gradient import BlindPowerJGradientAlgorithm
+from .blind_power_j_newton import BlindPowerJNewtonAlgorithm
 from .position_solve import (
-    BeamErrorJMatrixAlgorithm,
     FixedZJMatrixAlgorithm,
     PositionSolveAlgorithm,
     PositionSolveWithJStepsAlgorithm,
 )
-from .yase import YaseAlignmentAlgorithm, discover_yase_algorithms
+from .yase import YaseAlignmentAlgorithm
 
 
 _ALGORITHMS: dict[str, AlignmentAlgorithm] = {
     algorithm.name: algorithm
     for algorithm in (
-        CoordinateScanAlgorithm(),
         BlindPowerJAlgorithm(),
         BlindPowerJNewtonAlgorithm(),
         BlindPowerJGradientAlgorithm(),
         BlindPowerJBestOf9Algorithm(),
-        GivenPositionsAlgorithm(),
-        ManualAlignmentAlgorithm(),
-        BeamErrorJMatrixAlgorithm(),
         FixedZJMatrixAlgorithm(),
         PositionSolveAlgorithm(),
         PositionSolveWithJStepsAlgorithm(),
     )
 }
-_ALGORITHMS.update(discover_yase_algorithms())
 
 
 def available_algorithms() -> dict[str, AlignmentAlgorithm]:
@@ -74,18 +63,14 @@ __all__ = [
     "AlignmentMove",
     "BallLensGeometry",
     "BallLensNoGoZone",
-    "BeamErrorJMatrixAlgorithm",
     "BlindPowerJAlgorithm",
     "BlindPowerJBestOf9Algorithm",
     "BlindPowerJGradientAlgorithm",
     "BlindPowerJNewtonAlgorithm",
-    "CoordinateScanAlgorithm",
     "DEFAULT_MAX_ALIGNMENT_ATTEMPTS",
     "DEFAULT_TARGET_MODE_EFFICIENCY",
     "FixedZJMatrixAlgorithm",
-    "GivenPositionsAlgorithm",
     "LensPose",
-    "ManualAlignmentAlgorithm",
     "PositionSolveAlgorithm",
     "PositionSolveWithJStepsAlgorithm",
     "PowerReading",

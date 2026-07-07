@@ -124,7 +124,6 @@ class PowerReading:
     move_count: int = 0
     measurement_count: int = 0
     noise_delta: float = 0.0
-    noise_delta: float = 0.0
 
 
 @dataclass(frozen=True)

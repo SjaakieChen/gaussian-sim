@@ -316,20 +316,3 @@ class BlindPowerJAlgorithm:
             offset = offset * (self.max_correction / largest)
         return (float(offset[0]), float(offset[1]))
 
-
-class BlindPowerJNewtonAlgorithm(BlindPowerJAlgorithm):
-    name = "blind_power_j_newton"
-    display_name = "Blind power J: Newton"
-    direction_methods = (DIRECTION_METHOD_NEWTON,)
-
-
-class BlindPowerJGradientAlgorithm(BlindPowerJAlgorithm):
-    name = "blind_power_j_gradient"
-    display_name = "Blind power J: Gradient"
-    direction_methods = (DIRECTION_METHOD_GRADIENT,)
-
-
-class BlindPowerJBestOf9Algorithm(BlindPowerJAlgorithm):
-    name = "blind_power_j_best_of_9"
-    display_name = "Blind power J: Best-of-9"
-    direction_methods = (DIRECTION_METHOD_BEST_OF_9,)

@@ -38,13 +38,13 @@ from alignment_algorithms.blind_power_j import (
     BLIND_POWER_J_SAMPLES_PER_POINT,
     BLIND_POWER_J_STEPS,
     BlindPowerJAlgorithm,
-    BlindPowerJBestOf9Algorithm,
-    BlindPowerJGradientAlgorithm,
-    BlindPowerJNewtonAlgorithm,
     DIRECTION_METHOD_BEST_OF_9,
     DIRECTION_METHOD_GRADIENT,
     DIRECTION_METHOD_NEWTON,
 )
+from alignment_algorithms.blind_power_j_best_of_9 import BlindPowerJBestOf9Algorithm
+from alignment_algorithms.blind_power_j_gradient import BlindPowerJGradientAlgorithm
+from alignment_algorithms.blind_power_j_newton import BlindPowerJNewtonAlgorithm
 from interactive_setup import (
     AXIAL_TOLERANCE,
     DEFAULT_CLIPPING_RADIUS_FACTOR,
