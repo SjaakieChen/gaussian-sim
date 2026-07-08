@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "action": "move",
+  "move_count": 1,
+  "stage1": "Align_X1",
+  "distance1_um": 1.5,
+  "moves": [
+    {
+      "stage": "Align_X1",
+      "distance_um": 1.5,
+      "mode": "relative"
+    }
+  ],
+  "message": "applying vision-computed relative stage offsets"
+}

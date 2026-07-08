@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "phase": "movement_command_test",
+  "iteration": 0,
+  "machine": {
+    "power_mw": 0.0,
+    "positions_um": {
+      "Align_X1": 0.0
+    }
+  },
+  "vision": {},
+  "targets": {},
+  "model": {},
+  "limits": {
+    "allowed_stages": [
+      "Align_X1"
+    ],
+    "max_step_um": 0.1
+  },
+  "algorithm": {
+    "name": "movement_command_test",
+    "stage": "Align_X1",
+    "distance_um": 0.1
+  },
+  "state": {}
+}

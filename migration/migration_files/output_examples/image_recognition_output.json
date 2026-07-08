@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "action": "done",
+  "move_count": 0,
+  "stage1": "",
+  "distance1_um": 0.0,
+  "moves": [],
+  "message": "image recognition complete",
+  "state": {
+    "algorithm": "image_recognition",
+    "vision": {
+      "source": "python_image_recognition",
+      "image_path": "D:\\TestMasterData\\<active-process>\\Python\\examples\\latest_camera_image.tif",
+      "width_px": 30,
+      "height_px": 20,
+      "feature": {
+        "polarity": "bright",
+        "threshold": 200.0,
+        "area_px": 24,
+        "centroid_x_px": 14.5,
+        "centroid_y_px": 7.5,
+        "bbox_left_px": 12,
+        "bbox_top_px": 6,
+        "bbox_right_px": 17,
+        "bbox_bottom_px": 9,
+        "confidence": 1.0
+      },
+      "confidence": 1.0
+    }
+  },
+  "vision": {
+    "source": "python_image_recognition",
+    "image_path": "D:\\TestMasterData\\<active-process>\\Python\\examples\\latest_camera_image.tif",
+    "width_px": 30,
+    "height_px": 20,
+    "feature": {
+      "polarity": "bright",
+      "threshold": 200.0,
+      "area_px": 24,
+      "centroid_x_px": 14.5,
+      "centroid_y_px": 7.5,
+      "bbox_left_px": 12,
+      "bbox_top_px": 6,
+      "bbox_right_px": 17,
+      "bbox_bottom_px": 9,
+      "confidence": 1.0
+    },
+    "confidence": 1.0
+  }
+}

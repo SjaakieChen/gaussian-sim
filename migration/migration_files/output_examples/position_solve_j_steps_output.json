@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "action": "move",
+  "move_count": 1,
+  "stage1": "Align_Y1",
+  "distance1_um": 1.0,
+  "moves": [
+    {
+      "stage": "Align_Y1",
+      "distance_um": 1.0,
+      "mode": "relative"
+    }
+  ],
+  "message": "position_solve_j_steps moving toward path point 1",
+  "state": {
+    "algorithm": "position_solve_j_steps",
+    "path_index": 0
+  }
+}

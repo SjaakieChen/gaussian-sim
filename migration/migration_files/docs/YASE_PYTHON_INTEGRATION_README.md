@@ -24,9 +24,9 @@ For machine-side venv, package, and `TMPython.ini` setup, see:
 
 For the self-contained migration bundle, see:
 
-- `../migration/README.md`
-- `../migration/migration_files/CALL_GUIDE.md`
-- `../migration/yase_files/`
+- `../../README.md`
+- `../CALL_GUIDE.md`
+- `../../yase_files/`
 
 ## 1. Purpose
 

@@ -1,0 +1,10 @@
+# Machine/TMPython runtime requirements.
+#
+# Install these into:
+# D:\TestMasterData\System\Python\.venv
+#
+# The vendor TestMaster package is installed separately, for example:
+# .\.venv\Scripts\python.exe -m pip install "C:\path\to\testmaster_pyexec-<version>.zip"
+numpy
+opencv-python-headless
+pillow
