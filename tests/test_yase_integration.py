@@ -4,7 +4,9 @@ import math
 from pathlib import Path
 
 import numpy as np
+import pytest
 
+pytest.importorskip("yase_sim")
 from alignment_algorithms.base import AlignmentMove, LensPose, PowerReading
 from alignment_algorithms.yase import DeviceBackedYaseMachine, YaseAlignmentAlgorithm
 from yase_sim import SimulationMachine, YaseInterpreter

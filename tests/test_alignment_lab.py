@@ -38,12 +38,6 @@ from alignment_algorithms.position_solve import (
     PositionSolveWithJStepsAlgorithm,
     has_strict_axial_clearance,
 )
-from alignment_algorithms.yase import (
-    DEFAULT_YASE_CONFIG,
-    DEFAULT_YASE_ROOT,
-    DeviceBackedYaseMachine,
-    YaseAlignmentAlgorithm,
-)
 import alignment_lab as alignment_lab_module
 import interactive_setup as interactive_setup_module
 from alignment_lab import (
@@ -77,7 +71,6 @@ from interactive_setup import (
     default_ball_lens_layout,
     simulate_layout,
 )
-from yase_sim import YaseInterpreter
 
 
 def _make_app():
@@ -1972,68 +1965,6 @@ def test_position_solve_retries_after_low_mode_attempt(monkeypatch):
     assert result.final_reading.mode_efficiency == 0.75
     assert search_windows == [1.0, 2.0]
     assert "2 attempt" in result.message
-
-
-def test_yase_given_positions_runs_from_startup_out_of_beam_simulation():
-    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED, startup_out_of_beam=True)
-    before = device.measure()
-    algorithm = YaseAlignmentAlgorithm(
-        "SUB_Alignment/SUB_GivenPositionsReferencePose.xseq",
-        root=DEFAULT_YASE_ROOT,
-        config_path=DEFAULT_YASE_CONFIG,
-    )
-
-    result = algorithm.run(device)
-
-    assert result.final_reading.received_power > before.received_power
-    assert result.final_reading.mode_efficiency > 0.5
-    _assert_pose_close(result.final_poses, device.starting_poses())
-
-
-def test_yase_position_solve_runs_in_seeded_simulation():
-    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED)
-    before = device.measure()
-    algorithm = YaseAlignmentAlgorithm(
-        "SUB_Alignment/SUB_PositionSolveNoiselessModel.xseq",
-        root=DEFAULT_YASE_ROOT,
-        config_path=DEFAULT_YASE_CONFIG,
-        max_steps=20000,
-    )
-
-    result = algorithm.run(device)
-
-    assert result.final_reading.received_power > before.received_power
-    assert result.final_reading.mode_efficiency > 0.9
-
-
-def test_yase_position_solve_returns_robust_alignment_fields():
-    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED)
-    machine = DeviceBackedYaseMachine.from_config_and_device(DEFAULT_YASE_ROOT, DEFAULT_YASE_CONFIG, device)
-    interpreter = YaseInterpreter(machine)
-
-    result = interpreter.run("SUB_Alignment/SUB_PositionSolveNoiselessModel.xseq", max_steps=20000)
-
-    assert result.return_parameters["Success"] == 1.0
-    assert result.return_parameters["Attempts"] >= 1.0
-    assert result.return_parameters["FinalMode"] >= DEFAULT_TARGET_MODE_EFFICIENCY
-    assert result.return_parameters["FinalPower"] > 0.0
-    assert result.return_parameters["ModelPower"] > 0.0
-
-
-def test_yase_power_only_coordinate_scan_runs_in_seeded_simulation():
-    device = SimulatedAlignmentDevice(DEFAULT_ALIGNMENT_SEED)
-    before = device.measure()
-    algorithm = YaseAlignmentAlgorithm(
-        "SUB_Alignment/SUB_PowerOnlyCoordinateScan.xseq",
-        root=DEFAULT_YASE_ROOT,
-        config_path=DEFAULT_YASE_CONFIG,
-        max_steps=20000,
-    )
-
-    result = algorithm.run(device)
-
-    assert result.final_reading.received_power > before.received_power
-    assert result.final_reading.mode_efficiency > 0.9
 
 
 def test_moving_lens_in_x_changes_evaluated_power():

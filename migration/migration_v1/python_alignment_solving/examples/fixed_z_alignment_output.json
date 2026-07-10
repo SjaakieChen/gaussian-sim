@@ -1,0 +1,97 @@
+{
+  "action": "move",
+  "distance1_um": -2.0,
+  "message": "fixed_z_alignment_solve moving toward no-go-checked waypoint 1 of 2",
+  "move_count": 1,
+  "moves": [
+    {
+      "distance_um": -2.0,
+      "mode": "relative",
+      "stage": "Align_X1"
+    }
+  ],
+  "schema_version": 1,
+  "stage1": "Align_X1",
+  "state": {
+    "algorithm": "fixed_z_alignment_solve",
+    "no_go_zones_um": [
+      {
+        "label": "Laser no-go below +250 um machine Z",
+        "name": "laser_side_no_go",
+        "optical_y_max_um": 0.0,
+        "optical_y_min_um": -2000.0,
+        "x_max_um": null,
+        "x_min_um": null,
+        "z_max_um": 250.0,
+        "z_min_um": null
+      },
+      {
+        "label": "Trench floor below -500 um machine Z",
+        "name": "trench_floor",
+        "optical_y_max_um": 1278.0,
+        "optical_y_min_um": 0.0,
+        "x_max_um": null,
+        "x_min_um": null,
+        "z_max_um": -500.0,
+        "z_min_um": null
+      },
+      {
+        "label": "Taper no-go below +250 um machine Z",
+        "name": "taper_side_no_go",
+        "optical_y_max_um": 3278.0,
+        "optical_y_min_um": 1278.0,
+        "x_max_um": null,
+        "x_min_um": null,
+        "z_max_um": 250.0,
+        "z_min_um": null
+      }
+    ],
+    "path_index": 0,
+    "path_um": [
+      {
+        "Align_X1": 1.3458646616541354,
+        "Align_X2": -15.0,
+        "Align_Y1": 289.0,
+        "Align_Y2": 989.0,
+        "Align_Z1": -0.3458646616541352,
+        "Align_Z2": 10.0
+      },
+      {
+        "Align_X1": 1.3458646616541354,
+        "Align_X2": 0.6541353383458642,
+        "Align_Y1": 289.0,
+        "Align_Y2": 989.0,
+        "Align_Z1": -0.3458646616541352,
+        "Align_Z2": 0.34586466165413554
+      }
+    ],
+    "target_positions_um": {
+      "Align_X1": 1.3458646616541354,
+      "Align_X2": 0.6541353383458642,
+      "Align_Y1": 289.0,
+      "Align_Y2": 989.0,
+      "Align_Z1": -0.3458646616541352,
+      "Align_Z2": 0.34586466165413554
+    },
+    "waypoint_um": {
+      "Align_X1": 1.3458646616541354,
+      "Align_X2": -15.0,
+      "Align_Y1": 289.0,
+      "Align_Y2": 989.0,
+      "Align_Z1": -0.3458646616541352,
+      "Align_Z2": 10.0
+    }
+  },
+  "target_Align_X1_um": 1.3458646616541354,
+  "target_Align_X2_um": 0.6541353383458642,
+  "target_Align_Y1_um": 289.0,
+  "target_Align_Y2_um": 989.0,
+  "target_Align_Z1_um": -0.3458646616541352,
+  "target_Align_Z2_um": 0.34586466165413554,
+  "waypoint_Align_X1_um": 1.3458646616541354,
+  "waypoint_Align_X2_um": -15.0,
+  "waypoint_Align_Y1_um": 289.0,
+  "waypoint_Align_Y2_um": 989.0,
+  "waypoint_Align_Z1_um": -0.3458646616541352,
+  "waypoint_Align_Z2_um": 10.0
+}

@@ -26,7 +26,6 @@ from .position_solve import (
     PositionSolveAlgorithm,
     PositionSolveWithJStepsAlgorithm,
 )
-from .yase import YaseAlignmentAlgorithm
 
 
 _ALGORITHMS: dict[str, AlignmentAlgorithm] = {
@@ -76,7 +75,6 @@ __all__ = [
     "PowerReading",
     "SourceGeometry",
     "TaperGeometry",
-    "YaseAlignmentAlgorithm",
     "available_algorithms",
     "get_algorithm",
 ]
