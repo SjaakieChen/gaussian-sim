@@ -64,8 +64,8 @@ User-confirmed facts:
 
 - Holder/lens `1` is the left lens; holder/lens `2` is the right lens.
 - Numbering `1` = left and `2` = right applies to grippers, vacuum channels, force sensors, and numbered add-ons.
-- Linear axes: machine X/Z = transverse plane, machine Y = optical direction; signs are correct.
-- Rotation body frame: **+Z is the nose** (machine +Y / optical axis). `Align_Rolln` = roll about nose, `Align_Pitchn` = pitch about body +X, `Align_Yawn` = yaw about body +Y; units = degrees.
+- Linear axes: machine X = optical direction / simulation z, machine Z = simulation x, and machine Y = simulation y; signs are correct.
+- Rotation body frame: **+Z is the nose** (machine +X / optical axis). `Align_Rolln` = roll about nose, `Align_Pitchn` = pitch about body +X, `Align_Yawn` = yaw about body +Y; units = degrees.
 - **TIA reading = optical power received** at the detector (alignment objective and final-power metric).
 - TIA channel selection (`TIA_Lo`, `TIA_Tx`, `TIA_Rx`) can be manual on the machine.
 
@@ -148,9 +148,9 @@ Active production files use these stage names:
 For simulation/code reasoning, use the confirmed convention:
 
 ```text
-machine X -> transverse x
-machine Z -> transverse y
-machine Y -> optical-axis z
+machine X -> optical-axis z
+machine Z -> transverse x
+machine Y -> transverse y
 1 -> left lens
 2 -> right lens
 ```

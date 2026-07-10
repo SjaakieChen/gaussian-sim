@@ -3,6 +3,11 @@
 This bundle contains the first fixed-Z theoretical alignment solve handoff for
 TestMaster/YASE.
 
+Do not use v1 as a machine-motion coordinate reference. Its handoff predates
+the corrected universal mapping (`Align_X` -> simulation z, `Align_Z` ->
+simulation x, `Align_Y` -> simulation y). Use `migration_v2` for staged
+machine motion.
+
 ```text
 migration\migration_v1\
   SUB_alignment_solving\

@@ -250,12 +250,12 @@
     "holder_2_lens": "right",
     "tia_can_be_manual": true,
     "tia_measures_received_power": true,
-    "rotation_nose_axis": "+Z (machine +Y / optical direction)",
+    "rotation_nose_axis": "+Z (machine +X / optical direction)",
     "numbering_rule": "1=left, 2=right for grippers, vacuum, and numbered add-ons",
     "verified": false
   },
   "rotation_conventions": {
-    "body_frame_nose": "+Z (machine +Y, simulation +z)",
+    "body_frame_nose": "+Z (machine +X, simulation +z)",
     "units": "degrees",
     "Align_Roll": {
       "rotation": "roll",

@@ -6,16 +6,16 @@ User-confirmed conventions for programming, simulation, and site-data collection
 
 | Machine axis | Physical meaning | Simulation axis |
 |---|---|---|
-| X | Transverse | `x` |
-| Z | Transverse (orthogonal to X in the stage plane) | `y` |
-| Y | Optical / laser propagation direction | `z` |
+| X | Optical / laser propagation direction | `z` |
+| Z | Transverse | `x` |
+| Y | Transverse / vertical clearance direction | `y` |
 
 Mapping used by `yase_sim`:
 
 ```text
-machine X -> simulation x
-machine Z -> simulation y
-machine Y -> simulation z
+machine X -> simulation z
+machine Z -> simulation x
+machine Y -> simulation y
 ```
 
 Linear axis signs are confirmed correct. No sign flips are applied in the simulator.
@@ -32,9 +32,9 @@ Holder stages:
 Body frame for both holders:
 
 - **+Z is the nose** — forward direction along the optical / laser axis.
-- In machine coordinates, nose = **+Y** (same as simulation **+z**).
-- Transverse body **+X** = machine **+X** (simulation **+x**).
-- Transverse body **+Y** = machine **+Z** (simulation **+y**).
+- In machine coordinates, nose = **+X** (same as simulation **+z**).
+- Transverse body **+X** = machine **+Z** (simulation **+x**).
+- Transverse body **+Y** = machine **+Y** (simulation **+y**).
 
 Positive rotations follow the right-hand rule about each body axis.
 

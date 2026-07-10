@@ -81,42 +81,28 @@ Power reads can use either a simple built-in model or the external Gaussian two-
 
 ## Axis Mapping
 
-The requested simulation convention is different from the machine convention.
-
-Machine/Yase:
-
-```text
-X/Z plane = transverse plane
-Y         = laser direction
-```
-
-Simulation:
-
-```text
-x/y plane = transverse plane
-z         = laser direction
-```
+The universal stage-to-simulation convention is:
 
 Implemented mapping:
 
 ```text
-machine X -> simulation x
-machine Z -> simulation y
-machine Y -> simulation z
+machine X -> simulation z
+machine Z -> simulation x
+machine Y -> simulation y
 ```
 
 Examples:
 
 ```text
-MoveStage Align_X1 Relative +5 -> simulation actor Align1 x += 5
-MoveStage Align_Z1 Relative +5 -> simulation actor Align1 y += 5
-MoveStage Align_Y1 Relative +5 -> simulation actor Align1 z += 5
+MoveStage Align_X1 Relative +5 -> simulation actor Align1 z += 5
+MoveStage Align_Z1 Relative +5 -> simulation actor Align1 x += 5
+MoveStage Align_Y1 Relative +5 -> simulation actor Align1 y += 5
 ```
 
 The interpreter records both:
 
 - raw Yase stage positions, for example `Align_Z1 = -2000`;
-- simulation actor positions, for example `Align1.y = -2000`.
+- simulation actor positions, for example `Align1.x = -2000`.
 
 ## Gaussian Experiment Model
 
@@ -145,13 +131,13 @@ The relevant Gaussian sim facts are:
 The Yase simulator maps Yase stages into the Gaussian sim lens poses as relative offsets from the nominal Gaussian layout:
 
 ```text
-Align_X1 -> Gaussian ball 1 x_offset
-Align_Z1 -> Gaussian ball 1 y_offset
-Align_Y1 -> Gaussian ball 1 position
+Align_X1 -> Gaussian ball 1 position
+Align_Z1 -> Gaussian ball 1 x_offset
+Align_Y1 -> Gaussian ball 1 y_offset
 
-Align_X2 -> Gaussian ball 2 x_offset
-Align_Z2 -> Gaussian ball 2 y_offset
-Align_Y2 -> Gaussian ball 2 position
+Align_X2 -> Gaussian ball 2 position
+Align_Z2 -> Gaussian ball 2 x_offset
+Align_Y2 -> Gaussian ball 2 y_offset
 ```
 
 The conversion is:
@@ -351,8 +337,8 @@ The circle test verifies that 20 `MoveStage` calls execute and the simulated `Al
 The fiber offset test verifies the important axis conversion:
 
 ```text
-Align_Y2 +500  -> simulation Align2.z +500
-Align_Z2 -2000 -> simulation Align2.y -2000
+Align_Y2 +500  -> simulation Align2.y +500
+Align_Z2 -2000 -> simulation Align2.x -2000
 ```
 
 The power-read test verifies that `TIA1`/`TIA2` can call the external Gaussian sim and that Yase stage motion changes the calculated received power.

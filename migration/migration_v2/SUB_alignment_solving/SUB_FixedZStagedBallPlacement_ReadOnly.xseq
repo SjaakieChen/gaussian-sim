@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_FixedZStagedBallPlacement_ReadOnly</Comment>
+   <Comment>Migration v2 fixed-Z staged ball placement. Calls TMPython and stores returned JSON. No hardware motion in this template.</Comment>
+   <Comment>Use JSON parsing on the machine to pass stage1/target1_um/confirm_text1 into SUB_ApplyFixedZStagedBallMove.</Comment>
+   <Shrink Comment="L_Start" Size="5" Collapsed="true">
+   </Shrink>
+   <Statement Label="@L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_FixedZStagedBallPlacement_ReadOnly" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Shrink Comment="L_CheckFiducialized" Size="7" Collapsed="true">
+   </Shrink>
+   <Statement Label="L_CheckFiducialized" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="StageCheckAllFiducialed" Library="Stage">
+      <Parameter Name="Fiducialed?" Description="Result: Returns, if stage is fiducialized (true) or not (false)." Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_StagesFiducialed" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="b_StagesFiducialed" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Fiducial" />
+   </Statement>
+   <Shrink Comment="L_BuildPythonInput" Size="5" Collapsed="true">
+   </Shrink>
+   <Comment>Commissioning placeholder: replace this fixed JSON with values built from QueryStage plus vision-measured laser/detector/ball coordinates.</Comment>
+   <Statement Label="L_BuildPythonInput" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;schema_version&quot;:2,&quot;phase&quot;:&quot;fixed_z_staged_ball_placement&quot;,&quot;iteration&quot;:0,&quot;machine&quot;:{&quot;positions_um&quot;:{&quot;Align_X1&quot;:289.0,&quot;Align_Z1&quot;:12.0,&quot;Align_Y1&quot;:-8.0,&quot;Align_X2&quot;:989.0,&quot;Align_Z2&quot;:-15.0,&quot;Align_Y2&quot;:10.0}},&quot;geometry_um&quot;:{&quot;laser&quot;:{&quot;machine_x_um&quot;:0.0,&quot;machine_z_um&quot;:3.0,&quot;machine_y_um&quot;:-2.0,&quot;x_angle_mrad&quot;:0.0,&quot;z_angle_mrad&quot;:0.0},&quot;detector&quot;:{&quot;machine_x_um&quot;:1278.0,&quot;machine_z_um&quot;:-1.0,&quot;machine_y_um&quot;:2.0},&quot;balls&quot;:[{&quot;name&quot;:&quot;ball_1&quot;,&quot;machine_x_um&quot;:289.0,&quot;machine_z_um&quot;:12.0,&quot;machine_y_um&quot;:-8.0,&quot;diameter_um&quot;:500.0,&quot;refractive_index&quot;:1.76},{&quot;name&quot;:&quot;ball_2&quot;,&quot;machine_x_um&quot;:989.0,&quot;machine_z_um&quot;:-15.0,&quot;machine_y_um&quot;:10.0,&quot;diameter_um&quot;:500.0,&quot;refractive_index&quot;:1.76}]},&quot;staging&quot;:{&quot;clearance_stage_axis&quot;:&quot;Align_Y&quot;},&quot;limits&quot;:{&quot;max_single_move_um&quot;:5000.0},&quot;algorithm&quot;:{&quot;name&quot;:&quot;fixed_z_staged_ball_placement&quot;,&quot;default_no_go_zones&quot;:true,&quot;no_go_clearance_um&quot;:5.0,&quot;path_samples&quot;:25},&quot;state&quot;:{}}" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonInputJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStringVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Only used when valid for is Path." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where string is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="PythonAlignmentV2StagedPlacement" />
+      <Parameter Name="Name" Description="Parameter: Name of string to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="LastInputJson" />
+      <Parameter Name="VarStringIn" Description="Parameter: String to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="file path is the path name of the file." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="#SM_PROCESS#\Python\log\fixed_z_staged_ball_placement_input.json" />
+      <Parameter Name="Mode" Description="Append to file or New file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Data to be written to a file." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="success" Description="Result: indicates, if the operation was successful" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_WritePythonInputOk" />
+   </Statement>
+   <Shrink Comment="L_CallPython" Size="5" Collapsed="true">
+   </Shrink>
+   <Statement Label="L_CallPython" Editable="FALSE" Name="TMPython_ExecuteScript" Library="TMPython">
+      <Parameter Name="Interpreter" Description="TMPython.ini interpreter section name." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Python_310_ALIGNMENT_TEST" />
+      <Parameter Name="Module" Description="Python module path." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="python_alignment_solving.fixed_z_staged_ball_placement" />
+      <Parameter Name="Class" Description="Python class name." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="FixedZStagedBallPlacementStep" />
+      <Parameter Name="Input JSON" Description="Input JSON passed to the Python class run method." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="Result JSON" Description="Returned JSON from Python." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStringVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Only used when valid for is Path." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where string is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="PythonAlignmentV2StagedPlacement" />
+      <Parameter Name="Name" Description="Parameter: Name of string to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="LastResultJson" />
+      <Parameter Name="VarStringIn" Description="Parameter: String to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="file path is the path name of the file." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="#SM_PROCESS#\Python\log\fixed_z_staged_ball_placement_result.json" />
+      <Parameter Name="Mode" Description="Append to file or New file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Data to be written to a file." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+      <Parameter Name="success" Description="Result: indicates, if the operation was successful" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_WritePythonResultOk" />
+   </Statement>
+   <Comment>After JSON prototypes are imported, parse action/stage1/target1_um/delta1_um/confirm_text1 and call SUB_ApplyFixedZStagedBallMove once per returned move.</Comment>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   </Statement>
+   <Statement Label="@L_Error_Fiducial" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="At least one stage is not fiducialed. Staged placement aborted before Python call." />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   </Statement>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description>Read-only fixed-Z staged ball placement through TMPython.</Sequence-Description>
+      <Entry>2026-07-10 Created for migration v2 staged ball-placement bundle</Entry>
+   </History>
+</Sequence>

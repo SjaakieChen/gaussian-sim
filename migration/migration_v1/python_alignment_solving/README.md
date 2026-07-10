@@ -1,5 +1,10 @@
 # python_alignment_solving
 
+This is the legacy migration v1 solver. Do not copy its coordinate convention
+into machine-motion code. The corrected universal mapping is `Align_X` ->
+simulation z, `Align_Z` -> simulation x, and `Align_Y` -> simulation y; use
+`migration_v2` for staged machine motion.
+
 Copy this folder to the process-local Python working directory used by
 `TMPython.ini`, for example:
 
@@ -27,11 +32,10 @@ TMPython.
 
 ## What It Solves
 
-`FixedZAlignmentSolveStep` uses the same fixed-Z transverse model as the
-simulation: machine `Y` / optical propagation positions are held fixed, then the
-target machine `X` and `Z` coordinates for the two ball lenses are solved so
-the modeled beam reaches the fiber coordinate with zero outgoing transverse
-angle.
+`FixedZAlignmentSolveStep` uses the legacy v1 fixed-Z transverse model:
+machine `Y` positions are held fixed, then the target machine `X` and `Z`
+coordinates for the two ball lenses are solved so the modeled beam reaches the
+fiber coordinate with zero outgoing transverse angle.
 
 The class returns:
 
@@ -46,15 +50,16 @@ The output is deliberately JSON-first. The checked-in process `prototypes.xml`
 does not currently contain JSON parsing statements, so import/verify the
 machine JSON/TMPython prototypes before wiring `MoveStage`.
 
-## Coordinate Convention
+## Legacy Coordinate Convention
 
-All distances are micrometres.
+All distances are micrometres. This table documents v1 behavior only; it is not
+the current machine convention.
 
 | Machine axis | Meaning in this solver |
 | --- | --- |
 | `X` / `Align_X*` | transverse x |
-| `Z` / `Align_Z*` | transverse z, matching simulation y |
-| `Y` / `Align_Y*` | optical propagation position, matching simulation z |
+| `Z` / `Align_Z*` | legacy second transverse coordinate |
+| `Y` / `Align_Y*` | legacy held propagation coordinate |
 
 No sign flips are applied.
 

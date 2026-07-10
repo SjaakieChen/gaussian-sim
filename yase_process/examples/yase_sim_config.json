@@ -14,7 +14,7 @@
     "tia_definition": "TIA reading = optical power received at the detector (mW).",
     "tia_assignment": "TIA channels are manually selected on the machine. These process variables represent the operator-selected channels for simulation runs.",
     "holder_mapping": "1=left, 2=right. Holder 1: Align1, Gripper1, vacuum helper Gripper. Holder 2: Align2, Gripper2, vacuum helper CH2.",
-    "rotation_frame": "+Z nose = machine Y / sim z. Roll about Z, pitch about X, yaw about Y; degrees.",
+    "rotation_frame": "+Z nose = machine X / sim z. Roll about Z, pitch about X, yaw about Y; degrees.",
     "axis_signs": "User confirmed the current machine-to-simulation axis signs are correct.",
     "dropdown_selections": "Per-dialog Title overrides; falls back to dropdown_selection.",
     "TipSensor": "WaitDigIn in SUB_Calibrate_Needles.xseq: 0=off, 1=on. Off means needle adjusted."

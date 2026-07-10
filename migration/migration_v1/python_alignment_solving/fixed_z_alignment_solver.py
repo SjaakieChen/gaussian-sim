@@ -5,12 +5,13 @@ mirrors the simulation's fixed-Z transverse solve: with the ball optical-axis
 positions held fixed, solve the two ball-lens transverse offsets that put the
 beam on the fiber/taper center with zero output angle.
 
-Coordinate and unit convention:
+Legacy coordinate and unit convention:
 
 * all input and output distances are micrometres;
-* machine X maps to simulation x;
-* machine Z maps to simulation y, the second transverse axis;
-* machine Y maps to simulation z, the laser propagation axis.
+* this v1 solver predates the corrected universal machine mapping;
+* do not use v1 as the coordinate reference for machine motion;
+* current machine motion should use migration_v2, where Align_X maps to
+  simulation z, Align_Z maps to simulation x, and Align_Y maps to simulation y.
 """
 
 from __future__ import annotations
@@ -45,7 +46,7 @@ EPS = 1.0e-9
 
 
 JsonDict = dict[str, Any]
-Pose = tuple[float, float, float]  # machine X, machine Z, machine Y(optical)
+Pose = tuple[float, float, float]  # legacy v1 order: machine X, machine Z, machine Y
 Move = tuple[str, float]
 
 

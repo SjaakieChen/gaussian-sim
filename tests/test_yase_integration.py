@@ -83,12 +83,12 @@ def test_device_backed_yase_machine_maps_align_axes_to_lens_pose_axes():
     machine.move_stage("Camera_X", 99.0, 50.0, "Sync", "Relative")
 
     poses = device.current_poses()
-    assert np.allclose(poses[0], (5e-6, -2e-6, 0.0))
-    assert np.allclose(poses[1], (10e-6, 0.0, 1e-3 + 3e-6))
+    assert np.allclose(poses[0], (-2e-6, 0.0, 5e-6))
+    assert np.allclose(poses[1], (10e-6, 3e-6, 1e-3))
     assert len(device.move_history()) == 3
     assert machine.actors["Align1"]["x"] == 5.0
-    assert machine.actors["Align1"]["y"] == -2.0
-    assert machine.actors["Align2"]["z"] == 3.0
+    assert machine.actors["Align1"]["z"] == -2.0
+    assert machine.actors["Align2"]["y"] == 3.0
 
 
 def test_device_backed_yase_machine_uses_alignment_device_for_power_reads():

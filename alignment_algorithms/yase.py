@@ -27,9 +27,9 @@ DEFAULT_LENS_ACTOR_MAP = ("Align1", "Align2")
 DEFAULT_STAGE_UM_TO_M = 1e-6
 YASE_ALGORITHM_PREFIX = "yase:"
 SIM_AXIS_TO_MACHINE_AXIS = {
-    "x": "X",
-    "y": "Z",
-    "z": "Y",
+    "x": "Z",
+    "y": "Y",
+    "z": "X",
 }
 
 
