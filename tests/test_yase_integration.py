@@ -13,7 +13,7 @@ from yase_sim import SimulationMachine, YaseInterpreter
 
 
 ROOT = Path(__file__).resolve().parents[1]
-YASE_ROOT = ROOT / "yase_process"
+YASE_ROOT = ROOT / "yase_example_processes"
 YASE_CONFIG = YASE_ROOT / "examples" / "yase_sim_config.json"
 
 

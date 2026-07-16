@@ -9,22 +9,22 @@ from pathlib import Path
 import numpy as np
 
 from interactive_setup import DEFAULT_CLIPPING_RADIUS_FACTOR, LaserSource, default_ball_lens_layout
-from migration.migration_v1.python_alignment_solving.fixed_z_alignment_solver import solve_fixed_z_alignment
+from migrations.migration_v1.python_alignment_solving.fixed_z_alignment_solver import solve_fixed_z_alignment
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXAMPLE_INPUT = ROOT / "migration" / "migration_v1" / "python_alignment_solving" / "examples" / "fixed_z_alignment_input.json"
-EXAMPLE_OUTPUT = ROOT / "migration" / "migration_v1" / "python_alignment_solving" / "examples" / "fixed_z_alignment_output.json"
+EXAMPLE_INPUT = ROOT / "migrations" / "migration_v1" / "python_alignment_solving" / "examples" / "fixed_z_alignment_input.json"
+EXAMPLE_OUTPUT = ROOT / "migrations" / "migration_v1" / "python_alignment_solving" / "examples" / "fixed_z_alignment_output.json"
 YASE_SEQUENCE = (
     ROOT
-    / "migration"
+    / "migrations"
     / "migration_v1"
     / "SUB_alignment_solving"
     / "SUB_FixedZAlignmentSolving_ReadOnly.xseq"
 )
 YASE_APPLY_MOVE_SEQUENCE = (
     ROOT
-    / "migration"
+    / "migrations"
     / "migration_v1"
     / "SUB_alignment_solving"
     / "SUB_ApplyFixedZAlignmentSolveMove.xseq"
@@ -199,8 +199,12 @@ def test_migration_v1_yase_sequence_is_read_only_tmpython_handoff():
 
     assert "TMPython_ExecuteScript" in names
     assert "MoveStage" not in names
-    assert "python_alignment_solving.fixed_z_alignment_solver" in string_values
+    assert "Python_310_PYTHON_AUTOMATION_INTERPRETER" in string_values
+    assert "fixed_z_alignment_solver" in string_values
     assert "FixedZAlignmentSolveStep" in string_values
+    parameter_names = [parameter.attrib["Name"] for parameter in root.iter("Parameter")]
+    assert "ParamIn" in parameter_names
+    assert "ParamOut" in parameter_names
 
 
 def test_migration_v1_yase_apply_move_sequence_contains_guarded_movestage():

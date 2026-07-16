@@ -10,10 +10,10 @@ dependencies = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "alignment lab"]
 
 [tool.pylint.main]
-init-hook = 'import sys; sys.path.insert(0, ".")'
+init-hook = 'import sys; sys.path.insert(0, "."); sys.path.insert(0, "alignment lab")'
 py-version = "3.10"
 
 [tool.pylint.basic]

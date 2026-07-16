@@ -10,7 +10,7 @@ from alignment_lab import (
     alignment_no_go_zones_for_layout,
     ball_lens_no_go_violations,
 )
-from migration.migration_v2.python_alignment_solving.fixed_z_staged_ball_placement import (
+from migrations.migration_v2.python_alignment_solving.fixed_z_staged_ball_placement import (
     BallSpec,
     default_no_go_zones,
     no_go_violations,
@@ -22,7 +22,7 @@ from migration.migration_v2.python_alignment_solving.fixed_z_staged_ball_placeme
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE_INPUT = (
     ROOT
-    / "migration"
+    / "migrations"
     / "migration_v2"
     / "python_alignment_solving"
     / "examples"
@@ -30,14 +30,14 @@ EXAMPLE_INPUT = (
 )
 YASE_READ_ONLY_SEQUENCE = (
     ROOT
-    / "migration"
+    / "migrations"
     / "migration_v2"
     / "SUB_alignment_solving"
     / "SUB_FixedZStagedBallPlacement_ReadOnly.xseq"
 )
 YASE_APPLY_MOVE_SEQUENCE = (
     ROOT
-    / "migration"
+    / "migrations"
     / "migration_v2"
     / "SUB_alignment_solving"
     / "SUB_ApplyFixedZStagedBallMove.xseq"
@@ -181,8 +181,22 @@ def test_migration_v2_read_only_sequence_calls_tmpython_without_movestage():
     assert "StageCheckAllFiducialed" in names
     assert "TMPython_ExecuteScript" in names
     assert "MoveStage" not in names
-    assert "python_alignment_solving.fixed_z_staged_ball_placement" in string_values
+    assert "Python_310_PYTHON_AUTOMATION_INTERPRETER" in string_values
+    assert "fixed_z_staged_ball_placement" in string_values
     assert "FixedZStagedBallPlacementStep" in string_values
+    parameter_names = [parameter.attrib["Name"] for parameter in root.iter("Parameter")]
+    assert "ParamIn" in parameter_names
+    assert "ParamOut" in parameter_names
+    assert "Input JSON" not in parameter_names
+    assert "Result JSON" not in parameter_names
+    assert any(
+        value.endswith(r"python_env\log\fixed_z_staged_ball_placement_input.json")
+        for value in string_values
+    )
+    assert any(
+        value.endswith(r"python_env\log\fixed_z_staged_ball_placement_result.json")
+        for value in string_values
+    )
     assert "true" in shrink_collapsed
 
 

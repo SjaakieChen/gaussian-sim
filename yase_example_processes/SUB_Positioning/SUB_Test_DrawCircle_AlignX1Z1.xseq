@@ -1,0 +1,554 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_Test_DrawCircle_AlignX1Z1</Comment>
+   <Comment>2026-06-29 - Hardware diagnostic test</Comment>
+   <Comment>Moves Align_X1 and Align_Z1 through a 5 um relative circle-like path and returns to start.</Comment>
+   <Comment></Comment>
+   <Shrink Comment="L_Start" Size="5" Collapsed="false">
+   </Shrink>
+   <Statement Label="@L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_Test_DrawCircle_AlignX1Z1" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Comment></Comment>
+   <Shrink Comment="L_CheckReferenced" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_CheckReferenced" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="StageCheckAllFiducialed" Library="Stage">
+      <Parameter Name="Fiducialed?" Description="Result: Returns, if stage is fiducialized (true) or not (false)." Type="Boolean" Direction="Output" ValueType="Variable" VariableName="StatusStages" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="StatusStages" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="BEGIN" Library="XSEQFlowControl">
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Attention! Stages are not fiducialed!" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Fiducial" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="END" Library="XSEQFlowControl">
+   </Statement>
+   <Comment></Comment>
+   <Shrink Comment="L_GetVelocity" Size="4" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_GetVelocity" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="GetNumVar" Library="VariableIO">
+      <Parameter Name="from" Description="Parameter: Select between Process, System or Path: System=uses systemvar.ini; Path=uses any INI-file specified by Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="System" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Usage of this parameter is only necessary when From Path is selected." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where the value is stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="MainVelocity" />
+      <Parameter Name="Name" Description="Parameter: Name of value to be read." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="VelocityAlignXSlow" />
+      <Parameter Name="VarValueOut" Description="Result: Returns the value read by the statement." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;=" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Velocity" />
+   </Statement>
+   <Comment></Comment>
+   <Shrink Comment="L_UserConfirm" Size="3" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_UserConfirm" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayExtdSelectionDialog" Library="Standard">
+      <Parameter Name="Dialog text" Description="Parameter: Enter the dialog text to be displayed." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Hardware test: move Align_X1 and Align_Z1 through a 5 um relative circle-like path and return to the start point. Confirm the work area is clear." />
+      <Parameter Name="LeftPos" Description="Parameter: Choose screen coordinates for the left corner of the dialog box." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="TopPos" Description="Parameter: Choose screen coordinates for the upper corner of the dialog box." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Window Title" Description="Parameter: Enter the window title." Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+      <Parameter Name="Button 1 (OK) text" Description="Parameter: Enter the text for the first button (OK)." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Abort" />
+      <Parameter Name="Button 2 (Skip) text" Description="Parameter: Enter the text for the second button (SKIP)." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Comment></Comment>
+   <Shrink Comment="L_Move_01" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Move_01" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move to +R, 0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="5.0" StringValue="5.0" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
+      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Shrink Comment="L_Move_02" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Move_02" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move to +K, +K" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-1.464466" StringValue="-1.464466" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="3.535534" StringValue="3.535534" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
+      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Shrink Comment="L_Move_03" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Move_03" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move to 0, +R" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-3.535534" StringValue="-3.535534" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.464466" StringValue="1.464466" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
+      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Shrink Comment="L_Move_04" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Move_04" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move to -K, +K" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-3.535534" StringValue="-3.535534" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-1.464466" StringValue="-1.464466" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
+      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Shrink Comment="L_Move_05" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Move_05" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move to -R, 0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-1.464466" StringValue="-1.464466" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-3.535534" StringValue="-3.535534" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
+      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Shrink Comment="L_Move_06" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Move_06" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move to -K, -K" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.464466" StringValue="1.464466" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-3.535534" StringValue="-3.535534" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
+      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Shrink Comment="L_Move_07" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Move_07" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move to 0, -R" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="3.535534" StringValue="3.535534" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-1.464466" StringValue="-1.464466" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
+      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Shrink Comment="L_Move_08" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Move_08" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move to +K, -K" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="3.535534" StringValue="3.535534" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.464466" StringValue="1.464466" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
+      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Shrink Comment="L_Move_09" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Move_09" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move to +R, 0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.464466" StringValue="1.464466" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="3.535534" StringValue="3.535534" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
+      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Shrink Comment="L_Move_10" Size="7" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Move_10" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Return to center" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-5.0" StringValue="-5.0" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="Parameter: Select a stage from drop down list." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="Parameter: Enter velocity of movement in um/s." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_XSlow" />
+      <Parameter Name="Distance [um]" Description="Parameter: Enter move distance in um or absolute position." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Sync" Description="Parameter: Select if the move process is executed synchronous to other sequences steps or not." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="Parameter: Select if the stage should run to an absolute position or to a position relative to the current position." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Relative" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
+      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Comment></Comment>
+   <Shrink Comment="L_End" Size="4" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_End" Editable="FALSE" Name="ReturnNumParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
+      <Parameter Name="Value" Description="Enter default value for parameter in numeric format." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
+      <Parameter Name="Value" Description="Enter default value for parameter in string format." Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SequenceName" />
+      <Parameter Name="Value" Description="Enter default value for parameter in string format." Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="Standard">
+   </Statement>
+   <Comment></Comment>
+   <Shrink Comment="L_Error_Fiducial" Size="4" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Error_Fiducial" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="12.0" StringValue="12.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="At least one stage is not fiducialed!" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Comment></Comment>
+   <Shrink Comment="L_Error_Velocity" Size="4" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Error_Velocity" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="13.0" StringValue="13.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="VelocityAlignXSlow is missing or not greater than zero!" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description>Hardware diagnostic test: 5 um relative circle-like motion on Align_X1 and Align_Z1.</Sequence-Description>
+      <Editor-Version>V 3.1.0 Build:103281600</Editor-Version>
+      <Entry>2026-06-29 Sequence created [Codex]</Entry>
+   </History>
+</Sequence>

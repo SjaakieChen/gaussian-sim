@@ -1,0 +1,13 @@
+﻿{
+  "schema_version": 3,
+  "target_id": "003",
+  "default_positions_path": "migrations/migration_v3/dev_side/python_default_positioning/default_positions.json",
+  "limits": {
+    "max_single_move_um": 200000,
+    "max_exposure": 500000
+  },
+  "algorithm": {
+    "name": "default_position_move_planner",
+    "tolerance_um": 0.05
+  }
+}

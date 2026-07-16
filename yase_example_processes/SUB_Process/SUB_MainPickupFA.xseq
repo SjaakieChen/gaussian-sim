@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_MainPickupFA</Comment>
+   <Comment>Thin wrapper: delegates to SUB_MainPickupLA until machine-specific FA pickup is confirmed.</Comment>
+   <Statement Label="@L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_MainPickupLA" Library="process\SUB_Process">
+      <Parameter Name="Select LA[Wide, Narrow]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Wide" />
+      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
+      <Parameter Name="Value" Description="Enter default value for parameter in numeric format." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
+      <Parameter Name="Value" Description="Enter default value for parameter in string format." Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   </Statement>
+</Sequence>

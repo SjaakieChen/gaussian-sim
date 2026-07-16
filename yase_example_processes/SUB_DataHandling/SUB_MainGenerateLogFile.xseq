@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_SysGrabNSaveImage</Comment>
+   <Comment>160608 - JK</Comment>
+   <Comment></Comment>
+   <Shrink Comment="L_Start" Size="9" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SysGrabNSaveImage" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="S_DialogTitle" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="S_DialogTitle" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="GetTimer" Library="Standard">
+      <Parameter Name="Timer val" Description="Result: Returns timer value." Type="U32" Direction="Output" ValueType="Variable" VariableName="TimeStart" />
+   </Statement>
+   <Comment></Comment>
+   <Statement Label="" Editable="FALSE" Name="DeclareStrParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ProcessStep" />
+      <Parameter Name="Default value" Description="Enter default value for parameter in string format." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="LensRotationCorrection_ROLL" />
+      <Parameter Name="Value" Description="If the sequence is running stand alone – not called from higher instance – the value is = Default value; if the sequence is called from another sequence / subsequence, the Value is defined by the calling sequence." Type="String" Direction="Output" ValueType="Variable" VariableName="ProcessStep" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DeclareStrParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="CameraName" />
+      <Parameter Name="Default value" Description="Enter default value for parameter in string format." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="LivePic_Front" />
+      <Parameter Name="Value" Description="If the sequence is running stand alone – not called from higher instance – the value is = Default value; if the sequence is called from another sequence / subsequence, the Value is defined by the calling sequence." Type="String" Direction="Output" ValueType="Variable" VariableName="CameraName" />
+   </Statement>
+   <Comment></Comment>
+   <Statement Label="" Editable="FALSE" Name="GetNumVar" Library="VariableIO">
+      <Parameter Name="from" Description="Parameter: Select between Process, System or Path: System=uses systemvar.ini; Path=uses any INI-file specified by Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to .ini-file. Usage of this parameter is only necessary when From Path is selected." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where the value is stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="UserDialog" />
+      <Parameter Name="Name" Description="Parameter: Name of value to be read." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SerialNumber" />
+      <Parameter Name="VarValueOut" Description="Result: Returns the value read by the statement." Type="DBL" Direction="Output" ValueType="Variable" VariableName="SerialNumber" />
+   </Statement>
+   <Comment></Comment>
+   <Shrink Comment="L_GenerateFileName" Size="6" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_GenerateFileName" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="TimeFormat" Library="Standard">
+      <Parameter Name="FormatString" Description="Parameter: The format of Time String is defined by the FormatString. If FormatString is empty the format: %Y/%m/%d %H:%M:%S is assumed by default. If add msec is TRUE the millisecond value is appended to the end of the string. Format Code: Value for FormatString; %%: a single percent character; %a: abbreviated weekday name (e.g. Wed); %A: full weekday name (e.g. Wednesday); %b: abbreviated month name (e.g. Jun); %B: full month name (e.g. June); %c: locale’s default date and time representation; %d: day of month (01 –  31); %H: hour (24-hour clock) (00 – 23); %I: hour (12-hour clock) (01 – 12); %j: day number of year (001 – 366); %m: month number (01 – 12); %M: minute (00 – 59); %p: AM or PM flag; %S: seconds (00 – 59); %U: week number of the year (00 – 53), with the first Sunday as the first day of week one; %w: weekday as a decimal number (0 – 6), with 0 representing Sunday; %W: week number of the year (00 – 53), with the first Monday as the first day of week one; %x: locale’s date representation; %X: locale’s time representation; %y:  year within century (00 – 99); %Y: year, including the century (for example, 1997); %Z: time zone name or abbreviation." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="%Y_%m_%d %H_%M_%S" />
+      <Parameter Name="add msec" Description="Parameter: Adds .%3d msec to time string." Type="Boolean" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Seconds" Description="Parameter: If Seconds = 0: current time, if seconds &lt;&gt; 0 seconds are formatted to time string. " Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="TimeString" Description="Result: The format of TIMESTRING is defined by the FORMAT STRING. If FORMATSTRING is empty the format: %Y/%m/%d %H:%M:%S is assumed by default. f add msec is TRUE the millisecond value is appended to the end of the string." Type="String" Direction="Output" ValueType="Variable" VariableName="TimeString" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Variable" VariableName="ProcessStep" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=" " />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="ProcessStep" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Variable" VariableName="ProcessStep" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Variable" VariableName="TimeString" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="FileName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Variable" VariableName="FileName" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="_SerialNo" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="FileName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="Parameter: Enter output string." Type="String" Direction="Input" ValueType="Variable" VariableName="FileName" />
+      <Parameter Name="Number" Description="Parameter: Enter number to be formatted." Type="DBL" Direction="Input" ValueType="Variable" VariableName="SerialNumber" />
+      <Parameter Name="Precision" Description="Parameter: Enter number of digits of output string." Type="I32" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns formatted string." Type="String" Direction="Output" ValueType="Variable" VariableName="FileName" />
+   </Statement>
+   <Comment></Comment>
+   <Shrink Comment="L_GrabNSaveImage" Size="3" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_GrabNSaveImage" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="GrabAndSave" Library="IMAQ">
+      <Parameter Name="Camera" Description=" Parameter: Select a camera from the drop down list." Type="String" Direction="Input" ValueType="Variable" VariableName="CameraName" />
+      <Parameter Name="FileName(.TIF)" Description="Parameter: Enter file name, file will be in .tif format." Type="String" Direction="Input" ValueType="Variable" VariableName="FileName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Saved Image" />
+   </Statement>
+   <Comment></Comment>
+   <Shrink Comment="L_End" Size="20" Collapsed="false">
+   </Shrink>
+   <Statement Label="L_End" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="GetTimer" Library="Standard">
+      <Parameter Name="Timer val" Description="Result: Returns timer value." Type="U32" Direction="Output" ValueType="Variable" VariableName="TimeEnd" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="Parameter: First value of arithmetic operation." Type="DBL" Direction="Input" ValueType="Variable" VariableName="TimeEnd" />
+      <Parameter Name="Operation" Description="Parameter: Choose operation from drop down list." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="--" />
+      <Parameter Name="Number 2 in" Description="Parameter: Second value of operation." Type="DBL" Direction="Input" ValueType="Variable" VariableName="TimeStart" />
+      <Parameter Name="Number out" Description="Result: Result of operation." Type="DBL" Direction="Output" ValueType="Variable" VariableName="TimeDuration" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="Parameter: First value of arithmetic operation." Type="DBL" Direction="Input" ValueType="Variable" VariableName="TimeDuration" />
+      <Parameter Name="Operation" Description="Parameter: Choose operation from drop down list." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="/" />
+      <Parameter Name="Number 2 in" Description="Parameter: Second value of operation." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1000.0" StringValue="1000.0" />
+      <Parameter Name="Number out" Description="Result: Result of operation." Type="DBL" Direction="Output" ValueType="Variable" VariableName="TimeDuration" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetNumVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path: Process=uses processvar.ini; System=uses systemvar.ini; Path=uses any INI-file specified by Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Usage of this parameter is only necessary when From Path is selected." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where value is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="TimeLogging" />
+      <Parameter Name="Name" Description="Parameter: Name of value to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="S_DialogTitle" />
+      <Parameter Name="VarValueIn" Description="Parameter: Value to be stored." Type="DBL" Direction="Input" ValueType="Variable" VariableName="TimeDuration" />
+   </Statement>
+   <Comment>ErrorHandling</Comment>
+   <Statement Label="" Editable="FALSE" Name="GetDateTimeString" Library="Standard">
+      <Parameter Name="time format string" Description="Parameter: The format of Time String is defined by the FormatString. If FormatString is empty the format: %Y/%m/%d %H:%M:%S is assumed by default. If add msec is TRUE the millisecond value is appended to the end of the string. Format Code: Value for FormatString; %%: a single percent character; %a: abbreviated weekday name (e.g. Wed); %A: full weekday name (e.g. Wednesday); %b: abbreviated month name (e.g. Jun); %B: full month name (e.g. June); %c: locale’s default date and time representation; %d: day of month (01 –  31); %H: hour (24-hour clock) (00 – 23); %I: hour (12-hour clock) (01 – 12); %j: day number of year (001 – 366); %m: month number (01 – 12); %M: minute (00 – 59); %p: AM or PM flag; %S: seconds (00 – 59); %U: week number of the year (00 – 53), with the first Sunday as the first day of week one; %w: weekday as a decimal number (0 – 6), with 0 representing Sunday; %W: week number of the year (00 – 53), with the first Monday as the first day of week one; %x: locale’s date representation; %X: locale’s time representation; %y: year within century (00 – 99); %Y: year, including the century (for example, 1997); %Z: time zone name or abbreviation." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="; %m/%d/%Y %H:%M:%S ; " />
+      <Parameter Name="date/time string" Description="Result: Returns the time string of the given time Seconds (seconds since 1 Jan 1904). If Seconds is empty or zero the actual system time is returned." Type="String" Direction="Output" ValueType="Variable" VariableName="S_ErrorDateTime" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Variable" VariableName="S_DialogTitle" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Variable" VariableName="S_ErrorDateTime" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="S_ErrorDescription" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Variable" VariableName="S_ErrorDescription" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Variable" VariableName="S_DialogText" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="S_ErrorDescription" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetNumVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path: Process=uses processvar.ini; System=uses systemvar.ini; Path=uses any INI-file specified by Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Usage of this parameter is only necessary when From Path is selected." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where value is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Error" />
+      <Parameter Name="Name" Description="Parameter: Name of value to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Error" />
+      <Parameter Name="VarValueIn" Description="Parameter: Value to be stored." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStringVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path: Process=uses processvar.ini; System=uses systemvar.ini; Path=uses any INI-file specified by Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Usage of this parameter is only necessary when From Path is selected." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where string is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Error" />
+      <Parameter Name="Name" Description="Parameter: Name of string to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorDescription" />
+      <Parameter Name="VarStringIn" Description="Parameter: String to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="S_ErrorDescription" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStringVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path: Process=uses processvar.ini; System=uses systemvar.ini; Path=uses any INI-file specified by Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Usage of this parameter is only necessary when From Path is selected." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where string is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Error" />
+      <Parameter Name="Name" Description="Parameter: Name of string to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorSequence" />
+      <Parameter Name="VarStringIn" Description="Parameter: String to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="S_DialogTitle" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStringVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path: Process=uses processvar.ini; System=uses systemvar.ini; Path=uses any INI-file specified by Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Usage of this parameter is only necessary when From Path is selected." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where string is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Error" />
+      <Parameter Name="Name" Description="Parameter: Name of string to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorDate" />
+      <Parameter Name="VarStringIn" Description="Parameter: String to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="S_ErrorDateTime" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStringVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path: Process=uses processvar.ini; System=uses systemvar.ini; Path=uses any INI-file specified by Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Usage of this parameter is only necessary when From Path is selected." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where string is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Error" />
+      <Parameter Name="Name" Description="Parameter: Name of string to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
+      <Parameter Name="VarStringIn" Description="Parameter: String to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="S_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Error" />
+      <Parameter Name="Value" Description="Enter default value for parameter in numeric format." Type="DBL" Direction="Input" ValueType="Variable" VariableName="Error" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="S_ErrorMessage" />
+      <Parameter Name="Value" Description="Enter default value for parameter in string format." Type="String" Direction="Input" ValueType="Variable" VariableName="S_ErrorMessage" />
+   </Statement>
+   <Comment></Comment>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Variable" VariableName="S_DialogTitle" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=" done" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="S_DialogText" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatusNum" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Description of value." Type="String" Direction="Input" ValueType="Variable" VariableName="S_DialogText" />
+      <Parameter Name="Value" Description="Parameter: Value concatenated to status text." Type="DBL" Direction="Input" ValueType="Variable" VariableName="TimeDuration" />
+      <Parameter Name="Format" Description="Parameter: Choose format from drop down list." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Fractional" />
+      <Parameter Name="Precision" Description="Parameter: Number of digits." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="2.0" StringValue="2.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="Standard">
+   </Statement>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description></Sequence-Description>
+      <Editor-Version>V 3.1.0 Build:103281600</Editor-Version>
+      <Entry>2016-06-08 17:11:18 Sequence modified [Lab user1]</Entry>
+      <Entry>2016-06-08 17:12:15 Sequence modified [Lab user1]</Entry>
+      <Entry>2016-06-08 17:15:30 Sequence modified [Lab user1]</Entry>
+      <Entry>2016-06-08 17:20:30 Sequence modified [Lab user1]</Entry>
+      <Entry>2016-06-08 17:25:47 Sequence modified [Lab user1]</Entry>
+      <Entry>2016-06-08 17:31:00 Sequence modified [Lab user1]</Entry>
+      <Entry>2016-06-08 17:36:06 Sequence modified [Lab user1]</Entry>
+      <Entry>2016-06-08 17:41:06 Sequence modified [Lab user1]</Entry>
+      <Entry>2016-06-08 17:41:24 Sequence modified [Lab user1]</Entry>
+      <Entry>2016-06-08 17:42:39 Sequence modified [Lab user1]</Entry>
+      <Entry>2016-06-08 17:44:10 Sequence modified [NST]</Entry>
+      <Entry>2016-06-08 17:46:06 Sequence modified [NST]</Entry>
+      <Entry>2016-06-08 17:47:28 Sequence modified [NST]</Entry>
+      <Entry>2016-06-08 17:49:02 Sequence modified [NST]</Entry>
+      <Entry>2016-06-08 18:09:02 Sequence modified [NST]</Entry>
+      <Entry>2016-06-08 18:10:26 Sequence modified [NST]</Entry>
+      <Entry>2016-12-01 13:57:15 Sequence modified [NST]</Entry>
+      <Entry>2016-12-01 14:01:01 Sequence modified [NST]</Entry>
+      <Entry>2016-12-01 14:06:01 Sequence modified [NST]</Entry>
+      <Entry>2016-12-01 14:11:01 Sequence modified [NST]</Entry>
+      <Entry>2016-12-01 14:16:01 Sequence modified [NST]</Entry>
+      <Entry>2016-12-01 14:21:01 Sequence modified [NST]</Entry>
+      <Entry>2016-12-01 14:26:01 Sequence modified [NST]</Entry>
+      <Entry>2016-12-01 14:31:01 Sequence modified [NST]</Entry>
+      <Entry>2016-12-01 14:33:14 Sequence modified [NST]</Entry>
+      <Entry>2016-12-01 14:57:20 Sequence modified [NST]</Entry>
+   </History>
+</Sequence>

@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "description": "Standard machine positions transcribed from frontpage/backpage notes. Crossed-out handwritten values are intentionally ignored.",
+  "source": {
+    "folder": "Standard position images/v2",
+    "note_pages": {
+      "front": "frontpage.png",
+      "back": "backpage.png"
+    },
+    "captured_image_units": {
+      "width_px": 2592,
+      "height_px": 1944,
+      "mode": "8-bit grayscale"
+    },
+    "rules": {
+      "position_units": "um",
+      "crossed_out_values": "ignored",
+      "unknown_values": null
+    }
+  },
+  "positions": [
+    {
+      "id": "001",
+      "label": "pick_ball_1",
+      "source_page": "frontpage",
+      "captured_image": null,
+      "machine_positions_um": {
+        "tower_1": {
+          "x": -13800,
+          "y": 800,
+          "z": 34400,
+          "z_near_vacuum": -5000
+        },
+        "tower_2": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "camera": {
+          "x": -74997,
+          "y": -45997,
+          "z": -60395
+        }
+      },
+      "camera_settings": {
+        "exposure": null,
+        "zoom": null
+      },
+      "notes": [
+        "No captured 001 image file was present in the folder.",
+        "z_near_vacuum was supplied separately from the normal x/y/z axes. and represents when the vacuum tube is close to the ball lens"
+      ]
+    },
+    {
+      "id": "002",
+      "label": "pick_ball_2",
+      "source_page": "frontpage",
+      "captured_image": null,
+      "machine_positions_um": {
+        "tower_1": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "tower_2": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "camera": {
+          "x": null,
+          "y": null,
+          "z": null
+        }
+      },
+      "camera_settings": {
+        "exposure": null,
+        "zoom": null
+      },
+      "notes": [
+        "The corresponding handwritten row was present but not filled in."
+      ]
+    },
+    {
+      "id": "003",
+      "label": "cam_view_1_wide",
+      "source_page": "frontpage",
+      "captured_image": "003.png",
+      "machine_positions_um": {
+        "tower_1": {
+          "x": 19000,
+          "y": 5800,
+          "z": 499
+        },
+        "tower_2": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "camera": {
+          "x": -38997,
+          "y": -45997,
+          "z": -97694
+        }
+      },
+      "camera_settings": {
+        "exposure": {
+          "value": 10000,
+          "as_written": "1E4",
+          "units": null
+        },
+        "zoom": {
+          "value": 0,
+          "as_written": "0",
+          "units": null
+        }
+      },
+      "notes": ["the camera height focuses on platform level"]
+    },
+    {
+      "id": "004",
+      "label": "cam_view_1_side",
+      "source_page": "frontpage",
+      "captured_image": "004.png",
+      "machine_positions_um": {
+        "tower_1": {
+          "x": 19000,
+          "y": -3299,
+          "z": 500
+        },
+        "tower_2": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "camera": {
+          "x": -38997,
+          "y": -45997,
+          "z": -97694
+        }
+      },
+      "camera_settings": {
+        "exposure": {
+          "value": 17000,
+          "as_written": "1.7E4",
+          "units": null
+        },
+        "zoom": {
+          "value": 0,
+          "as_written": "0",
+          "units": null
+        }
+      },
+      "notes": [
+        "Camera position and zoom inherited from 003 per user clarification."
+      ]
+    },
+    {
+      "id": "005",
+      "label": "back_view_after_trench",
+      "source_page": "frontpage",
+      "captured_image": "005.png",
+      "machine_positions_um": {
+        "tower_1": {
+          "x": 1900,
+          "y": -4749,
+          "z": 1200
+        },
+        "tower_2": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "camera": {
+          "x": -38997,
+          "y": -45097,
+          "z": -97694
+        }
+      },
+      "camera_settings": {
+        "exposure": {
+          "value": 22900,
+          "as_written": "2.29E4",
+          "units": null
+        },
+        "zoom": {
+          "value": 320,
+          "as_written": "320",
+          "units": null
+        }
+      },
+      "notes": [
+        "Camera x/z inherited from cam_view_1_side per user clarification.",
+        "User wrote 't1 x=1900 y=-4749 y=1200'; the second y was interpreted as z because positions use x/y/z."
+      ]
+    },
+    {
+      "id": "006",
+      "label": "full_above_trench",
+      "source_page": "backpage",
+      "captured_image": "006.png",
+      "machine_positions_um": {
+        "tower_1": {
+          "x": 1800,
+          "y": -4401,
+          "z": 1800
+        },
+        "tower_2": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "camera": {
+          "x": -37998,
+          "y": -44799,
+          "z": -94695
+        }
+      },
+      "camera_settings": {
+        "exposure": null,
+        "zoom": {
+          "value": 2500,
+          "as_written": "2500",
+          "units": null
+        }
+      },
+      "notes": []
+    }
+  ]
+}

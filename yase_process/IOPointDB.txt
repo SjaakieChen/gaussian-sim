@@ -1,4 +1,0 @@
-Computer	hidden/visible	Section	DeviceType	ShortName	Description	Connection	Type	free	Clamp	free	free	Address	Direction	Defaultwert	Einheit	Low Range	High Range	Low Limit	High Limit	Low Warning	High Warning	Transfer function	Default Low Limit	Default High Limit	Default Low Warning	Default High Warning	Log?	LifeTime	ll violation action	ll violation parameter	lw violation action	lw violation parameter	ul violation action	ul violation parameter	uw violation action	uw violation parameter	OnChange action	OnChange parameter	FormatString
-																																							
-LOCALHOST	visible	N2278	Camera	cam_12_ExposureTime	Cam_12_ExposureTime	cam_12	analog			na	na	CameraAttributes::AcquisitionControl::ExposureTime	out	15000				500	1000000																				
-LOCALHOST	visible	N2278	Camera	camera_swir_ExposureTime	camera_swir_ExposureTime	camera_swir	analog			na	na	CameraAttributes::AcquisitionControl::ExposureTime	out	5000				500	1000000																				
