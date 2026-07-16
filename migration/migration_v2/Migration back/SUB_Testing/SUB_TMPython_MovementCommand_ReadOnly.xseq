@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_TMPython_MovementCommand_ReadOnly</Comment>
+   <Comment>Python migration checkout. Calls TMPython and displays returned JSON. No hardware motion.</Comment>
+   <Comment>If the installed TMPython prototype uses different parameter names, replace the TMPython_ExecuteScript parameters in YASE.</Comment>
+   <Statement Label="@L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="TMPython movement checkout: read-only call starting" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;in&quot;: &quot;Received input param: Hello from se&quot;}" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonInputJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="TMPython_ExecuteScript" Library="">
+      <Parameter Name="Interpreter" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Python_37_PYTHON_AUTOMATION_INTERPRETER" />
+      <Parameter Name="Module" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="hello" />
+      <Parameter Name="Class" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="HelloWorld" />
+      <Parameter Name="ParamIn" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="ParamOut" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Comment>Stop here for the first machine checkout. Do not add MoveStage until this returned JSON is verified.</Comment>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description>Read-only TMPython movement command checkout template.</Sequence-Description>
+      <Editor-Version>V 3.1.0 Build:103281600</Editor-Version>
+      <Entry>2026-07-07 Created for Python migration bundle</Entry>
+      <Entry>2026-07-08 15:45:39 Sequence modified [NST]</Entry>
+      <Entry>2026-07-08 15:50:39 Sequence modified [NST]</Entry>
+      <Entry>2026-07-08 15:50:52 Sequence modified [NST]</Entry>
+      <Entry>2026-07-08 15:52:45 Sequence modified [NST]</Entry>
+      <Entry>2026-07-08 16:26:28 Sequence modified [NST]</Entry>
+      <Entry>2026-07-08 16:31:28 Sequence modified [NST]</Entry>
+      <Entry>2026-07-08 16:33:52 Sequence modified [NST]</Entry>
+   </History>
+</Sequence>

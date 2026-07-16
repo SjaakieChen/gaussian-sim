@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_JSON_WriteExtract</Comment>
+   <Comment>Minimal test: create JSON, write it, extract fields in Python, and write the returned JSON.</Comment>
+   <Statement Label="@L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;item&quot;:{&quot;name&quot;:&quot;ball_1&quot;,&quot;x_um&quot;:123.45,&quot;enabled&quot;:true}}" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_JsonInput" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="&lt;B&gt;file path&lt;/B&gt; is the path name of the file. If file path is empty (default) or is &lt;Not A Path&gt;, the VI displays a dialog box from which you can select a file. Error 43 occurs if you cancel the dialog box." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\json_write_extract_input.json" />
+      <Parameter Name="Mode" Description="Parameter: select if file should be created or replaced (New File), or the data should be appended to an existing file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Data to be written to a file." Type="String" Direction="Input" ValueType="Variable" VariableName="s_JsonInput" />
+      <Parameter Name="success" Description="Result: indicates, if the operation was successful" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_JsonInputWritten" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="TMPython_ExecuteScript" Library="">
+      <Parameter Name="Interpreter" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Python_37_PYTHON_AUTOMATION_INTERPRETER" />
+      <Parameter Name="Module" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="json_write_extract" />
+      <Parameter Name="Class" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="JsonWriteExtract" />
+      <Parameter Name="ParamIn" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_JsonInput" />
+      <Parameter Name="ParamOut" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_JsonOutput" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_JsonOutput" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="&lt;B&gt;file path&lt;/B&gt; is the path name of the file. If file path is empty (default) or is &lt;Not A Path&gt;, the VI displays a dialog box from which you can select a file. Error 43 occurs if you cancel the dialog box." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\json_write_extract_output.json" />
+      <Parameter Name="Mode" Description="Parameter: select if file should be created or replaced (New File), or the data should be appended to an existing file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Data to be written to a file." Type="String" Direction="Input" ValueType="Variable" VariableName="s_JsonOutput" />
+      <Parameter Name="success" Description="Result: indicates, if the operation was successful" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_JsonOutputWritten" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="Standard">
+   </Statement>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description>Minimal TMPython JSON write and extraction test.</Sequence-Description>
+      <Editor-Version>V 3.1.0 Build:103281600</Editor-Version>
+      <Entry>2026-07-10 Created minimal JSON round-trip test</Entry>
+      <Entry>2026-07-10 16:03:21 Sequence modified [NST]</Entry>
+   </History>
+</Sequence>
