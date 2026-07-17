@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <Sequence>
-   <Comment>SUB_DefaultPosition_005_back_view_after_trench</Comment>
-   <Comment>Moves all known axes and camera settings for default position 005 (back_view_after_trench).</Comment>
+   <Comment>SUB_DefaultPosition_5.0.0_back_view_after_trench</Comment>
+   <Comment>Moves all known axes and camera settings for default position 5.0.0 (back_view_after_trench).</Comment>
    <Comment>Every hardware operation is delegated to the guarded apply sequences, which show operator popups before motion or IO.</Comment>
    <Comment>Generated from migration_v3/dev_side/python_default_positioning/default_positions.json. Unknown values are skipped.</Comment>
    <Shrink Comment="L_Start" Size="7" Collapsed="true">
@@ -10,7 +10,7 @@
       <Parameter Name="Comment" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_DefaultPosition_005_back_view_after_trench" />
+      <Parameter Name="String 1" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_DefaultPosition_5.0.0_back_view_after_trench" />
       <Parameter Name="String 2" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
       <Parameter Name="String out" Type="String" Direction="Output" ValueType="Variable" VariableName="s_SequenceName" />
    </Statement>
@@ -29,13 +29,13 @@
    <Shrink Comment="L_ApplyPosition" Size="25" Collapsed="true">
    </Shrink>
    <Statement Label="L_ApplyPosition" Editable="FALSE" Name="****" Library="XSEQFlowControl">
-      <Parameter Name="Comment" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Apply 8 operator-confirmed actions for default position 005; each child call moves or sets one thing only." />
+      <Parameter Name="Comment" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Apply 8 operator-confirmed actions for default position 5.0.0; each child call moves or sets one thing only." />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_ApplyDefaultPositionMove" Library="process\SUB_default_positioning">
       <Parameter Name="Stage" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_X" />
       <Parameter Name="TargetUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-38997.0" StringValue="-38997.0" />
       <Parameter Name="MaxSingleMoveUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="200000.0" StringValue="200000.0" />
-      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 005 (back_view_after_trench). Move one stage only. Stage: Camera_X. Absolute target: -38997 um." />
+      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 5.0.0 (back_view_after_trench). Move one stage only. Stage: Camera_X. Absolute target: -38997 um." />
       <Parameter Name="ErrorType" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
@@ -51,7 +51,7 @@
       <Parameter Name="Stage" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Z" />
       <Parameter Name="TargetUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-97694.0" StringValue="-97694.0" />
       <Parameter Name="MaxSingleMoveUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="200000.0" StringValue="200000.0" />
-      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 005 (back_view_after_trench). Move one stage only. Stage: Camera_Z. Absolute target: -97694 um." />
+      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 5.0.0 (back_view_after_trench). Move one stage only. Stage: Camera_Z. Absolute target: -97694 um." />
       <Parameter Name="ErrorType" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
@@ -67,7 +67,7 @@
       <Parameter Name="Stage" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Zoom" />
       <Parameter Name="TargetUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="320.0" StringValue="320.0" />
       <Parameter Name="MaxSingleMoveUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="200000.0" StringValue="200000.0" />
-      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 005 (back_view_after_trench). Move one stage only. Stage: Zoom. Absolute target: 320 um." />
+      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 5.0.0 (back_view_after_trench). Move one stage only. Stage: Zoom. Absolute target: 320 um." />
       <Parameter Name="ErrorType" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
@@ -83,7 +83,7 @@
       <Parameter Name="Stage" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Y" />
       <Parameter Name="TargetUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-45097.0" StringValue="-45097.0" />
       <Parameter Name="MaxSingleMoveUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="200000.0" StringValue="200000.0" />
-      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 005 (back_view_after_trench). Move one stage only. Stage: Camera_Y. Absolute target: -45097 um." />
+      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 5.0.0 (back_view_after_trench). Move one stage only. Stage: Camera_Y. Absolute target: -45097 um." />
       <Parameter Name="ErrorType" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
@@ -99,7 +99,7 @@
       <Parameter Name="Stage" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
       <Parameter Name="TargetUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1900.0" StringValue="1900.0" />
       <Parameter Name="MaxSingleMoveUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="200000.0" StringValue="200000.0" />
-      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 005 (back_view_after_trench). Move one stage only. Stage: Align_X1. Absolute target: 1900 um." />
+      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 5.0.0 (back_view_after_trench). Move one stage only. Stage: Align_X1. Absolute target: 1900 um." />
       <Parameter Name="ErrorType" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
@@ -115,7 +115,7 @@
       <Parameter Name="Stage" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
       <Parameter Name="TargetUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1200.0" StringValue="1200.0" />
       <Parameter Name="MaxSingleMoveUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="200000.0" StringValue="200000.0" />
-      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 005 (back_view_after_trench). Move one stage only. Stage: Align_Z1. Absolute target: 1200 um." />
+      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 5.0.0 (back_view_after_trench). Move one stage only. Stage: Align_Z1. Absolute target: 1200 um." />
       <Parameter Name="ErrorType" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
@@ -131,7 +131,7 @@
       <Parameter Name="Stage" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y1" />
       <Parameter Name="TargetUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-4749.0" StringValue="-4749.0" />
       <Parameter Name="MaxSingleMoveUm" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="200000.0" StringValue="200000.0" />
-      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 005 (back_view_after_trench). Move one stage only. Stage: Align_Y1. Absolute target: -4749 um." />
+      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 5.0.0 (back_view_after_trench). Move one stage only. Stage: Align_Y1. Absolute target: -4749 um." />
       <Parameter Name="ErrorType" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
@@ -147,7 +147,7 @@
       <Parameter Name="AnalogLine" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="cam_12_ExpTime" />
       <Parameter Name="Value" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="22900.0" StringValue="22900.0" />
       <Parameter Name="MaxExposure" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="500000.0" StringValue="500000.0" />
-      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 005 (back_view_after_trench). Set one camera value only. Analog line: cam_12_ExpTime. Target value: 22900." />
+      <Parameter Name="ConfirmText" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 5.0.0 (back_view_after_trench). Set one camera value only. Analog line: cam_12_ExpTime. Target value: 22900." />
       <Parameter Name="ErrorType" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
@@ -160,7 +160,7 @@
       <Parameter Name="Label" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_DefaultPosition_005_back_view_after_trench complete." />
+      <Parameter Name="String 1" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_DefaultPosition_5.0.0_back_view_after_trench complete." />
       <Parameter Name="String 2" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
       <Parameter Name="String out" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
@@ -187,7 +187,7 @@
    <SequenceTags>
    </SequenceTags>
    <History>
-      <Sequence-Description>Apply all known default-position 005 settings.</Sequence-Description>
+      <Sequence-Description>Apply all known default-position 5.0.0 settings.</Sequence-Description>
       <Entry>2026-07-16 Created for migration v3 per-position default-position bundle</Entry>
    </History>
 </Sequence>

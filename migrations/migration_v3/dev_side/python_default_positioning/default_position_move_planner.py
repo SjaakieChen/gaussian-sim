@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,7 @@ ALLOWED_MOVE_STAGES = {
 }
 
 JsonDict = dict[str, Any]
+LEGACY_DEFAULT_POSITION_ID_RE = re.compile(r"^\d{3}$")
 
 
 class DefaultPositionMovePlannerStep(TMPythonStatementJ):
@@ -79,7 +81,9 @@ def plan_default_position_move(params_in: JsonDict) -> JsonDict:
     """Return a full plan and the first action for the requested default position."""
 
     require_schema(params_in)
-    target_key = str(params_in.get("target_id") or params_in.get("target_label") or "").strip()
+    target_key = normalize_default_position_id(
+        params_in.get("target_id") or params_in.get("target_label") or ""
+    )
     if not target_key:
         raise ValueError("target_id or target_label is required")
 
@@ -131,12 +135,19 @@ def find_target(defaults: JsonDict, target_key: str) -> JsonDict:
         raise ValueError("default positions JSON must contain a positions list")
     for raw in positions:
         position = as_dict(raw)
-        if str(position.get("id", "")).strip() == target_key:
+        if normalize_default_position_id(position.get("id", "")) == target_key:
             return position
         if str(position.get("label", "")).strip() == target_key:
             return position
-    available = [str(as_dict(item).get("id", "")) for item in positions]
+    available = [normalize_default_position_id(as_dict(item).get("id", "")) for item in positions]
     raise ValueError(f"unknown default position {target_key!r}; available ids: {', '.join(available)}")
+
+
+def normalize_default_position_id(value: Any) -> str:
+    text = str(value).strip()
+    if LEGACY_DEFAULT_POSITION_ID_RE.fullmatch(text):
+        return f"{int(text)}.0.0"
+    return text
 
 
 def actions_for_target(target: JsonDict, params: JsonDict) -> tuple[list[JsonDict], list[JsonDict]]:

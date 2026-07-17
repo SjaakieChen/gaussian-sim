@@ -129,12 +129,12 @@ D:\TestMasterData\Process\Python_Automation\
 `-- SUB_default_positioning\
     |-- SUB_ApplyDefaultPositionMove.xseq
     |-- SUB_ApplyDefaultPositionExposure.xseq
-    |-- SUB_DefaultPosition_001_pick_ball_1.xseq
-    |-- SUB_DefaultPosition_002_pick_ball_2.xseq
-    |-- SUB_DefaultPosition_003_cam_view_1_wide.xseq
-    |-- SUB_DefaultPosition_004_cam_view_1_side.xseq
-    |-- SUB_DefaultPosition_005_back_view_after_trench.xseq
-    `-- SUB_DefaultPosition_006_full_above_trench.xseq
+    |-- SUB_DefaultPosition_1.0.0_pick_ball_1.xseq
+    |-- SUB_DefaultPosition_2.0.0_pick_ball_2.xseq
+    |-- SUB_DefaultPosition_3.0.0_cam_view_1_wide.xseq
+    |-- SUB_DefaultPosition_4.0.0_cam_view_1_side.xseq
+    |-- SUB_DefaultPosition_5.0.0_back_view_after_trench.xseq
+    `-- SUB_DefaultPosition_6.0.0_full_above_trench.xseq
 ```
 
 Microcombsys reference vision layout, read-only for this work:

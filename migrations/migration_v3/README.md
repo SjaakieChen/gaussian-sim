@@ -35,9 +35,12 @@ stage or camera setting at a time.
 | --- | --- |
 | `dev_side\python_default_positioning\default_position_move_planner.py` | Local planner used by tests/regeneration. It is not called by the direct runtime `.xseq` wrappers. |
 | `dev_side\python_default_positioning\default_positions.json` | Local copy of the current standard-position JSON used to generate and verify wrapper constants. |
+| `dev_side\python_vision_recognition\vision_recognition_lab.py` | Copy-ready Python module for `python_env`; exposes `VisionRecognitionLabStep` for TMPython and opens the same ROI UI on a captured image. |
+| `dev_side\python_vision_recognition\requirements.txt` | Public Python packages needed by the captured-image vision recognition lab runtime. |
 | `SUB_default_positioning\SUB_ApplyDefaultPositionMove.xseq` | Applies one parsed absolute `MoveStage` after fiducial check, allowlist check, delta limit, velocity selection, popup confirmation, wait, and axis-error check. |
 | `SUB_default_positioning\SUB_ApplyDefaultPositionExposure.xseq` | Applies one parsed `cam_12_ExpTime` setting after allowlist/range check and popup confirmation. |
 | `SUB_default_positioning\SUB_DefaultPosition_*.xseq` | Operator-facing one-sequence-per-position wrappers. Each wrapper applies every known stage, zoom, and exposure setting for that JSON position by calling the guarded apply sequences. |
+| `SUB_vision_recognition\SUB_OpenVisionRecognitionLab_ReadOnly.xseq` | Captures a fresh `CAM_12` BMP and opens `vision_recognition_lab.VisionRecognitionLabStep` on that image. |
 
 ## Stage Mapping
 
@@ -66,12 +69,12 @@ kept as non-motion notes and are not converted into motion automatically.
 For normal operation, run the matching wrapper sequence:
 
 ```text
-SUB_DefaultPosition_001_pick_ball_1.xseq
-SUB_DefaultPosition_002_pick_ball_2.xseq
-SUB_DefaultPosition_003_cam_view_1_wide.xseq
-SUB_DefaultPosition_004_cam_view_1_side.xseq
-SUB_DefaultPosition_005_back_view_after_trench.xseq
-SUB_DefaultPosition_006_full_above_trench.xseq
+SUB_DefaultPosition_1.0.0_pick_ball_1.xseq
+SUB_DefaultPosition_2.0.0_pick_ball_2.xseq
+SUB_DefaultPosition_3.0.0_cam_view_1_wide.xseq
+SUB_DefaultPosition_4.0.0_cam_view_1_side.xseq
+SUB_DefaultPosition_5.0.0_back_view_after_trench.xseq
+SUB_DefaultPosition_6.0.0_full_above_trench.xseq
 ```
 
 Each wrapper contains the known target values from `default_positions.json`.
@@ -82,5 +85,5 @@ allowlists, delta/range limits, velocities, popup confirmation, waits, and
 axis checks stay in one place. Each child call moves one stage or sets one
 camera value only.
 
-Position `002` currently has only unknown values. Its wrapper exists, but it
+Position `2.0.0` currently has only unknown values. Its wrapper exists, but it
 returns an error and stops before hardware.

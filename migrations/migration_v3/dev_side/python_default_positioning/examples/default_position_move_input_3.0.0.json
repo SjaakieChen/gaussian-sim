@@ -1,6 +1,6 @@
 ﻿{
   "schema_version": 3,
-  "target_id": "003",
+  "target_id": "3.0.0",
   "default_positions_path": "migrations/migration_v3/dev_side/python_default_positioning/default_positions.json",
   "limits": {
     "max_single_move_um": 200000,

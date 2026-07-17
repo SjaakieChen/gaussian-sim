@@ -1416,10 +1416,10 @@ def default_ball_lens_layout() -> tuple[list[BallLensElement], list[TaperDetecto
 class OpticalLayoutEditor(tk.Tk):
     """Small Tkinter editor for positioning optical components."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, window_geometry: str = "1180x760") -> None:
         super().__init__()
         self.title("Gaussian Beam Layout Editor")
-        self.geometry("1180x760")
+        self.geometry(window_geometry)
         self.minsize(960, 620)
 
         default_balls, default_tapers, default_final_z = default_ball_lens_layout()

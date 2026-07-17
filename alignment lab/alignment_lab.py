@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import math
 import random
+import sys
 import tkinter as tk
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from tkinter import messagebox, ttk
 
 from alignment_algorithms import (
@@ -55,6 +57,12 @@ from interactive_setup import (
     format_simulation_report,
     simulate_layout,
 )
+
+VISION_RECOGNITION_LAB_ROOT = Path(__file__).resolve().parents[1] / "vision recognition lab"
+if VISION_RECOGNITION_LAB_ROOT.exists():
+    sys.path.insert(0, str(VISION_RECOGNITION_LAB_ROOT))
+
+from vision_recognition_lab import VisionRecognitionLab
 
 
 DEFAULT_ALIGNMENT_SEED = 42
@@ -457,7 +465,7 @@ class AlignmentLabDevice:
 class AlignmentLabEditor(OpticalLayoutEditor):
     """Alignment-oriented variant of the interactive layout editor."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, window_geometry: str = "1180x760") -> None:
         self.alignment_seed = DEFAULT_ALIGNMENT_SEED
         self.source_detector_tolerance: AxisTolerances = (
             DEFAULT_SOURCE_DETECTOR_TOLERANCE,
@@ -483,7 +491,8 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         self._alignment_no_go_zones: tuple[BallLensNoGoZone, ...] = ()
         self._power_noise_rng = random.Random(DEFAULT_ALIGNMENT_SEED)
         self._blind_algorithm_running = False
-        super().__init__()
+        self._vision_recognition_lab: VisionRecognitionLab | None = None
+        super().__init__(window_geometry=window_geometry)
         self.title("Optical Alignment Lab")
         self._capture_nominal_ball_poses()
         self._alignment_initializing = False
@@ -526,6 +535,12 @@ class AlignmentLabEditor(OpticalLayoutEditor):
         self.vision_script_scramble_button.grid(row=1, column=3, padx=(0, 6), pady=(6, 0))
         self.parameters_toggle_button.grid(row=1, column=4, padx=(8, 6), pady=(6, 0))
         self.output_toggle_button.grid(row=1, column=5, padx=(0, 6), pady=(6, 0))
+        self.vision_recognition_lab_button = ttk.Button(
+            self._toolbar,
+            text="Vision recognition lab",
+            command=self._open_vision_recognition_lab,
+        )
+        self.vision_recognition_lab_button.grid(row=1, column=6, padx=(0, 6), pady=(6, 0))
 
         self._algorithm_label_to_name = {
             algorithm.display_name: name
@@ -656,6 +671,13 @@ class AlignmentLabEditor(OpticalLayoutEditor):
             "zoom_in",
         ):
             self._toolbar_buttons[button_name].grid_remove()
+
+    def _open_vision_recognition_lab(self) -> None:
+        if self._vision_recognition_lab is not None and self._vision_recognition_lab.winfo_exists():
+            self._vision_recognition_lab.lift()
+            self._vision_recognition_lab.focus_force()
+            return
+        self._vision_recognition_lab = VisionRecognitionLab(self)
 
     def _build_scramble_tolerances_section(self) -> None:
         self.scramble_tolerances_frame = ttk.LabelFrame(

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_OpenVisionRecognitionLab_ReadOnly</Comment>
+   <Comment>Read-only vision ROI design: grab one CAM_12 frame, save it as BMP, and open the Python vision recognition lab on that fresh image.</Comment>
+   <Comment>No stage motion is used. Python returns only the saved ROI/session JSON status.</Comment>
+   <Statement Label="@L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Checkout status." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Vision recognition lab: grabbing CAM_12 frame" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Grab" Library="AdvancedIMAQ">
+      <Parameter Name="Camera" Description="Camera used for ROI design." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="CAM_12" />
+      <Parameter Name="Image Out" Description="Flattened reference to the acquired image." Type="String" Direction="Output" ValueType="Variable" VariableName="r_Image_Ref" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="IMAQWriteFile" Library="AdvancedIMAQ">
+      <Parameter Name="Image In" Description="The exact image reference returned by Grab." Type="String" Direction="Input" ValueType="Variable" VariableName="r_Image_Ref" />
+      <Parameter Name="FileName" Description="Filename relative to the Python_Automation process data directory." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="python_vision_input.bmp" />
+      <Parameter Name="FileType" Description="Lossless uncompressed Windows bitmap." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="BMP" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="JSON request for Python. Forward slashes avoid JSON backslash escaping in YASE." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;schema_version&quot;:3,&quot;image_path&quot;:&quot;D:/TestMasterData/data/Python_Automation/python_vision_input.bmp&quot;,&quot;roi_output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/vision_recognition_rois.json&quot;,&quot;result_output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/vision_recognition_result.json&quot;}" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="JSON sent to TMPython." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonInputJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="Diagnostic copy of the Python request." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\vision_recognition_request.json" />
+      <Parameter Name="Mode" Description="Create or replace the file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Request JSON." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="success" Description="True when the request was written." Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_VisionRecognitionRequestWritten" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="TMPython_ExecuteScript" Library="">
+      <Parameter Name="Interpreter" Description="TMPython.ini section." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Python_310_PYTHON_AUTOMATION_INTERPRETER" />
+      <Parameter Name="Module" Description="Python module copied into python_env." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="vision_recognition_lab" />
+      <Parameter Name="Class" Description="TMPython statement class." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="VisionRecognitionLabStep" />
+      <Parameter Name="ParamIn" Description="JSON payload." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="ParamOut" Description="Returned JSON." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Display Python UI session status." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="Diagnostic copy of the Python result." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\vision_recognition_result_from_yase.json" />
+      <Parameter Name="Mode" Description="Create or replace the file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Returned JSON." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+      <Parameter Name="success" Description="True when the result was written." Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_VisionRecognitionResultWritten" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="Standard">
+   </Statement>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description>Read-only CAM_12 capture and Python vision recognition lab ROI design.</Sequence-Description>
+      <Entry>2026-07-16 Created captured-image vision recognition lab launcher</Entry>
+   </History>
+</Sequence>

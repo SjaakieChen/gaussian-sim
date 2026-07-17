@@ -73,9 +73,12 @@ from interactive_setup import (
 )
 
 
+TEST_WINDOW_GEOMETRY = "1180x760+-32000+-32000"
+
+
 def _make_app():
     try:
-        return AlignmentLabEditor()
+        return AlignmentLabEditor(window_geometry=TEST_WINDOW_GEOMETRY)
     except tk.TclError as exc:
         pytest.skip(f"Tk is not available: {exc}")
 
@@ -450,6 +453,7 @@ def test_alignment_lab_uses_return_to_start_button_not_lower_rescramble():
     try:
         assert app.return_to_start_button["text"] == "Return to start"
         assert app.vision_script_scramble_button["text"] == "Vision script scramble"
+        assert app.vision_recognition_lab_button["text"] == "Vision recognition lab"
     finally:
         app.destroy()
 

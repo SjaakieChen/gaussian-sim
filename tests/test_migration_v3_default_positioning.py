@@ -36,7 +36,7 @@ YASE_DEFAULT_POSITION_DIR = ROOT / "migrations" / "migration_v3" / "SUB_default_
 V3_XSEQ_FILES = sorted(YASE_DEFAULT_POSITION_DIR.glob("*.xseq"))
 
 
-def _payload(target_id="003", **extra):
+def _payload(target_id="3.0.0", **extra):
     payload = {
         "schema_version": 3,
         "target_id": target_id,
@@ -103,15 +103,28 @@ def test_v3_deployable_default_positions_matches_standard_position_source():
     )
 
 
-def test_v3_planner_maps_standard_position_003_to_stage_and_exposure_actions():
-    result = plan_default_position_move(_payload("003"))
+def test_v3_standard_position_ids_use_semantic_versions():
+    defaults = json.loads(V3_DEFAULT_POSITIONS.read_text(encoding="utf-8"))
+
+    assert [position["id"] for position in defaults["positions"]] == [
+        "1.0.0",
+        "2.0.0",
+        "3.0.0",
+        "4.0.0",
+        "5.0.0",
+        "6.0.0",
+    ]
+
+
+def test_v3_planner_maps_standard_position_3_0_0_to_stage_and_exposure_actions():
+    result = plan_default_position_move(_payload("3.0.0"))
 
     assert result["schema_version"] == 3
     assert result["action"] == "move_stage"
     assert result["stage1"] == "Camera_X"
     assert result["target1_um"] == -38997.0
     assert result["move_mode1"] == "Absolute"
-    assert result["confirm_text1"].startswith("Default position 003")
+    assert result["confirm_text1"].startswith("Default position 3.0.0")
 
     actions = result["planned_actions"]
     assert [action["action_type"] for action in actions] == [
@@ -139,7 +152,7 @@ def test_v3_planner_maps_standard_position_003_to_stage_and_exposure_actions():
 
 
 def test_v3_planner_reports_special_positions_without_turning_them_into_moves():
-    result = plan_default_position_move(_payload("001"))
+    result = plan_default_position_move(_payload("1.0.0"))
 
     assert result["action"] == "move_stage"
     assert result["state"]["special_position_fields"]["tower_1"]["z_near_vacuum"] == -5000
@@ -160,8 +173,8 @@ def test_v3_planner_reports_special_positions_without_turning_them_into_moves():
     }
 
 
-def test_v3_planner_fails_closed_for_unknown_position_002():
-    result = plan_default_position_move(_payload("002"))
+def test_v3_planner_fails_closed_for_unknown_position_2_0_0():
+    result = plan_default_position_move(_payload("2.0.0"))
 
     assert result["action"] == "abort"
     assert "no known stage targets" in result["message"]
@@ -177,7 +190,7 @@ def test_v3_planner_skips_stage_targets_already_at_current_position():
         "Align_Z1": 499,
         "Align_Y1": 5800,
     }
-    result = plan_default_position_move(_payload("003", current_positions_um=current_positions))
+    result = plan_default_position_move(_payload("3.0.0", current_positions_um=current_positions))
 
     assert result["action"] == "set_analog"
     assert result["analog_line1"] == "cam_12_ExpTime"
@@ -347,13 +360,17 @@ def test_v3_full_wrapper_sequences_match_planned_actions_and_do_not_touch_hardwa
 
 
 def test_v3_full_wrapper_sequences_include_zoom_and_exposure_when_known():
-    sequence_003_values = _string_values(_default_position_path({"id": "003", "label": "cam_view_1_wide"}))
-    sequence_006_values = _string_values(_default_position_path({"id": "006", "label": "full_above_trench"}))
+    sequence_3_0_0_values = _string_values(
+        _default_position_path({"id": "3.0.0", "label": "cam_view_1_wide"})
+    )
+    sequence_6_0_0_values = _string_values(
+        _default_position_path({"id": "6.0.0", "label": "full_above_trench"})
+    )
 
-    assert "Zoom" in sequence_003_values
-    assert "0.0" in sequence_003_values
-    assert "cam_12_ExpTime" in sequence_003_values
-    assert "10000.0" in sequence_003_values
-    assert "Zoom" in sequence_006_values
-    assert "2500.0" in sequence_006_values
-    assert "cam_12_ExpTime" not in sequence_006_values
+    assert "Zoom" in sequence_3_0_0_values
+    assert "0.0" in sequence_3_0_0_values
+    assert "cam_12_ExpTime" in sequence_3_0_0_values
+    assert "10000.0" in sequence_3_0_0_values
+    assert "Zoom" in sequence_6_0_0_values
+    assert "2500.0" in sequence_6_0_0_values
+    assert "cam_12_ExpTime" not in sequence_6_0_0_values

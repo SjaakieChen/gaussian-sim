@@ -6,14 +6,16 @@ requires-python = ">=3.10"
 dependencies = [
     "numpy",
     "matplotlib",
+    "opencv-python-headless>=4.8,<5",
+    "scikit-image>=0.25,<0.26",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = [".", "alignment lab"]
+pythonpath = [".", "alignment lab", "vision recognition lab"]
 
 [tool.pylint.main]
-init-hook = 'import sys; sys.path.insert(0, "."); sys.path.insert(0, "alignment lab")'
+init-hook = 'import sys; sys.path.insert(0, "."); sys.path.insert(0, "alignment lab"); sys.path.insert(0, "vision recognition lab")'
 py-version = "3.10"
 
 [tool.pylint.basic]

@@ -53,6 +53,16 @@ from interactive_setup import (
 from layout import analyze_fiber_coupling, beam_center_at_z, gaussian_mode_overlap_efficiency
 
 
+TEST_WINDOW_GEOMETRY = "1180x760+-32000+-32000"
+
+
+def _make_editor():
+    try:
+        return OpticalLayoutEditor(window_geometry=TEST_WINDOW_GEOMETRY)
+    except tk.TclError as exc:
+        pytest.skip(f"Tk is not available: {exc}")
+
+
 def test_interactive_elements_convert_to_physics_specs():
     source = LaserSource(
         position=0.01,
@@ -406,10 +416,7 @@ def test_apply_nominal_state_restores_aligned_layout():
 
 
 def test_tk_app_align_and_scramble_buttons():
-    try:
-        app = OpticalLayoutEditor()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk is not available: {exc}")
+    app = _make_editor()
 
     try:
         nominal_ball_z = app.balls[0].position
@@ -432,10 +439,7 @@ def test_tk_app_align_and_scramble_buttons():
 
 
 def test_tk_app_simulate_updates_fiber_received_power():
-    try:
-        app = OpticalLayoutEditor()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk is not available: {exc}")
+    app = _make_editor()
 
     try:
         app._simulate()  # pylint: disable=protected-access
@@ -471,10 +475,7 @@ def test_tk_app_simulate_updates_fiber_received_power():
 
 
 def test_tk_app_zoom_changes_visible_range():
-    try:
-        app = OpticalLayoutEditor()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk is not available: {exc}")
+    app = _make_editor()
 
     try:
         app.redraw()
@@ -490,10 +491,7 @@ def test_tk_app_zoom_changes_visible_range():
 
 
 def test_tk_app_undo_reverts_add_final_z_editor_save_drag_delete_and_reset(monkeypatch):
-    try:
-        app = OpticalLayoutEditor()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk is not available: {exc}")
+    app = _make_editor()
 
     class DummyDialog:
         def __init__(self):
@@ -577,10 +575,7 @@ def test_tk_app_undo_reverts_add_final_z_editor_save_drag_delete_and_reset(monke
 
 
 def test_tk_app_zoom_anchors_on_last_canvas_click():
-    try:
-        app = OpticalLayoutEditor()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk is not available: {exc}")
+    app = _make_editor()
 
     try:
         app.update_idletasks()
@@ -601,10 +596,7 @@ def test_tk_app_zoom_anchors_on_last_canvas_click():
 
 
 def test_tk_app_empty_canvas_drag_pans_zoomed_view():
-    try:
-        app = OpticalLayoutEditor()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk is not available: {exc}")
+    app = _make_editor()
 
     try:
         app.update_idletasks()
@@ -627,10 +619,7 @@ def test_tk_app_empty_canvas_drag_pans_zoomed_view():
 
 
 def test_tk_app_view_bounds_refit_only_after_apply():
-    try:
-        app = OpticalLayoutEditor()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk is not available: {exc}")
+    app = _make_editor()
 
     try:
         app.redraw()

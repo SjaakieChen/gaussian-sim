@@ -20,7 +20,7 @@
   },
   "positions": [
     {
-      "id": "001",
+      "id": "1.0.0",
       "label": "pick_ball_1",
       "source_page": "frontpage",
       "captured_image": null,
@@ -47,12 +47,12 @@
         "zoom": null
       },
       "notes": [
-        "No captured 001 image file was present in the folder.",
+        "No captured 1.0.0 image file was present in the folder.",
         "z_near_vacuum was supplied separately from the normal x/y/z axes. and represents when the vacuum tube is close to the ball lens"
       ]
     },
     {
-      "id": "002",
+      "id": "2.0.0",
       "label": "pick_ball_2",
       "source_page": "frontpage",
       "captured_image": null,
@@ -82,10 +82,10 @@
       ]
     },
     {
-      "id": "003",
+      "id": "3.0.0",
       "label": "cam_view_1_wide",
       "source_page": "frontpage",
-      "captured_image": "003.png",
+      "captured_image": "3.0.0.png",
       "machine_positions_um": {
         "tower_1": {
           "x": 19000,
@@ -118,10 +118,10 @@
       "notes": ["the camera height focuses on platform level"]
     },
     {
-      "id": "004",
+      "id": "4.0.0",
       "label": "cam_view_1_side",
       "source_page": "frontpage",
-      "captured_image": "004.png",
+      "captured_image": "4.0.0.png",
       "machine_positions_um": {
         "tower_1": {
           "x": 19000,
@@ -152,14 +152,14 @@
         }
       },
       "notes": [
-        "Camera position and zoom inherited from 003 per user clarification."
+        "Camera position and zoom inherited from 3.0.0 per user clarification."
       ]
     },
     {
-      "id": "005",
+      "id": "5.0.0",
       "label": "back_view_after_trench",
       "source_page": "frontpage",
-      "captured_image": "005.png",
+      "captured_image": "5.0.0.png",
       "machine_positions_um": {
         "tower_1": {
           "x": 1900,
@@ -195,10 +195,10 @@
       ]
     },
     {
-      "id": "006",
+      "id": "6.0.0",
       "label": "full_above_trench",
       "source_page": "backpage",
-      "captured_image": "006.png",
+      "captured_image": "6.0.0.png",
       "machine_positions_um": {
         "tower_1": {
           "x": 1800,

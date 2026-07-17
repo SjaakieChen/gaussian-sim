@@ -12,12 +12,12 @@ Before editing these files, read:
 | --- | --- |
 | `SUB_ApplyDefaultPositionMove.xseq` | Applies one already-parsed absolute stage move after fiducial, allowed-stage, max-delta, velocity, popup-confirmation, wait, and axis-error checks. |
 | `SUB_ApplyDefaultPositionExposure.xseq` | Applies one already-parsed `cam_12_ExpTime` setting after analog-line allowlist, range check, and popup confirmation. |
-| `SUB_DefaultPosition_001_pick_ball_1.xseq` | Applies all known settings for default position `001`. |
-| `SUB_DefaultPosition_002_pick_ball_2.xseq` | Exists for completeness, but fails closed because `002` has no known settings in the JSON. |
-| `SUB_DefaultPosition_003_cam_view_1_wide.xseq` | Applies all known settings for default position `003`, including `Zoom` and `cam_12_ExpTime`. |
-| `SUB_DefaultPosition_004_cam_view_1_side.xseq` | Applies all known settings for default position `004`, including `Zoom` and `cam_12_ExpTime`. |
-| `SUB_DefaultPosition_005_back_view_after_trench.xseq` | Applies all known settings for default position `005`, including `Zoom` and `cam_12_ExpTime`. |
-| `SUB_DefaultPosition_006_full_above_trench.xseq` | Applies all known settings for default position `006`, including `Zoom`. |
+| `SUB_DefaultPosition_1.0.0_pick_ball_1.xseq` | Applies all known settings for default position `1.0.0`. |
+| `SUB_DefaultPosition_2.0.0_pick_ball_2.xseq` | Exists for completeness, but fails closed because `2.0.0` has no known settings in the JSON. |
+| `SUB_DefaultPosition_3.0.0_cam_view_1_wide.xseq` | Applies all known settings for default position `3.0.0`, including `Zoom` and `cam_12_ExpTime`. |
+| `SUB_DefaultPosition_4.0.0_cam_view_1_side.xseq` | Applies all known settings for default position `4.0.0`, including `Zoom` and `cam_12_ExpTime`. |
+| `SUB_DefaultPosition_5.0.0_back_view_after_trench.xseq` | Applies all known settings for default position `5.0.0`, including `Zoom` and `cam_12_ExpTime`. |
+| `SUB_DefaultPosition_6.0.0_full_above_trench.xseq` | Applies all known settings for default position `6.0.0`, including `Zoom`. |
 
 Every stage move uses `DisplayExtdSelectionDialog` before `MoveStage`. Button 1
 is `Abort` and executes a `Goto` to the user-abort path. Button 2 is `Move` and
