@@ -13,7 +13,10 @@ from pathlib import Path
 from tkinter import ttk
 from typing import Any, Callable, Sequence
 
+import cv2
 import numpy as np
+from skimage.feature import canny
+from skimage.transform import hough_circle, hough_circle_peaks, probabilistic_hough_line
 
 
 try:
@@ -934,10 +937,6 @@ def grayscale_to_uint8(gray_image: np.ndarray) -> np.ndarray:
 
 
 def opencv_adaptive_dark_mask(gray_image: np.ndarray) -> np.ndarray:
-    try:
-        import cv2
-    except ImportError:
-        return np.zeros_like(gray_image, dtype=bool)
     gray_u8 = grayscale_to_uint8(gray_image)
     min_dimension = max(3, min(gray_u8.shape))
     block_size = max(15, min(151, int(min_dimension // 30) | 1))
@@ -955,10 +954,6 @@ def opencv_adaptive_dark_mask(gray_image: np.ndarray) -> np.ndarray:
 
 
 def opencv_canny_mask(gray_image: np.ndarray, *, sensitivity: float | None = None) -> np.ndarray:
-    try:
-        import cv2
-    except ImportError:
-        return np.zeros_like(gray_image, dtype=bool)
     sensitivity_value = (
         DEFAULT_GEOMETRY_SENSITIVITY
         if sensitivity is None
@@ -973,10 +968,6 @@ def opencv_canny_mask(gray_image: np.ndarray, *, sensitivity: float | None = Non
 
 
 def skimage_canny_mask(gray_image: np.ndarray, *, sensitivity: float | None = None) -> np.ndarray:
-    try:
-        from skimage.feature import canny
-    except ImportError:
-        return np.zeros_like(gray_image, dtype=bool)
     sensitivity_value = (
         DEFAULT_GEOMETRY_SENSITIVITY
         if sensitivity is None
@@ -1236,10 +1227,6 @@ def _opencv_hough_lines(
     scale: int,
     sensitivity: float,
 ) -> list[VisionLine]:
-    try:
-        import cv2
-    except ImportError:
-        return []
     sensitivity = clamp_geometry_sensitivity(sensitivity)
     lines: list[VisionLine] = []
     for bounds, roi in _rectangular_search_bounds(mask.shape, rois, scale):
@@ -1287,10 +1274,6 @@ def _skimage_hough_lines(
     scale: int,
     sensitivity: float,
 ) -> list[VisionLine]:
-    try:
-        from skimage.transform import probabilistic_hough_line
-    except ImportError:
-        return []
     sensitivity = clamp_geometry_sensitivity(sensitivity)
     lines: list[VisionLine] = []
     for bounds, _roi in _rectangular_search_bounds(mask.shape, rois, scale):
@@ -1328,10 +1311,6 @@ def _opencv_hough_circles(
     scale: int,
     sensitivity: float,
 ) -> list[VisionCircle]:
-    try:
-        import cv2
-    except ImportError:
-        return []
     sensitivity = clamp_geometry_sensitivity(sensitivity)
     circles: list[VisionCircle] = []
     for bounds, roi in _rectangular_search_bounds(gray_image.shape, rois, scale):
@@ -1379,10 +1358,6 @@ def _skimage_hough_circles(
     scale: int,
     sensitivity: float,
 ) -> list[VisionCircle]:
-    try:
-        from skimage.transform import hough_circle, hough_circle_peaks
-    except ImportError:
-        return []
     sensitivity = clamp_geometry_sensitivity(sensitivity)
     circles: list[VisionCircle] = []
     for bounds, roi in _rectangular_search_bounds(mask.shape, rois, scale):
@@ -1639,37 +1614,14 @@ def bright_silhouette_mask(gray_image: np.ndarray, *, sensitivity: float | None 
 
 
 def _otsu_threshold(gray_image: np.ndarray) -> float:
-    try:
-        import cv2
-    except ImportError:
-        cv2 = None
-    if cv2 is not None:
-        gray_u8 = grayscale_to_uint8(gray_image)
-        threshold, _thresholded = cv2.threshold(
-            gray_u8,
-            0,
-            255,
-            cv2.THRESH_BINARY + cv2.THRESH_OTSU,
-        )
-        return float(threshold) / 255.0
-
-    histogram, bin_edges = np.histogram(np.clip(gray_image, 0.0, 1.0), bins=128, range=(0.0, 1.0))
-    total = float(histogram.sum())
-    if total <= 0.0:
-        return float(gray_image.mean())
-    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-    weight_background = np.cumsum(histogram).astype(float)
-    weight_foreground = total - weight_background
-    mean_background = np.cumsum(histogram * bin_centers) / np.maximum(weight_background, 1e-9)
-    mean_foreground = (
-        np.cumsum((histogram * bin_centers)[::-1]) / np.maximum(np.cumsum(histogram[::-1]), 1e-9)
-    )[::-1]
-    between_class = weight_background[:-1] * weight_foreground[:-1] * (
-        mean_background[:-1] - mean_foreground[1:]
-    ) ** 2
-    if between_class.size == 0:
-        return float(gray_image.mean())
-    return float(bin_centers[int(np.argmax(between_class))])
+    gray_u8 = grayscale_to_uint8(gray_image)
+    threshold, _thresholded = cv2.threshold(
+        gray_u8,
+        0,
+        255,
+        cv2.THRESH_BINARY + cv2.THRESH_OTSU,
+    )
+    return float(threshold) / 255.0
 
 
 def _bright_rectangle_from_component(
@@ -1701,11 +1653,7 @@ def _bright_rectangle_from_component(
         return None
     if fill_ratio < 0.35:
         return None
-    try:
-        import cv2
-    except ImportError:
-        cv2 = None
-    if cv2 is not None and xs.size >= 5:
+    if xs.size >= 5:
         points = np.column_stack((xs.astype(np.float32), ys.astype(np.float32)))
         rect = cv2.minAreaRect(points)
         rect_width, rect_height = (float(value) for value in rect[1])
