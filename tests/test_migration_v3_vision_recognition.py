@@ -110,7 +110,7 @@ def test_v3_vision_recognition_requirements_are_public_python310_runtime_package
     assert requirements == [
         "numpy>=2.2,<2.3",
         "matplotlib>=3.10,<3.11",
-        "opencv-python-headless>=4.8,<5",
+        "opencv-python-headless>=4.10,<5",
         "scikit-image>=0.25,<0.26",
     ]
     assert not any("tmpython" in line.lower() or "testmaster" in line.lower() for line in requirements)

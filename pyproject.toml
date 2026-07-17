@@ -4,9 +4,9 @@ version = "0.1.0"
 description = "Paraxial Gaussian beam optics simulator using ABCD matrices"
 requires-python = ">=3.10"
 dependencies = [
-    "numpy",
-    "matplotlib",
-    "opencv-python-headless>=4.8,<5",
+    "numpy>=2.2,<2.3",
+    "matplotlib>=3.10,<3.11",
+    "opencv-python-headless>=4.10,<5",
     "scikit-image>=0.25,<0.26",
 ]
 

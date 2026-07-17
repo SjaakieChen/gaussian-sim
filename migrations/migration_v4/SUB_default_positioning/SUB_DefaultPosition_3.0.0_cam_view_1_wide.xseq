@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_DefaultPosition_3.0.0_cam_view_1_wide</Comment>
+   <Comment>Migration v4 direct default-position sequence for 3.0.0 (cam_view_1_wide).</Comment>
+   <Comment>Targets are hard-coded from default_positions.json; no Microcombsys process-position variables are read.</Comment>
+   <Comment>Review MACHINE_CONFIGURATION.md and COMMON_MISTAKES.md before machine use.</Comment>
+   <Statement Label="L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_DefaultPosition_3.0.0_cam_view_1_wide" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="L_CheckFiducialized" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="StageCheckAllFiducialed" Library="Stage">
+      <Parameter Name="Fiducialed?" Description="" Type="Boolean" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="StatusStages" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="StatusStages" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Fiducial" />
+   </Statement>
+   <Statement Label="L_GetVelocities" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="GetNumVar" Library="VariableIO">
+      <Parameter Name="from" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="System" />
+      <Parameter Name="Path" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="MainVelocity" />
+      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="VelocityCameraXFast" />
+      <Parameter Name="VarValueOut" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Camera_XFast" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Camera_XFast" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Velocity" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="GetNumVar" Library="VariableIO">
+      <Parameter Name="from" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="System" />
+      <Parameter Name="Path" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="MainVelocity" />
+      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="VelocityZoom" />
+      <Parameter Name="VarValueOut" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Zoom" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Zoom" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Velocity" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="GetNumVar" Library="VariableIO">
+      <Parameter Name="from" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="System" />
+      <Parameter Name="Path" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="MainVelocity" />
+      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="VelocityCameraFast" />
+      <Parameter Name="VarValueOut" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Camera_Fast" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Camera_Fast" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Velocity" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="GetNumVar" Library="VariableIO">
+      <Parameter Name="from" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="System" />
+      <Parameter Name="Path" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="MainVelocity" />
+      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="VelocityAlignFast" />
+      <Parameter Name="VarValueOut" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Align_Fast" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Align_Fast" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Velocity" />
+   </Statement>
+   <Statement Label="L_UserConfirm" Editable="FALSE" Name="DisplayExtdSelectionDialog" Library="Standard">
+      <Parameter Name="Dialog text" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 3.0.0 (cam_view_1_wide). Absolute targets: Camera_X=-38997.0um; Camera_Z=-97694.0um; Zoom=0.0um; Camera_Y=-45997.0um; Align_X1=19000.0um; Align_Z1=499.0um; Align_Y1=5800.0um; cam_12_ExpTime=10000.0. Press Move only after confirming clearance and camera/object safety." />
+      <Parameter Name="LeftPos" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="TopPos" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Window Title" Description="" Type="String" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="s_SequenceName" />
+      <Parameter Name="Button 1 (OK) text" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Abort" />
+      <Parameter Name="Button 2 (Skip) text" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Move" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_UserAbort" />
+   </Statement>
+   <Statement Label="L_Move_Camera_XZ" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_X" />
+      <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Camera_XFast" />
+      <Parameter Name="Distance [um]" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-38997.0" StringValue="-38997.0" />
+      <Parameter Name="Sync" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Z" />
+      <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Camera_XFast" />
+      <Parameter Name="Distance [um]" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-97694.0" StringValue="-97694.0" />
+      <Parameter Name="Sync" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_X,Camera_Z" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="Timeout" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.0" StringValue="1.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
+   </Statement>
+   <Statement Label="L_Move_Zoom" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Zoom" />
+      <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Zoom" />
+      <Parameter Name="Distance [um]" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Sync" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Zoom" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="Timeout" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.0" StringValue="1.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
+   </Statement>
+   <Statement Label="L_Move_Camera_Y" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Y" />
+      <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Camera_Fast" />
+      <Parameter Name="Distance [um]" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-45997.0" StringValue="-45997.0" />
+      <Parameter Name="Sync" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Y" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="Timeout" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.0" StringValue="1.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
+   </Statement>
+   <Statement Label="L_Move_Align_XZ" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Align_Fast" />
+      <Parameter Name="Distance [um]" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="19000.0" StringValue="19000.0" />
+      <Parameter Name="Sync" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Align_Fast" />
+      <Parameter Name="Distance [um]" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="499.0" StringValue="499.0" />
+      <Parameter Name="Sync" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1,Align_Z1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="Timeout" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.0" StringValue="1.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
+   </Statement>
+   <Statement Label="L_Move_Align_Y" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y1" />
+      <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_Vel_Align_Fast" />
+      <Parameter Name="Distance [um]" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="5800.0" StringValue="5800.0" />
+      <Parameter Name="Sync" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="No sync" />
+      <Parameter Name="rel/abs" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
+      <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y1" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="Timeout" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.0" StringValue="1.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
+   </Statement>
+   <Statement Label="L_SetExposure" Editable="FALSE" Name="SetAnalogOut" Library="IO">
+      <Parameter Name="Analog Line" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="cam_12_ExpTime" />
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="10000.0" StringValue="10000.0" />
+      <Parameter Name="LastChangeTime" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_LastChangeTime" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_DefaultPosition_3.0.0_cam_view_1_wide complete." />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="L_End" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
+      <Parameter Name="Value" Description="" Type="String" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   </Statement>
+   <Statement Label="L_Error_Fiducial" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="31.0" StringValue="31.0" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Stages are not fiducialed. Aborted before default-position motion." />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Statement Label="L_Error_Velocity" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="34.0" StringValue="34.0" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="A required MainVelocity value is missing or not greater than zero." />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Statement Label="L_Error_UserAbort" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="35.0" StringValue="35.0" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Operator aborted before MoveStage or SetAnalogOut." />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Statement Label="L_Error_Timeout" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="36.0" StringValue="36.0" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Axis wait timed out. Confirm physical motion has stopped before continuing." />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description>Migration v4 direct default-position sequence for 3.0.0.</Sequence-Description>
+      <Entry>2026-07-17 Created for migration v4 direct default-position bundle</Entry>
+   </History>
+</Sequence>

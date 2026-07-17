@@ -21,6 +21,12 @@ testmaster documentation\Yase_TM_HB_Sep_2018.pdf
 testmaster documentation\TestMaster Documentation 2020.1.10 (1).pdf
 ```
 
+For recurring failure signatures and prevention checks, also read:
+
+```text
+COMMON_MISTAKES.md
+```
+
 ## Current authoritative status
 
 | Item | Status |
@@ -32,6 +38,7 @@ testmaster documentation\TestMaster Documentation 2020.1.10 (1).pdf
 | Python-saved camera copy | Byte-for-byte verified by matching SHA-256 hashes |
 | Hardware motion from Python | Not approved or proven |
 | Simple JSON test on disk | Repository copy now uses the Python 3.10 interpreter name; verify after copying/saving in YASE |
+| Default-positioning migration v4 | Static XML, label, and copy-layout validation only; not yet machine-run verified |
 
 Never use `Python_37_PYTHON_AUTOMATION_INTERPRETER` or
 `Python_310_ALIGNMENT_TEST`. They are historical mistakes, not aliases.

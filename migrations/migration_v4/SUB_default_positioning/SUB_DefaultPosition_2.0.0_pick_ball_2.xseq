@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_DefaultPosition_2.0.0_pick_ball_2</Comment>
+   <Comment>Migration v4 direct default-position sequence for 2.0.0 (pick_ball_2).</Comment>
+   <Comment>Targets are hard-coded from default_positions.json; no Microcombsys process-position variables are read.</Comment>
+   <Comment>Review MACHINE_CONFIGURATION.md and COMMON_MISTAKES.md before machine use.</Comment>
+   <Statement Label="L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_DefaultPosition_2.0.0_pick_ball_2" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="L_NoKnownTargets" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="52.0" StringValue="52.0" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Default position 2.0.0 (pick_ball_2) has no known targets. Aborted before hardware." />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="L_End" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
+      <Parameter Name="Value" Description="" Type="String" Direction="Input" ValueType="Variable" NumericValue="0.0" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   </Statement>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description>Migration v4 direct default-position sequence for 2.0.0.</Sequence-Description>
+      <Entry>2026-07-17 Created for migration v4 direct default-position bundle</Entry>
+   </History>
+</Sequence>

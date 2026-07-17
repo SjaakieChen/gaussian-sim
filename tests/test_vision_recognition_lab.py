@@ -9,11 +9,14 @@ from vision_recognition_lab import (
     BRIGHT_RECTANGLE_OVERLAY_COLOR,
     EDGE_RECTANGLE_OVERLAY_COLOR,
     ROI_REQUIRED_MESSAGE,
+    VisionCircle,
+    VisionCircleReference,
     VisionRectangle,
     VisionROI,
     VisionRecognitionLab,
     VisionRecognitionLabStep,
     VisionRecognitionResult,
+    VisionSilhouette,
     VISION_RECOGNITION_LAB_TITLE,
     bright_rectangle_sensitivity_from_scale_x,
     downsample_for_recognition,
@@ -21,11 +24,15 @@ from vision_recognition_lab import (
     geometry_sensitivity_from_scale_x,
     load_standard_position_library,
     normalize_standard_position_id,
+    parse_short_edge_length_um,
     read_grayscale_image,
+    rectangle_circle_measurement,
     recognize_shapes,
+    selected_rectangle_short_edge,
     silhouette_sensitivity_from_scale_x,
     standard_position_sort_key,
     vision_roi_to_dict,
+    vision_session_payload,
 )
 
 
@@ -303,6 +310,97 @@ def test_rectangle_roi_detects_slanted_bright_rectangle_silhouette():
     assert rectangle.x2 - rectangle.x1 > 110
     assert rectangle.y2 - rectangle.y1 > 70
     assert max(abs(corner[1] - rectangle.corners[0][1]) for corner in rectangle.corners[1:]) > 20
+
+
+def test_short_edge_length_input_requires_positive_finite_value():
+    assert parse_short_edge_length_um("500") == pytest.approx(500.0)
+
+    for value in ("0", "-1", "nan", "inf", "bad"):
+        with pytest.raises(ValueError):
+            parse_short_edge_length_um(value)
+
+
+def test_rectangle_short_edge_measurement_uses_axis_aligned_short_side():
+    rectangle = VisionRectangle(
+        x1=10,
+        y1=20,
+        x2=110,
+        y2=60,
+        missing_side=None,
+        score=1.0,
+        label="rectangle",
+    )
+    circle = VisionCircleReference(
+        source="circle",
+        x=130,
+        y=40,
+        radius=15,
+        label="circle",
+        score=1.0,
+    )
+
+    measurement = rectangle_circle_measurement(rectangle, circle, 500)
+
+    assert measurement.short_edge.length_px == pytest.approx(40.0)
+    assert measurement.short_edge.midpoint == pytest.approx((110.0, 40.0))
+    assert measurement.um_per_pixel == pytest.approx(12.5)
+    assert measurement.dx_px == pytest.approx(-20.0)
+    assert measurement.dx_um == pytest.approx(-250.0)
+
+
+def test_rectangle_short_edge_measurement_uses_rotated_rectangle_corners():
+    import math
+    import numpy as np
+
+    center = np.asarray((100.0, 80.0))
+    axis = np.asarray((math.cos(math.radians(25.0)), math.sin(math.radians(25.0))))
+    normal = np.asarray((-axis[1], axis[0]))
+    half_width = 50.0
+    half_height = 16.0
+    corners = tuple(
+        tuple(point)
+        for point in (
+            center - axis * half_width - normal * half_height,
+            center + axis * half_width - normal * half_height,
+            center + axis * half_width + normal * half_height,
+            center - axis * half_width + normal * half_height,
+        )
+    )
+    rectangle = VisionRectangle(
+        x1=min(point[0] for point in corners),
+        y1=min(point[1] for point in corners),
+        x2=max(point[0] for point in corners),
+        y2=max(point[1] for point in corners),
+        missing_side=None,
+        score=1.0,
+        label="rectangle",
+        corners=corners,
+    )
+    circle_x, circle_y = center + axis * 70.0
+
+    edge = selected_rectangle_short_edge(rectangle, float(circle_x), float(circle_y))
+
+    assert edge.length_px == pytest.approx(32.0)
+    assert edge.midpoint[0] == pytest.approx(float((center + axis * half_width)[0]))
+    assert edge.midpoint[1] == pytest.approx(float((center + axis * half_width)[1]))
+
+
+def test_rectangle_short_edge_selection_uses_nearest_short_edge():
+    rectangle = VisionRectangle(
+        x1=0,
+        y1=0,
+        x2=120,
+        y2=40,
+        missing_side=None,
+        score=1.0,
+        label="rectangle",
+    )
+
+    left_edge = selected_rectangle_short_edge(rectangle, -20, 20)
+    right_edge = selected_rectangle_short_edge(rectangle, 140, 20)
+
+    assert left_edge.midpoint == pytest.approx((0.0, 20.0))
+    assert right_edge.midpoint == pytest.approx((120.0, 20.0))
 
 
 def test_shape_recognition_limits_circles_to_circle_roi():
@@ -760,6 +858,183 @@ def test_vision_recognition_lab_selects_position_images():
             assert lab._recognition_result is None  # pylint: disable=protected-access
             assert not lab.recognition_tree.get_children()
             assert "press Run" in lab.tool_status_var.get()
+        finally:
+            lab.destroy()
+    finally:
+        root.destroy()
+
+
+def test_vision_recognition_lab_highlights_clicked_row_and_measures_multiple_circle_rois():
+    root = _make_root()
+    try:
+        lab = VisionRecognitionLab(root, image_root=STANDARD_POSITION_IMAGE_ROOT)
+        try:
+            lab.update_idletasks()
+            lab.add_roi(VisionROI("rectangle", 0, 0, 140, 90))
+            lab.add_roi(VisionROI("circle", 180, 0, 260, 90))
+            lab.add_roi(VisionROI("circle", 285, 0, 365, 90))
+            result = VisionRecognitionResult(
+                algorithm_name="test",
+                display_name="test",
+                lines=(),
+                intersections=(),
+                circles=(
+                    VisionCircle(x=220, y=40, radius=18, score=0.9, label="circle"),
+                    VisionCircle(x=325, y=40, radius=18, score=0.85, label="circle"),
+                ),
+                rectangles=(
+                    VisionRectangle(
+                        x1=10,
+                        y1=10,
+                        x2=110,
+                        y2=50,
+                        missing_side=None,
+                        score=0.7,
+                        label="rectangle",
+                    ),
+                    VisionRectangle(
+                        x1=20,
+                        y1=20,
+                        x2=100,
+                        y2=60,
+                        missing_side=None,
+                        score=0.8,
+                        label="rectangle",
+                    ),
+                ),
+                semicircles=(),
+                silhouettes=(),
+                message="test",
+            )
+            lab._recognition_result = result  # pylint: disable=protected-access
+            lab._populate_recognition_tree(result)  # pylint: disable=protected-access
+
+            assert tuple(lab.recognition_tree["columns"]) == ("use", "roi", "type", "target", "score")
+            rectangle_ids = [
+                item_id
+                for item_id, item in lab._recognition_tree_items.items()  # pylint: disable=protected-access
+                if item.shape_kind == "rectangle"
+            ]
+            circle_ids = [
+                item_id
+                for item_id, item in lab._recognition_tree_items.items()  # pylint: disable=protected-access
+                if item.shape_kind == "circle"
+            ]
+            assert len(rectangle_ids) == 2
+            assert len(circle_ids) == 2
+
+            lab.recognition_tree.selection_set(rectangle_ids[0])
+            lab.recognition_tree.focus(rectangle_ids[0])
+            lab._on_recognition_tree_selected()  # pylint: disable=protected-access
+            assert lab.image_canvas.find_withtag("active_recognition")
+
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+            assert lab.recognition_tree.item(rectangle_ids[0], "values")[0] == "Yes"
+            lab.recognition_tree.selection_set(rectangle_ids[1])
+            lab.recognition_tree.focus(rectangle_ids[1])
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+            assert lab.recognition_tree.item(rectangle_ids[0], "values")[0] == "Yes"
+            assert lab.recognition_tree.item(rectangle_ids[1], "values")[0] == "Yes"
+
+            lab.recognition_tree.selection_set(*circle_ids)
+            lab.recognition_tree.focus(circle_ids[0])
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+            assert lab.selected_measurement_payload() is None
+            assert "exactly one rectangle/edge" in lab.measurement_var.get()
+
+            lab.recognition_tree.selection_set(rectangle_ids[0])
+            lab.recognition_tree.focus(rectangle_ids[0])
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+            assert lab.recognition_tree.item(rectangle_ids[0], "values")[0] == ""
+            measurement = lab.selected_measurement_payload()
+            measurements = lab.selected_measurements_payload()
+            assert measurement is not None
+            assert len(measurements) == 2
+            assert measurement["rectangle_roi_index"] == 1
+            assert measurement["circle_roi_index"] == 2
+            assert measurement["circle_source"] == "circle"
+            assert measurement["short_edge"]["length_px"] == pytest.approx(40.0)
+            assert measurement["um_per_pixel"] == pytest.approx(12.5)
+            assert measurements[1]["circle_roi_index"] == 3
+            assert lab.image_canvas.find_withtag("selected_short_edge")
+
+            payload = vision_session_payload(
+                image_path="image.bmp",
+                rois=lab.current_rois(),
+                result=result,
+                status="ok",
+                selected_recognition=lab.selected_recognition_payload(),
+                measurement=measurement,
+                measurements=measurements,
+            )
+            assert set(payload["selected_recognition"]) == {"roi_1", "roi_2", "roi_3"}
+            assert len(payload["selected_recognition"]["roi_2"]) == 1
+            assert len(payload["measurements"]) == 2
+            assert payload["measurement"]["circle_source"] == "circle"
+        finally:
+            lab.destroy()
+    finally:
+        root.destroy()
+
+
+def test_vision_recognition_lab_measurement_can_use_silhouette_fitted_circle():
+    root = _make_root()
+    try:
+        lab = VisionRecognitionLab(root, image_root=STANDARD_POSITION_IMAGE_ROOT)
+        try:
+            lab.update_idletasks()
+            lab.add_roi(VisionROI("rectangle", 0, 0, 140, 90))
+            lab.add_roi(VisionROI("silhouette", 180, 0, 270, 100))
+            result = VisionRecognitionResult(
+                algorithm_name="test",
+                display_name="test",
+                lines=(),
+                intersections=(),
+                circles=(),
+                rectangles=(
+                    VisionRectangle(
+                        x1=10,
+                        y1=10,
+                        x2=110,
+                        y2=50,
+                        missing_side=None,
+                        score=0.7,
+                        label="rectangle",
+                    ),
+                ),
+                semicircles=(),
+                silhouettes=(
+                    VisionSilhouette(
+                        x=225,
+                        y=45,
+                        x1=190,
+                        y1=10,
+                        x2=260,
+                        y2=80,
+                        area=1200,
+                        score=0.9,
+                        label="blob",
+                        circle_x=225,
+                        circle_y=40,
+                        circle_radius=18,
+                    ),
+                ),
+                message="test",
+            )
+            lab._recognition_result = result  # pylint: disable=protected-access
+            lab._populate_recognition_tree(result)  # pylint: disable=protected-access
+
+            item_ids = tuple(lab._recognition_tree_items)  # pylint: disable=protected-access
+            lab.recognition_tree.selection_set(*item_ids)
+            lab.recognition_tree.focus(item_ids[0])
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+
+            measurement = lab.selected_measurement_payload()
+            assert measurement is not None
+            assert len(lab.selected_measurements_payload()) == 1
+            assert measurement["circle_source"] == "silhouette_circle"
+            assert measurement["circle_center"]["x"] == pytest.approx(225)
+            assert "um/px" in lab.measurement_var.get()
         finally:
             lab.destroy()
     finally:
