@@ -8,6 +8,7 @@ import pytest
 from vision_recognition_lab import (
     BRIGHT_RECTANGLE_OVERLAY_COLOR,
     EDGE_RECTANGLE_OVERLAY_COLOR,
+    FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM,
     ROI_REQUIRED_MESSAGE,
     VisionCircle,
     VisionCircleReference,
@@ -27,6 +28,7 @@ from vision_recognition_lab import (
     parse_short_edge_length_um,
     read_grayscale_image,
     rectangle_circle_measurement,
+    relative_measurement_payload_from_measurements,
     recognize_shapes,
     selected_rectangle_short_edge,
     silhouette_sensitivity_from_scale_x,
@@ -320,6 +322,22 @@ def test_short_edge_length_input_requires_positive_finite_value():
             parse_short_edge_length_um(value)
 
 
+def test_vision_recognition_lab_uses_fixed_500um_short_edge_length():
+    root = _make_root()
+    try:
+        lab = VisionRecognitionLab(root, image_root=STANDARD_POSITION_IMAGE_ROOT)
+        try:
+            lab.short_edge_um_var.set("1000")
+            assert lab.selected_short_edge_length_um() == pytest.approx(FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM)
+            assert lab.selected_short_edge_length_um() == pytest.approx(500.0)
+            lab._on_short_edge_um_entry_commit()  # pylint: disable=protected-access
+            assert lab.short_edge_um_var.get() == "500"
+        finally:
+            lab.destroy()
+    finally:
+        root.destroy()
+
+
 def test_rectangle_short_edge_measurement_uses_axis_aligned_short_side():
     rectangle = VisionRectangle(
         x1=10,
@@ -346,6 +364,45 @@ def test_rectangle_short_edge_measurement_uses_axis_aligned_short_side():
     assert measurement.um_per_pixel == pytest.approx(12.5)
     assert measurement.dx_px == pytest.approx(-20.0)
     assert measurement.dx_um == pytest.approx(-250.0)
+
+
+def test_relative_measurement_payload_uses_first_circle_as_um_origin():
+    first = {
+        "short_edge_length_um": 500.0,
+        "um_per_pixel": 12.5,
+        "rectangle_roi_index": 1,
+        "rectangle_roi": vision_roi_to_dict(VisionROI("rectangle", 0, 0, 140, 90)),
+        "circle_roi_index": 2,
+        "circle_roi": vision_roi_to_dict(VisionROI("circle", 180, 0, 260, 90)),
+        "circle_source": "circle",
+        "short_edge": {
+            "start": {"x": 100.0, "y": 20.0},
+            "end": {"x": 100.0, "y": 60.0},
+            "midpoint": {"x": 100.0, "y": 40.0},
+            "length_px": 40.0,
+        },
+        "circle_center": {"x": 220.0, "y": 40.0, "radius": 18.0},
+        "delta_px": {"dx": -120.0, "dy": 0.0, "distance": 120.0},
+        "delta_um": {"dx": -1500.0, "dy": 0.0, "distance": 1500.0},
+    }
+    second = dict(first)
+    second["circle_roi_index"] = 3
+    second["circle_roi"] = vision_roi_to_dict(VisionROI("circle", 285, 0, 365, 90))
+    second["circle_center"] = {"x": 325.0, "y": 40.0, "radius": 18.0}
+
+    relative = relative_measurement_payload_from_measurements((first, second))
+
+    assert relative is not None
+    assert relative["origin"] == "first_selected_circle_center"
+    assert relative["origin_circle"]["roi_index"] == 2
+    assert relative["origin_circle"]["x_um"] == pytest.approx(0.0)
+    assert relative["origin_circle"]["y_um"] == pytest.approx(0.0)
+    assert relative["edge_midpoint_relative_um"]["x"] == pytest.approx(-1500.0)
+    assert relative["edge_midpoint_relative_um"]["y"] == pytest.approx(0.0)
+    assert relative["edge_midpoint_relative_um"]["distance"] == pytest.approx(1500.0)
+    assert relative["circles"][1]["roi_index"] == 3
+    assert relative["circles"][1]["x_um"] == pytest.approx(1312.5)
+    assert relative["circles"][1]["y_um"] == pytest.approx(0.0)
 
 
 def test_rectangle_short_edge_measurement_uses_rotated_rectangle_corners():
@@ -956,6 +1013,19 @@ def test_vision_recognition_lab_highlights_clicked_row_and_measures_multiple_cir
             assert measurement["short_edge"]["length_px"] == pytest.approx(40.0)
             assert measurement["um_per_pixel"] == pytest.approx(12.5)
             assert measurements[1]["circle_roi_index"] == 3
+            relative = lab.selected_relative_measurement_payload()
+            assert relative is not None
+            assert relative["origin_circle"]["roi_index"] == 2
+            assert relative["edge_midpoint_relative_um"]["x"] == pytest.approx(-1500.0)
+            assert relative["edge_midpoint_relative_um"]["y"] == pytest.approx(0.0)
+            assert relative["circles"][0]["x_um"] == pytest.approx(0.0)
+            assert relative["circles"][0]["y_um"] == pytest.approx(0.0)
+            assert relative["circles"][1]["roi_index"] == 3
+            assert relative["circles"][1]["x_um"] == pytest.approx(1312.5)
+            yase_display = lab.selected_yase_display_status("Vision recognition lab closed")
+            assert "origin circle ROI 2 = (0.000, 0.000) um" in yase_display
+            assert "edge midpoint x=-1500.000 um" in yase_display
+            assert "circle ROI 3 x=1312.500 um" in yase_display
             assert lab.image_canvas.find_withtag("selected_short_edge")
 
             payload = vision_session_payload(
@@ -966,11 +1036,17 @@ def test_vision_recognition_lab_highlights_clicked_row_and_measures_multiple_cir
                 selected_recognition=lab.selected_recognition_payload(),
                 measurement=measurement,
                 measurements=measurements,
+                relative_measurement=relative,
+                yase_display=yase_display,
             )
             assert set(payload["selected_recognition"]) == {"roi_1", "roi_2", "roi_3"}
             assert len(payload["selected_recognition"]["roi_2"]) == 1
             assert len(payload["measurements"]) == 2
             assert payload["measurement"]["circle_source"] == "circle"
+            assert payload["relative_measurement"]["origin_circle"]["roi_index"] == 2
+            assert payload["relative_measurement"]["circles"][1]["x_um"] == pytest.approx(1312.5)
+            assert payload["yase_display"] == yase_display
+            assert payload["status"] == yase_display
         finally:
             lab.destroy()
     finally:
@@ -1034,6 +1110,7 @@ def test_vision_recognition_lab_measurement_can_use_silhouette_fitted_circle():
             assert len(lab.selected_measurements_payload()) == 1
             assert measurement["circle_source"] == "silhouette_circle"
             assert measurement["circle_center"]["x"] == pytest.approx(225)
+            assert lab.selected_relative_measurement_payload()["origin_circle"]["source"] == "silhouette_circle"
             assert "um/px" in lab.measurement_var.get()
         finally:
             lab.destroy()

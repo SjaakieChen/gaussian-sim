@@ -9,8 +9,8 @@ COMMON_MISTAKES.md
 
 This bundle replaces the fragile v3 default-position wrapper/helper pattern
 with direct operator-facing YASE sequences. The YASE files stay inside
-`SUB_...` folders. Runtime Python files are loose in this folder so they can be
-copied directly into the configured TMPython working directory:
+`SUB_...` folders. The vision runtime Python files are loose in this folder so
+they can be copied directly into the configured TMPython working directory:
 
 ```text
 D:\TestMasterData\Process\Python_Automation\python_env
@@ -28,17 +28,21 @@ migration_v4\SUB_vision_recognition\*.xseq
   -> D:\TestMasterData\Process\Python_Automation\SUB_vision_recognition\
 ```
 
-Copy these loose runtime files into `python_env`:
+Copy these loose vision runtime files into `python_env`:
 
 ```text
 vision_recognition_lab.py
 requirements.txt
-default_positions.json
 ```
 
 The default-position movement sequences do not call TMPython. They contain the
 known target constants directly and use YASE `MoveStage`, `SetAnalogOut`, and
 `SEQ::SUB_SYS_AxisWaitFinishList`.
+
+`default_positions.json` is the source/audit copy used by repo tests and for
+regenerating or checking the hard-coded targets. The v4 `.xseq` files do not
+read it at runtime. You may copy it alongside the bundle for traceability, but
+it is not required in `python_env` for the YASE programs to run.
 
 ## Default-position entry points
 

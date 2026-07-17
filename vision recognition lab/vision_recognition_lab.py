@@ -51,6 +51,7 @@ EDGE_RECTANGLE_OVERLAY_COLOR = "#ffd23f"
 BRIGHT_RECTANGLE_OVERLAY_COLOR = "#ff4fd8"
 VISION_RECOGNITION_LAB_VERSION = "v3"
 VISION_RECOGNITION_LAB_TITLE = f"Vision Recognition Lab {VISION_RECOGNITION_LAB_VERSION}"
+FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM = 500.0
 
 
 @dataclass(frozen=True)
@@ -894,6 +895,172 @@ def rectangle_circle_measurement(
         dy_um=float(dy_px * um_per_pixel),
         distance_um=float(distance_px * um_per_pixel),
     )
+
+
+def _axis_delta_payload(
+    *,
+    x: float,
+    y: float,
+    origin_x: float,
+    origin_y: float,
+    um_per_pixel: float,
+) -> dict[str, Any]:
+    dx_px = float(x - origin_x)
+    dy_px = float(y - origin_y)
+    distance_px = float(math.hypot(dx_px, dy_px))
+    return {
+        "px": {
+            "dx": dx_px,
+            "dy": dy_px,
+            "distance": distance_px,
+        },
+        "um": {
+            "x": float(dx_px * um_per_pixel),
+            "y": float(dy_px * um_per_pixel),
+            "dx": float(dx_px * um_per_pixel),
+            "dy": float(dy_px * um_per_pixel),
+            "distance": float(distance_px * um_per_pixel),
+        },
+    }
+
+
+def relative_measurement_payload_from_measurements(
+    measurements: Sequence[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if not measurements:
+        return None
+    origin_measurement = measurements[0]
+    try:
+        um_per_pixel = float(origin_measurement["um_per_pixel"])
+        origin_center = origin_measurement["circle_center"]
+        origin_x = float(origin_center["x"])
+        origin_y = float(origin_center["y"])
+        short_edge = origin_measurement["short_edge"]
+        midpoint = short_edge["midpoint"]
+        midpoint_x = float(midpoint["x"])
+        midpoint_y = float(midpoint["y"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("Measurement payload is missing required relative-position fields.") from exc
+
+    if um_per_pixel <= 0.0 or not math.isfinite(um_per_pixel):
+        raise ValueError("Measurement payload has invalid um/px conversion.")
+
+    edge_delta = _axis_delta_payload(
+        x=midpoint_x,
+        y=midpoint_y,
+        origin_x=origin_x,
+        origin_y=origin_y,
+        um_per_pixel=um_per_pixel,
+    )
+    circle_payloads: list[dict[str, Any]] = []
+    for index, measurement in enumerate(measurements, start=1):
+        try:
+            circle_center = measurement["circle_center"]
+            circle_x = float(circle_center["x"])
+            circle_y = float(circle_center["y"])
+            radius = circle_center.get("radius")
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("Measurement payload is missing a circle center.") from exc
+        circle_delta = _axis_delta_payload(
+            x=circle_x,
+            y=circle_y,
+            origin_x=origin_x,
+            origin_y=origin_y,
+            um_per_pixel=um_per_pixel,
+        )
+        relative_um = circle_delta["um"]
+        circle_payloads.append(
+            {
+                "selection_index": index,
+                "roi_index": measurement.get("circle_roi_index"),
+                "source": measurement.get("circle_source"),
+                "center_px": {
+                    "x": circle_x,
+                    "y": circle_y,
+                    "radius": radius,
+                },
+                "relative_px": circle_delta["px"],
+                "relative_um": relative_um,
+                "x_um": relative_um["x"],
+                "y_um": relative_um["y"],
+                "distance_um": relative_um["distance"],
+            }
+        )
+
+    edge_relative_um = edge_delta["um"]
+    return {
+        "origin": "first_selected_circle_center",
+        "coordinate_system": {
+            "origin": "first_selected_circle_center",
+            "x_axis": "image +x",
+            "y_axis": "image +y",
+            "units": "um",
+        },
+        "short_edge_length_um": origin_measurement.get("short_edge_length_um"),
+        "um_per_pixel": um_per_pixel,
+        "rectangle_roi_index": origin_measurement.get("rectangle_roi_index"),
+        "rectangle_roi": origin_measurement.get("rectangle_roi"),
+        "origin_circle": circle_payloads[0],
+        "measure_edge": {
+            "start_px": short_edge.get("start"),
+            "end_px": short_edge.get("end"),
+            "midpoint_px": {
+                "x": midpoint_x,
+                "y": midpoint_y,
+            },
+            "length_px": short_edge.get("length_px"),
+            "midpoint_relative_px": edge_delta["px"],
+            "midpoint_relative_um": edge_relative_um,
+            "x_um": edge_relative_um["x"],
+            "y_um": edge_relative_um["y"],
+            "distance_um": edge_relative_um["distance"],
+        },
+        "edge_midpoint_relative_um": edge_relative_um,
+        "circles": circle_payloads,
+        "circle_positions_relative_um": [
+            {
+                "selection_index": circle["selection_index"],
+                "roi_index": circle["roi_index"],
+                "source": circle["source"],
+                "x_um": circle["x_um"],
+                "y_um": circle["y_um"],
+                "dx": circle["relative_um"]["dx"],
+                "dy": circle["relative_um"]["dy"],
+                "distance": circle["distance_um"],
+            }
+            for circle in circle_payloads
+        ],
+    }
+
+
+def format_relative_measurement_for_yase(
+    relative_measurement: dict[str, Any] | None,
+    fallback_status: str,
+) -> str:
+    if relative_measurement is None:
+        return fallback_status
+    origin = relative_measurement["origin_circle"]
+    edge_um = relative_measurement["edge_midpoint_relative_um"]
+    parts = [
+        (
+            "Vision relative measurement: "
+            f"origin circle ROI {origin.get('roi_index')} = (0.000, 0.000) um; "
+            f"edge midpoint x={edge_um['x']:.3f} um, y={edge_um['y']:.3f} um, "
+            f"dist={edge_um['distance']:.3f} um"
+        )
+    ]
+    other_circles = relative_measurement["circles"][1:]
+    if other_circles:
+        circle_text = "; ".join(
+            (
+                f"circle ROI {circle.get('roi_index')} "
+                f"x={circle['x_um']:.3f} um, y={circle['y_um']:.3f} um, "
+                f"dist={circle['distance_um']:.3f} um"
+            )
+            for circle in other_circles
+        )
+        parts.append(f"other circles vs origin: {circle_text}")
+    return " | ".join(parts)
 
 
 def circle_roi_mask(full_x: np.ndarray, full_y: np.ndarray, roi: VisionROI) -> np.ndarray:
@@ -2758,6 +2925,7 @@ class VisionRecognitionLab(tk.Toplevel):
         self._recognition_result: VisionRecognitionResult | None = None
         self._recognition_tree_items: dict[str, VisionRecognitionTreeItem] = {}
         self._selected_recognition_item_ids: set[str] = set()
+        self._selected_recognition_item_order: list[str] = []
         self._active_recognition_item_ids: set[str] = set()
         self._selected_measurement: VisionRectangleCircleMeasurement | None = None
         self._selected_measurements: tuple[VisionSelectedMeasurement, ...] = ()
@@ -3042,17 +3210,12 @@ class VisionRecognitionLab(tk.Toplevel):
         measurement.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(4, 0))
         measurement.columnconfigure(1, weight=1)
         ttk.Label(measurement, text="Short edge um").grid(row=0, column=0, sticky="w", padx=(0, 6))
-        self.short_edge_um_var = tk.StringVar(value="500")
-        self.short_edge_um_entry = ttk.Entry(
-            measurement,
-            textvariable=self.short_edge_um_var,
-            width=8,
-            justify="right",
+        self.short_edge_um_var = tk.StringVar(value=f"{FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM:g}")
+        ttk.Label(measurement, textvariable=self.short_edge_um_var, anchor="e", width=8).grid(
+            row=0,
+            column=1,
+            sticky="w",
         )
-        self.short_edge_um_entry.grid(row=0, column=1, sticky="w")
-        self.short_edge_um_entry.bind("<Return>", self._on_short_edge_um_entry_commit)
-        self.short_edge_um_entry.bind("<KP_Enter>", self._on_short_edge_um_entry_commit)
-        self.short_edge_um_entry.bind("<FocusOut>", self._on_short_edge_um_entry_commit)
         self.measurement_var = tk.StringVar(value="Measurement: select a rectangle and circle/blob")
         ttk.Label(measurement, textvariable=self.measurement_var, anchor="w", wraplength=260).grid(
             row=1,
@@ -3246,7 +3409,7 @@ class VisionRecognitionLab(tk.Toplevel):
         return clamp_silhouette_sensitivity(self.silhouette_sensitivity_var.get())
 
     def selected_short_edge_length_um(self) -> float:
-        return parse_short_edge_length_um(self.short_edge_um_var.get())
+        return FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM
 
     def selected_recognition_payload(self) -> dict[str, Any]:
         payload: dict[str, Any] = {}
@@ -3274,6 +3437,12 @@ class VisionRecognitionLab(tk.Toplevel):
 
     def selected_measurements_payload(self) -> list[dict[str, Any]]:
         return [self._selected_measurement_to_dict(selected) for selected in self._selected_measurements]
+
+    def selected_relative_measurement_payload(self) -> dict[str, Any] | None:
+        return relative_measurement_payload_from_measurements(self.selected_measurements_payload())
+
+    def selected_yase_display_status(self, fallback_status: str) -> str:
+        return format_relative_measurement_for_yase(self.selected_relative_measurement_payload(), fallback_status)
 
     def _selected_measurement_to_dict(self, selected: VisionSelectedMeasurement) -> dict[str, Any]:
         measurement = selected.measurement
@@ -4193,11 +4362,27 @@ class VisionRecognitionLab(tk.Toplevel):
             item_id for item_id in self.recognition_tree.selection() if item_id in self._recognition_tree_items
         )
         if selected:
+            focused = self.recognition_tree.focus()
+            if focused in selected:
+                return (focused, *(item_id for item_id in selected if item_id != focused))
             return selected
         item_id = self.recognition_tree.focus()
         if item_id in self._recognition_tree_items:
             return (item_id,)
         return ()
+
+    def _ordered_selected_recognition_item_ids(self) -> tuple[str, ...]:
+        ordered = [
+            item_id
+            for item_id in self._selected_recognition_item_order
+            if item_id in self._selected_recognition_item_ids and item_id in self._recognition_tree_items
+        ]
+        missing = [
+            item_id
+            for item_id in self.recognition_tree.get_children()
+            if item_id in self._selected_recognition_item_ids and item_id not in ordered
+        ]
+        return tuple(ordered + missing)
 
     def _on_recognition_tree_selected(self, _event: tk.Event | None = None) -> None:
         self._active_recognition_item_ids = set(self._recognition_tree_selected_item_ids())
@@ -4207,7 +4392,16 @@ class VisionRecognitionLab(tk.Toplevel):
         item_ids = self._recognition_tree_selected_item_ids()
         if not item_ids:
             return "break"
-        self._selected_recognition_item_ids.symmetric_difference_update(item_ids)
+        for item_id in item_ids:
+            if item_id in self._selected_recognition_item_ids:
+                self._selected_recognition_item_ids.remove(item_id)
+                self._selected_recognition_item_order = [
+                    selected_id for selected_id in self._selected_recognition_item_order if selected_id != item_id
+                ]
+            else:
+                self._selected_recognition_item_ids.add(item_id)
+                if item_id not in self._selected_recognition_item_order:
+                    self._selected_recognition_item_order.append(item_id)
         self._active_recognition_item_ids = set(item_ids)
         self._update_recognition_tree_selection_marks()
         self._update_selected_measurement()
@@ -4218,8 +4412,12 @@ class VisionRecognitionLab(tk.Toplevel):
         item_ids = set(self._recognition_tree_selected_item_ids())
         if item_ids:
             self._selected_recognition_item_ids.difference_update(item_ids)
+            self._selected_recognition_item_order = [
+                item_id for item_id in self._selected_recognition_item_order if item_id not in item_ids
+            ]
         else:
             self._selected_recognition_item_ids.clear()
+            self._selected_recognition_item_order.clear()
         self._update_recognition_tree_selection_marks()
         self._update_selected_measurement()
         self._render_current_image()
@@ -4237,7 +4435,7 @@ class VisionRecognitionLab(tk.Toplevel):
     ) -> tuple[VisionRecognitionTreeItem | None, tuple[VisionRecognitionTreeItem, ...]]:
         selected_items = [
             self._recognition_tree_items[item_id]
-            for item_id in sorted(self._selected_recognition_item_ids)
+            for item_id in self._ordered_selected_recognition_item_ids()
             if item_id in self._recognition_tree_items
         ]
         rectangles = [item for item in selected_items if item.shape_kind == "rectangle"]
@@ -4307,14 +4505,7 @@ class VisionRecognitionLab(tk.Toplevel):
             self._update_measurement_display(str(exc))
 
     def _on_short_edge_um_entry_commit(self, _event: tk.Event | None = None) -> str:
-        try:
-            length_um = self.selected_short_edge_length_um()
-        except ValueError as exc:
-            self._selected_measurement = None
-            self._update_measurement_display(str(exc))
-            self._render_current_image()
-            return "break"
-        self.short_edge_um_var.set(f"{length_um:.6g}")
+        self.short_edge_um_var.set(f"{FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM:g}")
         self._update_selected_measurement()
         self._render_current_image()
         return "break"
@@ -4468,6 +4659,7 @@ class VisionRecognitionLab(tk.Toplevel):
             self.recognition_tree.delete(item_id)
         self._recognition_tree_items.clear()
         self._selected_recognition_item_ids.clear()
+        self._selected_recognition_item_order.clear()
         self._active_recognition_item_ids.clear()
         self._selected_measurement = None
         self._selected_measurements = ()
@@ -4790,13 +4982,21 @@ def vision_session_payload(
     selected_recognition: dict[str, Any] | None = None,
     measurement: dict[str, Any] | None = None,
     measurements: Sequence[dict[str, Any]] | None = None,
+    relative_measurement: dict[str, Any] | None = None,
+    yase_display: str | None = None,
 ) -> dict[str, Any]:
     roi_payload = [vision_roi_to_dict(roi) for roi in rois]
+    measurement_payloads = list(measurements or ())
+    if relative_measurement is None:
+        relative_measurement = relative_measurement_payload_from_measurements(measurement_payloads)
+    display_status = yase_display or format_relative_measurement_for_yase(relative_measurement, status)
     return {
         "schema_version": 3,
         "ok": ok,
         "action": "vision_lab_saved" if roi_payload else "vision_lab_closed_without_rois",
-        "status": status,
+        "status": display_status,
+        "session_status": status,
+        "yase_display": display_status,
         "image_path": str(image_path),
         "roi_count": len(roi_payload),
         "ready_for_recognition": bool(roi_payload),
@@ -4804,7 +5004,8 @@ def vision_session_payload(
         "recognition_result": vision_result_to_dict(result),
         "selected_recognition": selected_recognition or {},
         "measurement": measurement,
-        "measurements": list(measurements or ()),
+        "measurements": measurement_payloads,
+        "relative_measurement": relative_measurement,
     }
 
 
@@ -4847,6 +5048,8 @@ def run_vision_recognition_lab_session(
             selected_recognition=lab.selected_recognition_payload(),
             measurement=lab.selected_measurement_payload(),
             measurements=lab.selected_measurements_payload(),
+            relative_measurement=lab.selected_relative_measurement_payload(),
+            yase_display=lab.selected_yase_display_status(status),
         )
         if roi_output_path is not None:
             roi_payload = {
@@ -4907,6 +5110,9 @@ class VisionRecognitionLabStep(TMPythonStatementJ):
                 "ok": False,
                 "action": "abort",
                 "status": f"VisionRecognitionLabStep failed: {exc}",
+                "session_status": f"VisionRecognitionLabStep failed: {exc}",
+                "yase_display": f"VisionRecognitionLabStep failed: {exc}",
+                "relative_measurement": None,
                 "traceback": traceback.format_exc(),
             }
 

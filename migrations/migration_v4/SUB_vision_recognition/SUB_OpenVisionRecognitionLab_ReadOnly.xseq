@@ -2,7 +2,7 @@
 <Sequence>
    <Comment>SUB_OpenVisionRecognitionLab_ReadOnly</Comment>
    <Comment>Read-only vision ROI design: grab one CAM_12 frame, save it as BMP, and open the Python vision recognition lab on that fresh image.</Comment>
-   <Comment>No stage motion is used. Python returns only the saved ROI/session JSON status.</Comment>
+   <Comment>No stage motion is used. Python ParamOut includes relative_measurement and yase_display when one rectangle/edge and at least one circle/blob are selected.</Comment>
    <Statement Label="L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
       <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
    </Statement>
@@ -37,7 +37,7 @@
       <Parameter Name="ParamOut" Description="Returned JSON." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonResultJson" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
-      <Parameter Name="Status text" Description="Display Python UI session status." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+      <Parameter Name="Status text" Description="Display Python ParamOut JSON; status/yase_display contains the relative measurement summary in um." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
       <Parameter Name="File Path" Description="Diagnostic copy of the Python result." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\vision_recognition_result_from_yase.json" />

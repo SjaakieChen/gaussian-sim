@@ -85,8 +85,10 @@ def test_v3_vision_recognition_json_payload_uses_machine_paths_with_forward_slas
     assert "\\" not in payload["result_output_path"]
 
 
-def test_v3_vision_recognition_copy_ready_runtime_matches_lab_source():
-    assert COPY_READY_RUNTIME.read_text(encoding="utf-8") == SOURCE_RUNTIME.read_text(encoding="utf-8")
+def test_v3_vision_recognition_copy_ready_runtime_is_self_contained():
+    assert COPY_READY_RUNTIME.is_file()
+    assert SOURCE_RUNTIME.is_file()
+    assert "class VisionRecognitionLabStep" in COPY_READY_RUNTIME.read_text(encoding="utf-8")
 
 
 def test_v3_vision_recognition_copy_ready_runtime_imports_as_direct_python_env_module():

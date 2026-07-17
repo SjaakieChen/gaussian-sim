@@ -247,3 +247,13 @@ def test_v4_vision_launcher_uses_loose_module_and_verified_tmpython_fields():
     assert params["Class"]["StringValue"] == "VisionRecognitionLabStep"
     assert params["ParamIn"]["VariableName"] == "s_PythonInputJson"
     assert params["ParamOut"]["VariableName"] == "s_PythonResultJson"
+
+    display_after_tmpython = statements[statements.index(tmpython) + 1]
+    display_params = _params_by_name(display_after_tmpython)
+    assert display_after_tmpython.attrib["Name"] == "DisplayStatus"
+    assert display_params["Status text"]["VariableName"] == "s_PythonResultJson"
+    assert "relative measurement summary" in display_params["Status text"]["Description"]
+
+    comments = " ".join(comment.text or "" for comment in ET.parse(V4_VISION_SEQUENCE).getroot().findall("Comment"))
+    assert "relative_measurement" in comments
+    assert "yase_display" in comments

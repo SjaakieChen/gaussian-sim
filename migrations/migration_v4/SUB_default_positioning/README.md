@@ -8,9 +8,10 @@ These files are intended for:
 D:\TestMasterData\Process\Python_Automation\SUB_default_positioning\
 ```
 
-They use hard-coded target constants from `migration_v4\default_positions.json`.
-They do not call TMPython and do not read target positions from another
-process. Each moving sequence:
+They use hard-coded target constants generated from
+`migration_v4\default_positions.json`. They do not call TMPython and do not
+read `default_positions.json` or target positions from another process at
+runtime. Each moving sequence:
 
 - checks `StageCheckAllFiducialed`;
 - reads required speeds from system `[MainVelocity]`;
