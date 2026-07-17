@@ -14,6 +14,7 @@ from vision_recognition_lab import (
     VisionRecognitionLab,
     VisionRecognitionLabStep,
     VisionRecognitionResult,
+    VISION_RECOGNITION_LAB_TITLE,
     bright_rectangle_sensitivity_from_scale_x,
     downsample_for_recognition,
     fit_subsample_factor,
@@ -624,6 +625,8 @@ def test_vision_recognition_lab_selects_position_images():
         lab = VisionRecognitionLab(root, image_root=STANDARD_POSITION_IMAGE_ROOT)
         try:
             assert lab.selected_position_id() == "6.0.0"
+            assert lab.title() == VISION_RECOGNITION_LAB_TITLE
+            assert lab.title().endswith("v3")
             assert [(image.batch, image.path.name) for image in lab.current_images()] == [
                 ("v2", "6.0.0.png")
             ]
@@ -649,6 +652,10 @@ def test_vision_recognition_lab_selects_position_images():
                     widget_texts.add(text)
             assert "Edges ROI" in widget_texts
             assert "Rectangle ROI" in widget_texts
+            assert "Rectangle overlays" in widget_texts
+            assert "Yellow = edge/line rectangle" in widget_texts
+            assert "Magenta = bright silhouette rectangle" in widget_texts
+            assert "Dashed edge = inferred missing side" in widget_texts
             assert "Box ROI" not in widget_texts
             assert "Semicircle ROI" not in widget_texts
             assert lab._photo_image is not None  # pylint: disable=protected-access
@@ -925,6 +932,8 @@ def test_rectangle_overlay_uses_distinct_color_for_bright_silhouette_rectangle()
                 lab.image_canvas.itemcget(item, "fill")
                 for item in bright_items
             } == {BRIGHT_RECTANGLE_OVERLAY_COLOR}
+            assert lab.edge_rectangle_legend_swatch.cget("background") == EDGE_RECTANGLE_OVERLAY_COLOR
+            assert lab.bright_rectangle_legend_swatch.cget("background") == BRIGHT_RECTANGLE_OVERLAY_COLOR
         finally:
             lab.destroy()
     finally:

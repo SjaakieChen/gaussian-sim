@@ -46,6 +46,8 @@ RECOGNITION_RERUN_DELAY_MS = 250
 ROI_REQUIRED_MESSAGE = "Draw at least one ROI before running recognition"
 EDGE_RECTANGLE_OVERLAY_COLOR = "#ffd23f"
 BRIGHT_RECTANGLE_OVERLAY_COLOR = "#ff4fd8"
+VISION_RECOGNITION_LAB_VERSION = "v3"
+VISION_RECOGNITION_LAB_TITLE = f"Vision Recognition Lab {VISION_RECOGNITION_LAB_VERSION}"
 
 
 @dataclass(frozen=True)
@@ -2682,7 +2684,7 @@ class VisionRecognitionLab(tk.Toplevel):
         }
         self._recognition_result: VisionRecognitionResult | None = None
 
-        self.title("Vision Recognition Lab")
+        self.title(VISION_RECOGNITION_LAB_TITLE)
         self.minsize(980, 620)
         self.geometry("1180x760")
         self._build_ui()
@@ -2932,6 +2934,7 @@ class VisionRecognitionLab(tk.Toplevel):
         result_scroll = ttk.Scrollbar(result_frame, orient=tk.VERTICAL, command=self.recognition_tree.yview)
         result_scroll.grid(row=0, column=1, sticky="ns")
         self.recognition_tree.configure(yscrollcommand=result_scroll.set)
+        self._build_recognition_legend(result_frame)
 
         self.tool_status_var = tk.StringVar(value="Drawing: UI only")
         ttk.Label(sidebar, textvariable=self.tool_status_var, anchor="w", wraplength=260).grid(
@@ -2977,6 +2980,39 @@ class VisionRecognitionLab(tk.Toplevel):
         y_scroll.grid(row=0, column=1, sticky="ns")
         self.image_canvas.configure(xscrollcommand=x_scroll.set, yscrollcommand=y_scroll.set)
         self._refresh_parameter_visibility()
+
+    def _build_recognition_legend(self, parent: tk.Widget) -> None:
+        legend = ttk.Frame(parent)
+        legend.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+        legend.columnconfigure(1, weight=1)
+
+        ttk.Label(legend, text="Rectangle overlays").grid(row=0, column=0, columnspan=2, sticky="w")
+        self.edge_rectangle_legend_swatch = tk.Label(
+            legend,
+            background=EDGE_RECTANGLE_OVERLAY_COLOR,
+            width=2,
+            relief=tk.SOLID,
+            borderwidth=1,
+        )
+        self.edge_rectangle_legend_swatch.grid(row=1, column=0, sticky="w", padx=(0, 6), pady=(2, 0))
+        ttk.Label(legend, text="Yellow = edge/line rectangle").grid(row=1, column=1, sticky="w", pady=(2, 0))
+
+        self.bright_rectangle_legend_swatch = tk.Label(
+            legend,
+            background=BRIGHT_RECTANGLE_OVERLAY_COLOR,
+            width=2,
+            relief=tk.SOLID,
+            borderwidth=1,
+        )
+        self.bright_rectangle_legend_swatch.grid(row=2, column=0, sticky="w", padx=(0, 6), pady=(2, 0))
+        ttk.Label(legend, text="Magenta = bright silhouette rectangle").grid(row=2, column=1, sticky="w", pady=(2, 0))
+        ttk.Label(legend, text="Dashed edge = inferred missing side").grid(
+            row=3,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(2, 0),
+        )
 
     def reload_library(self) -> None:
         if self._captured_image_path is not None:
