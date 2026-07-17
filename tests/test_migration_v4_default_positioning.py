@@ -257,3 +257,26 @@ def test_v4_vision_launcher_uses_loose_module_and_verified_tmpython_fields():
     comments = " ".join(comment.text or "" for comment in ET.parse(V4_VISION_SEQUENCE).getroot().findall("Comment"))
     assert "relative_measurement" in comments
     assert "yase_display" in comments
+
+
+def test_v4_vision_result_paramout_is_only_used_as_string_status_and_log_data():
+    result_json_uses = []
+    for statement in _statements(V4_VISION_SEQUENCE):
+        for parameter in statement.findall("Parameter"):
+            if parameter.attrib.get("VariableName") == "s_PythonResultJson":
+                result_json_uses.append(
+                    (
+                        statement.attrib["Name"],
+                        parameter.attrib["Name"],
+                        parameter.attrib["Type"],
+                        parameter.attrib["Direction"],
+                    )
+                )
+
+    assert result_json_uses == [
+        ("TMPython_ExecuteScript", "ParamOut", "String", "Output"),
+        ("DisplayStatus", "Status text", "String", "Input"),
+        ("WriteToFile", "Data", "String", "Input"),
+    ]
+    assert "MoveStage" not in _statement_names(V4_VISION_SEQUENCE)
+    assert "SetAnalogOut" not in _statement_names(V4_VISION_SEQUENCE)

@@ -1,0 +1,3 @@
+some positions are wrong 1900 is 19000 and 1800 is 18000 only for x axis
+
+make speed use not fast for some movement very quick rn
