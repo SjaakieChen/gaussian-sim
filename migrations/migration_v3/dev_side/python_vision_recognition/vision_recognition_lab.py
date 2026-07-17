@@ -279,7 +279,7 @@ RECOGNIZERS = (
     ),
 )
 RECOGNIZER_BY_NAME = {recognizer.name: recognizer for recognizer in RECOGNIZERS}
-DEFAULT_GEOMETRY_RECOGNIZER_NAME = "dark_adaptive"
+DEFAULT_GEOMETRY_RECOGNIZER_NAME = "opencv_hough"
 DEFAULT_SILHOUETTE_RECOGNIZER_NAME = "dark_silhouette"
 DEFAULT_RECOGNIZER_NAME = DEFAULT_GEOMETRY_RECOGNIZER_NAME
 GEOMETRY_RECOGNIZER_NAMES = (
@@ -289,6 +289,7 @@ GEOMETRY_RECOGNIZER_NAMES = (
     "skimage_hough",
 )
 HOUGH_GEOMETRY_RECOGNIZER_NAMES = frozenset({"opencv_hough", "skimage_hough"})
+GEOMETRY_ROI_KINDS = frozenset({"box", "edges", "rectangle", "circle"})
 SILHOUETTE_RECOGNIZER_OFF_LABEL = "Off"
 
 
@@ -2759,16 +2760,17 @@ class VisionRecognitionLab(tk.Toplevel):
         algorithm.columnconfigure(1, weight=1)
         default_recognizer = RECOGNIZER_BY_NAME[DEFAULT_GEOMETRY_RECOGNIZER_NAME].display_name
         self.recognizer_var = tk.StringVar(value=default_recognizer)
-        ttk.Label(algorithm, text="Geometry").grid(row=0, column=0, sticky="w", padx=(0, 6))
-        recognizer_combobox = ttk.Combobox(
+        self.geometry_recognizer_label = ttk.Label(algorithm, text="Geometry ROIs")
+        self.geometry_recognizer_label.grid(row=0, column=0, sticky="w", padx=(0, 6))
+        self.recognizer_combobox = ttk.Combobox(
             algorithm,
             textvariable=self.recognizer_var,
             values=tuple(self._geometry_recognizer_display_to_name),
             state="readonly",
             width=28,
         )
-        recognizer_combobox.grid(row=0, column=1, sticky="ew", pady=(0, 4))
-        recognizer_combobox.bind("<<ComboboxSelected>>", self._on_recognizer_selected)
+        self.recognizer_combobox.grid(row=0, column=1, sticky="ew", pady=(0, 4))
+        self.recognizer_combobox.bind("<<ComboboxSelected>>", self._on_recognizer_selected)
         self.geometry_sensitivity_var = tk.DoubleVar(value=DEFAULT_GEOMETRY_SENSITIVITY)
         self.geometry_sensitivity_text_var = tk.StringVar(value=f"{DEFAULT_GEOMETRY_SENSITIVITY:.2f}")
         self.geometry_sensitivity_label = ttk.Label(algorithm, text="Hough sens.")
@@ -2799,7 +2801,7 @@ class VisionRecognitionLab(tk.Toplevel):
         self.geometry_sensitivity_entry.bind("<FocusOut>", self._on_geometry_sensitivity_entry_commit)
         self.bright_rectangle_sensitivity_var = tk.DoubleVar(value=DEFAULT_BRIGHT_RECTANGLE_SENSITIVITY)
         self.bright_rectangle_sensitivity_text_var = tk.StringVar(value=f"{DEFAULT_BRIGHT_RECTANGLE_SENSITIVITY:.2f}")
-        self.bright_rectangle_sensitivity_label = ttk.Label(algorithm, text="Bright rect sens.")
+        self.bright_rectangle_sensitivity_label = ttk.Label(algorithm, text="Rect bright sens.")
         self.bright_rectangle_sensitivity_label.grid(row=2, column=0, sticky="w", padx=(0, 6))
         self.bright_rectangle_sensitivity_frame = ttk.Frame(algorithm)
         self.bright_rectangle_sensitivity_frame.grid(row=2, column=1, sticky="ew", pady=(0, 4))
@@ -2827,7 +2829,7 @@ class VisionRecognitionLab(tk.Toplevel):
         self.bright_rectangle_sensitivity_entry.bind("<FocusOut>", self._on_bright_rectangle_sensitivity_entry_commit)
         default_silhouette_recognizer = RECOGNIZER_BY_NAME[DEFAULT_SILHOUETTE_RECOGNIZER_NAME].display_name
         self.silhouette_recognizer_var = tk.StringVar(value=default_silhouette_recognizer)
-        self.silhouette_recognizer_label = ttk.Label(algorithm, text="Dark silhouette")
+        self.silhouette_recognizer_label = ttk.Label(algorithm, text="Silhouette ROI")
         self.silhouette_recognizer_label.grid(row=3, column=0, sticky="w", padx=(0, 6))
         self.silhouette_recognizer_combobox = ttk.Combobox(
             algorithm,
@@ -3459,12 +3461,19 @@ class VisionRecognitionLab(tk.Toplevel):
         if not hasattr(self, "geometry_sensitivity_label"):
             return
         selected_tool = self.shape_tool_var.get() if hasattr(self, "shape_tool_var") else ""
+        geometry_visible = selected_tool in GEOMETRY_ROI_KINDS or any(
+            roi.kind in GEOMETRY_ROI_KINDS for roi in self._rois
+        )
         has_rectangle_roi = any(roi.kind == "rectangle" for roi in self._rois)
         has_silhouette_roi = any(roi.kind == "silhouette" for roi in self._rois)
 
         self._set_parameter_row_visible(
+            (self.geometry_recognizer_label, self.recognizer_combobox),
+            geometry_visible,
+        )
+        self._set_parameter_row_visible(
             (self.geometry_sensitivity_label, self.geometry_sensitivity_frame),
-            self.selected_recognizer_name() in HOUGH_GEOMETRY_RECOGNIZER_NAMES,
+            geometry_visible and self.selected_recognizer_name() in HOUGH_GEOMETRY_RECOGNIZER_NAMES,
         )
         self._set_parameter_row_visible(
             (self.bright_rectangle_sensitivity_label, self.bright_rectangle_sensitivity_frame),

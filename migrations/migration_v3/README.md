@@ -36,7 +36,7 @@ stage or camera setting at a time.
 | `dev_side\python_default_positioning\default_position_move_planner.py` | Local planner used by tests/regeneration. It is not called by the direct runtime `.xseq` wrappers. |
 | `dev_side\python_default_positioning\default_positions.json` | Local copy of the current standard-position JSON used to generate and verify wrapper constants. |
 | `dev_side\python_vision_recognition\vision_recognition_lab.py` | Copy-ready Python module for `python_env`; exposes `VisionRecognitionLabStep` for TMPython and opens the same ROI UI on a captured image. |
-| `dev_side\python_vision_recognition\requirements.txt` | Public Python packages needed by the captured-image vision recognition lab runtime. |
+| `dev_side\requirements.txt` | Public Python packages needed by the captured-image vision recognition lab runtime. |
 | `SUB_default_positioning\SUB_ApplyDefaultPositionMove.xseq` | Applies one parsed absolute `MoveStage` after fiducial check, allowlist check, delta limit, velocity selection, popup confirmation, wait, and axis-error check. |
 | `SUB_default_positioning\SUB_ApplyDefaultPositionExposure.xseq` | Applies one parsed `cam_12_ExpTime` setting after allowlist/range check and popup confirmation. |
 | `SUB_default_positioning\SUB_DefaultPosition_*.xseq` | Operator-facing one-sequence-per-position wrappers. Each wrapper applies every known stage, zoom, and exposure setting for that JSON position by calling the guarded apply sequences. |

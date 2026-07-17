@@ -652,6 +652,9 @@ def test_vision_recognition_lab_selects_position_images():
                     widget_texts.add(text)
             assert "Edges ROI" in widget_texts
             assert "Rectangle ROI" in widget_texts
+            assert "Geometry ROIs" in widget_texts
+            assert "Rect bright sens." in widget_texts
+            assert "Silhouette ROI" in widget_texts
             assert "Rectangle overlays" in widget_texts
             assert "Yellow = edge/line rectangle" in widget_texts
             assert "Magenta = bright silhouette rectangle" in widget_texts
@@ -661,12 +664,14 @@ def test_vision_recognition_lab_selects_position_images():
             assert lab._photo_image is not None  # pylint: disable=protected-access
             assert lab._photo_image.width() <= lab.image_canvas.winfo_width()  # pylint: disable=protected-access
             assert lab._photo_image.height() <= lab.image_canvas.winfo_height()  # pylint: disable=protected-access
-            assert lab.selected_recognizer_name() == "dark_adaptive"
+            assert lab.selected_recognizer_name() == "opencv_hough"
             assert lab.selected_geometry_sensitivity() == pytest.approx(0.65)
             assert lab.selected_bright_rectangle_sensitivity() == pytest.approx(0.65)
             assert lab.selected_silhouette_recognizer_name() == "dark_silhouette"
             assert lab.selected_silhouette_sensitivity() == pytest.approx(0.65)
             managed = lambda widget: widget.winfo_manager() == "grid"
+            assert not managed(lab.geometry_recognizer_label)  # pylint: disable=protected-access
+            assert not managed(lab.recognizer_combobox)  # pylint: disable=protected-access
             assert not managed(lab.geometry_sensitivity_label)  # pylint: disable=protected-access
             assert not managed(lab.bright_rectangle_sensitivity_label)  # pylint: disable=protected-access
             assert managed(lab.silhouette_recognizer_label)  # pylint: disable=protected-access
@@ -679,6 +684,9 @@ def test_vision_recognition_lab_selects_position_images():
             }
             lab.shape_tool_var.set("edges")
             lab._on_tool_selected()  # pylint: disable=protected-access
+            assert managed(lab.geometry_recognizer_label)  # pylint: disable=protected-access
+            assert managed(lab.recognizer_combobox)  # pylint: disable=protected-access
+            assert managed(lab.geometry_sensitivity_label)  # pylint: disable=protected-access
             assert not managed(lab.bright_rectangle_sensitivity_label)  # pylint: disable=protected-access
             assert not managed(lab.silhouette_recognizer_label)  # pylint: disable=protected-access
             lab.recognizer_var.set("OpenCV Canny + Hough")

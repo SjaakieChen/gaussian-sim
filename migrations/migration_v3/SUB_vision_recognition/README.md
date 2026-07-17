@@ -41,7 +41,7 @@ migrations\migration_v3\dev_side\python_vision_recognition\vision_recognition_la
 Copy or place the requirements file where you can run `pip` from it:
 
 ```text
-migrations\migration_v3\dev_side\python_vision_recognition\requirements.txt
+migrations\migration_v3\dev_side\requirements.txt
   -> D:\TestMasterData\Process\Python_Automation\python_env\requirements_vision_recognition.txt
 ```
 

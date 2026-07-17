@@ -22,7 +22,7 @@ COPY_READY_RUNTIME = (
     / "python_vision_recognition"
     / "vision_recognition_lab.py"
 )
-RUNTIME_REQUIREMENTS = COPY_READY_RUNTIME.with_name("requirements.txt")
+RUNTIME_REQUIREMENTS = ROOT / "migrations" / "migration_v3" / "dev_side" / "requirements.txt"
 
 
 def _root():
