@@ -7,9 +7,12 @@ import pytest
 
 from vision_recognition_lab import (
     BRIGHT_RECTANGLE_OVERLAY_COLOR,
+    DEFAULT_STANDARD_BATCH_NAMES,
     EDGE_RECTANGLE_OVERLAY_COLOR,
     FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM,
+    OFFICIAL_BASELINE_FOLDER_NAME,
     ROI_REQUIRED_MESSAGE,
+    VISION_SCORE_FOLDER_NAME,
     VisionCircle,
     VisionCircleReference,
     VisionRectangle,
@@ -26,7 +29,6 @@ from vision_recognition_lab import (
     load_standard_position_library,
     normalize_standard_position_id,
     parse_short_edge_length_um,
-    read_grayscale_image,
     rectangle_circle_measurement,
     relative_measurement_payload_from_measurements,
     recognize_shapes,
@@ -40,7 +42,7 @@ from vision_recognition_lab import (
 
 ROOT = Path(__file__).resolve().parents[1]
 STANDARD_POSITION_IMAGE_ROOT = ROOT / "Standard position images"
-STANDARD_POSITIONS = STANDARD_POSITION_IMAGE_ROOT / "v2" / "standard_positions.json"
+STANDARD_POSITIONS = STANDARD_POSITION_IMAGE_ROOT / "v4" / "standard_positions.json"
 
 
 def _make_root():
@@ -55,40 +57,61 @@ def _make_root():
 def test_standard_position_json_uses_semantic_ids_and_matching_image_names():
     data = json.loads(STANDARD_POSITIONS.read_text(encoding="utf-8"))
 
-    assert [position["id"] for position in data["positions"]] == [
-        "1.0.0",
-        "2.0.0",
-        "3.0.0",
-        "4.0.0",
-        "5.0.0",
-        "6.0.0",
-    ]
+    position_ids = [position["id"] for position in data["positions"]]
+    assert "1.1" in position_ids
+    assert "4.6.2" in position_ids
     assert {
-        position["id"]: position["captured_image"]
+        position["id"]: position["captured_images"]
         for position in data["positions"]
-        if position["captured_image"]
+        if position["captured_images"]
     } == {
-        "3.0.0": "3.0.0.png",
-        "4.0.0": "4.0.0.png",
-        "5.0.0": "5.0.0.png",
-        "6.0.0": "6.0.0.png",
+        "1.1": ["newhead/1.1.1.PNG"],
+        "2.1": ["newhead/2.1.1.PNG"],
+        "2.2": ["newhead/2.2.1.PNG"],
+        "2.3": ["newhead/2.3.1.PNG"],
+        "2.4": ["newhead/2.4.1.PNG"],
+        "2.5": ["newhead/2.5.1.PNG"],
+        "2.6": ["newhead/2.6.1.PNG"],
+        "3.0": ["newhead/3.0.1.PNG"],
+        "4.1": ["newhead/4.1.1.PNG"],
+        "4.2": ["newhead/4.2.1.PNG"],
+        "4.3": ["newhead/4.3.1.PNG"],
+        "4.4": ["newhead/4.4.1.PNG"],
+        "4.5": ["newhead/4.5.1.PNG"],
+        "4.6.1": ["newhead/4.6.1.PNG"],
+        "4.6.2": ["newhead/4.6.2.PNG"],
     }
 
 
 def test_standard_position_library_groups_images_by_position_across_batches():
     library = load_standard_position_library(STANDARD_POSITION_IMAGE_ROOT)
 
-    assert [position.id for position in library.positions] == [
-        "1.0.0",
-        "2.0.0",
-        "3.0.0",
-        "4.0.0",
-        "5.0.0",
-        "6.0.0",
+    assert DEFAULT_STANDARD_BATCH_NAMES == ("v4",)
+    position_ids = [position.id for position in library.positions]
+    assert "6.0.0" not in position_ids
+    assert {image.batch for image in library.images} == {"v4"}
+    for expected_position_id in [
+        "1.1",
+        "2.1",
+        "3.0",
+        "4.6.2",
+    ]:
+        assert expected_position_id in position_ids
+    assert library.images_for_position("1.0") == ()
+    position_images = library.images_for_position("3.0")
+    assert [(image.batch, image.path.name) for image in position_images] == [("v4", "3.0.1.PNG")]
+
+
+def test_standard_position_library_loads_v4_captured_images_list():
+    library = load_standard_position_library(STANDARD_POSITION_IMAGE_ROOT)
+
+    position_images = library.images_for_position("1.1")
+    assert [(image.batch, image.path.as_posix().replace("\\", "/").split("Standard position images/")[-1]) for image in position_images] == [
+        ("v4", "v4/newhead/1.1.1.PNG")
     ]
-    assert library.images_for_position("1.0.0") == ()
-    position_images = library.images_for_position("3.0.0")
-    assert [(image.batch, image.path.name) for image in position_images] == [("v2", "3.0.0.png")]
+    assert [(image.batch, image.path.name) for image in library.images_for_position("4.6.2")] == [
+        ("v4", "4.6.2.PNG")
+    ]
 
 
 def test_standard_position_id_helpers_normalize_legacy_three_digit_inputs():
@@ -568,13 +591,19 @@ def test_background_corrected_dark_detects_black_semicircle_on_uneven_gray_backg
     assert result.semicircles[0].orientation == "right"
 
 
-def test_dark_silhouette_finds_probe_shape_on_standard_position_6():
-    image = read_grayscale_image(STANDARD_POSITION_IMAGE_ROOT / "v2" / "6.0.0.png")
+def test_dark_silhouette_finds_probe_shape_without_standard_picture_fixture():
+    import numpy as np
+
+    yy, xx = np.ogrid[:260, :320]
+    image = np.ones((260, 320), dtype=float)
+    circular_head = (xx - 160) ** 2 + (yy - 125) ** 2 <= 58**2
+    stem = (132 <= xx) & (xx <= 188) & (125 <= yy) & (yy <= 220)
+    image[circular_head | stem] = 0.02
 
     wrong_roi_result = recognize_shapes(
         image,
         "dark_adaptive",
-        (VisionROI("semicircle", 620, 220, 1040, 720, orientation="down"),),
+        (VisionROI("semicircle", 80, 50, 240, 235, orientation="down"),),
         silhouette_algorithm_name="dark_silhouette",
     )
     assert wrong_roi_result.silhouettes == ()
@@ -582,28 +611,28 @@ def test_dark_silhouette_finds_probe_shape_on_standard_position_6():
     result = recognize_shapes(
         image,
         "dark_adaptive",
-        (VisionROI("silhouette", 620, 220, 1040, 720),),
+        (VisionROI("silhouette", 80, 50, 240, 235),),
         silhouette_algorithm_name="dark_silhouette",
     )
 
     assert result.silhouettes
     assert result.algorithm_name == "dark_adaptive+dark_silhouette"
     silhouette = result.silhouettes[0]
-    assert abs(silhouette.x - 840) <= 12
-    assert abs(silhouette.y - 400) <= 12
-    assert 620 <= silhouette.x1 <= 660
-    assert 210 <= silhouette.y1 <= 240
-    assert 1020 <= silhouette.x2 <= 1050
-    assert 640 <= silhouette.y2 <= 670
-    assert silhouette.area > 100_000
-    assert len(silhouette.contour_segments) > 100
-    assert len(silhouette.circle_contour_segments) > 100
+    assert abs(silhouette.x - 160) <= 5
+    assert abs(silhouette.y - 138) <= 8
+    assert 100 <= silhouette.x1 <= 105
+    assert 65 <= silhouette.y1 <= 70
+    assert 215 <= silhouette.x2 <= 220
+    assert 215 <= silhouette.y2 <= 225
+    assert silhouette.area > 12_000
+    assert len(silhouette.contour_segments) > 80
+    assert len(silhouette.circle_contour_segments) > 80
     assert silhouette.circle_x is not None
     assert silhouette.circle_y is not None
     assert silhouette.circle_radius is not None
-    assert abs(silhouette.circle_x - 837) <= 15
-    assert abs(silhouette.circle_y - 523) <= 25
-    assert abs(silhouette.circle_radius - 125) <= 25
+    assert abs(silhouette.circle_x - 160) <= 5
+    assert abs(silhouette.circle_y - 142) <= 8
+    assert abs(silhouette.circle_radius - 66) <= 8
 
 
 def test_dark_silhouette_sensitivity_controls_gray_cutoff():
@@ -655,6 +684,52 @@ def test_opencv_hough_detects_box_lines_intersection_and_circle_roi():
         and abs(circle.radius - 24) <= 5
         for circle in result.circles
     )
+
+
+def test_opencv_hough_detects_circle_matching_drawn_roi_size_with_prior():
+    import cv2
+    import numpy as np
+
+    image = np.ones((180, 240), dtype=np.uint8) * 255
+    cv2.circle(image, (150, 92), 34, 0, 2)
+    cv2.circle(image, (132, 92), 14, 0, 2)
+    gray = image.astype(float) / 255.0
+
+    result = recognize_shapes(
+        gray,
+        "opencv_hough_sized",
+        (VisionROI("circle", 116, 58, 184, 126),),
+        geometry_sensitivity=0.85,
+    )
+
+    size_prior_circles = [circle for circle in result.circles if circle.label == "opencv hough size-prior"]
+    assert size_prior_circles
+    assert abs(size_prior_circles[0].x - 150) <= 5
+    assert abs(size_prior_circles[0].y - 92) <= 5
+    assert abs(size_prior_circles[0].radius - 34) <= 5
+
+
+def test_skimage_hough_detects_circle_matching_drawn_roi_size_with_prior():
+    import cv2
+    import numpy as np
+
+    image = np.ones((180, 240), dtype=np.uint8) * 255
+    cv2.circle(image, (150, 92), 34, 0, 2)
+    cv2.circle(image, (132, 92), 14, 0, 2)
+    gray = image.astype(float) / 255.0
+
+    result = recognize_shapes(
+        gray,
+        "skimage_hough_sized",
+        (VisionROI("circle", 116, 58, 184, 126),),
+        geometry_sensitivity=0.85,
+    )
+
+    size_prior_circles = [circle for circle in result.circles if circle.label == "skimage hough size-prior"]
+    assert size_prior_circles
+    assert abs(size_prior_circles[0].x - 150) <= 5
+    assert abs(size_prior_circles[0].y - 92) <= 5
+    assert abs(size_prior_circles[0].radius - 34) <= 5
 
 
 def test_opencv_hough_geometry_sensitivity_bridges_broken_line_segments():
@@ -779,18 +854,22 @@ def test_vision_recognition_lab_selects_position_images():
     try:
         lab = VisionRecognitionLab(root, image_root=STANDARD_POSITION_IMAGE_ROOT)
         try:
-            assert lab.selected_position_id() == "6.0.0"
+            assert lab.selected_position_id() == "1.1"
             assert lab.title() == VISION_RECOGNITION_LAB_TITLE
             assert lab.title().endswith("v3")
+            position_values = tuple(lab.position_combobox.cget("values"))
+            assert any(value.startswith("1.1 - ") for value in position_values)
+            assert not any(value.startswith("6.0.0 - ") for value in position_values)
             assert [(image.batch, image.path.name) for image in lab.current_images()] == [
-                ("v2", "6.0.0.png")
+                ("v4", "1.1.1.PNG")
             ]
-            lab.select_position("3.0.0")
+            assert lab.image_tree.item("image_0", "values") == ("v4", "newhead/1.1.1.PNG")
+            lab.select_position("3.0")
             lab.update_idletasks()
 
-            assert lab.selected_position_id() == "3.0.0"
+            assert lab.selected_position_id() == "3.0"
             assert [(image.batch, image.path.name) for image in lab.current_images()] == [
-                ("v2", "3.0.0.png")
+                ("v4", "3.0.1.PNG")
             ]
             assert lab.image_tree.get_children()
             assert lab.shape_tool_var.get() == "silhouette"
@@ -819,7 +898,7 @@ def test_vision_recognition_lab_selects_position_images():
             assert lab._photo_image is not None  # pylint: disable=protected-access
             assert lab._photo_image.width() <= lab.image_canvas.winfo_width()  # pylint: disable=protected-access
             assert lab._photo_image.height() <= lab.image_canvas.winfo_height()  # pylint: disable=protected-access
-            assert lab.selected_recognizer_name() == "opencv_hough"
+            assert lab.selected_recognizer_name() == "skimage_hough_sized"
             assert lab.selected_geometry_sensitivity() == pytest.approx(0.65)
             assert lab.selected_bright_rectangle_sensitivity() == pytest.approx(0.65)
             assert lab.selected_silhouette_recognizer_name() == "dark_silhouette"
@@ -832,10 +911,10 @@ def test_vision_recognition_lab_selects_position_images():
             assert managed(lab.silhouette_recognizer_label)  # pylint: disable=protected-access
             assert managed(lab.silhouette_sensitivity_label)  # pylint: disable=protected-access
             assert set(lab._geometry_recognizer_display_to_name.values()) == {  # pylint: disable=protected-access
-                "dark_adaptive",
-                "opencv_adaptive_dark",
-                "opencv_hough",
+                "skimage_hough_sized",
                 "skimage_hough",
+                "opencv_hough_sized",
+                "opencv_hough",
             }
             lab.shape_tool_var.set("edges")
             lab._on_tool_selected()  # pylint: disable=protected-access
@@ -847,9 +926,9 @@ def test_vision_recognition_lab_selects_position_images():
             lab.recognizer_var.set("OpenCV Canny + Hough")
             lab._on_recognizer_selected()  # pylint: disable=protected-access
             assert managed(lab.geometry_sensitivity_label)  # pylint: disable=protected-access
-            lab.recognizer_var.set("Dark adaptive")
+            lab.recognizer_var.set("scikit-image Canny + Hough")
             lab._on_recognizer_selected()  # pylint: disable=protected-access
-            assert not managed(lab.geometry_sensitivity_label)  # pylint: disable=protected-access
+            assert managed(lab.geometry_sensitivity_label)  # pylint: disable=protected-access
             lab.shape_tool_var.set("rectangle")
             lab._on_tool_selected()  # pylint: disable=protected-access
             assert managed(lab.bright_rectangle_sensitivity_label)  # pylint: disable=protected-access
@@ -987,6 +1066,8 @@ def test_vision_recognition_lab_highlights_clicked_row_and_measures_multiple_cir
 
             lab._use_selected_recognition_row()  # pylint: disable=protected-access
             assert lab.recognition_tree.item(rectangle_ids[0], "values")[0] == "Yes"
+            assert lab.image_canvas.find_withtag("selected_recognition")
+            assert lab.image_canvas.find_withtag("rectangle_corner")
             lab.recognition_tree.selection_set(rectangle_ids[1])
             lab.recognition_tree.focus(rectangle_ids[1])
             lab._use_selected_recognition_row()  # pylint: disable=protected-access
@@ -999,10 +1080,17 @@ def test_vision_recognition_lab_highlights_clicked_row_and_measures_multiple_cir
             assert lab.selected_measurement_payload() is None
             assert "exactly one rectangle/edge" in lab.measurement_var.get()
 
-            lab.recognition_tree.selection_set(rectangle_ids[0])
-            lab.recognition_tree.focus(rectangle_ids[0])
-            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+            lab.recognition_tree.selection_remove(*lab.recognition_tree.selection())
+            lab.recognition_tree.focus("")
+            lab._clear_selected_recognition_roi()  # pylint: disable=protected-access
             assert lab.recognition_tree.item(rectangle_ids[0], "values")[0] == ""
+            assert lab.recognition_tree.item(rectangle_ids[1], "values")[0] == ""
+
+            lab.recognition_tree.selection_set(rectangle_ids[1], *circle_ids)
+            lab.recognition_tree.focus(rectangle_ids[1])
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+            assert lab.recognition_tree.item(rectangle_ids[1], "values")[0] == "Yes"
             measurement = lab.selected_measurement_payload()
             measurements = lab.selected_measurements_payload()
             assert measurement is not None
@@ -1118,6 +1206,185 @@ def test_vision_recognition_lab_measurement_can_use_silhouette_fitted_circle():
         root.destroy()
 
 
+def test_vision_recognition_lab_has_save_official_button_and_writes_baseline_for_current_picture(tmp_path):
+    import cv2
+    import numpy as np
+
+    image_path = tmp_path / "camera_frame.bmp"
+    image = np.zeros((120, 180), dtype=np.uint8)
+    image[10:50, 10:110] = 180
+    image[20:60, 180 - 1 : 180] = 255
+    assert cv2.imwrite(str(image_path), image)
+
+    root = _make_root()
+    try:
+        lab = VisionRecognitionLab(root, captured_image_path=image_path)
+        try:
+            lab.update_idletasks()
+            assert lab.save_official_button.cget("text") == "Save official"
+            assert lab.score_official_button.cget("text") == "Score"
+
+            lab.add_roi(VisionROI("rectangle", 0, 0, 140, 90))
+            lab.add_roi(VisionROI("circle", 180, 0, 270, 100))
+            result = VisionRecognitionResult(
+                algorithm_name="test",
+                display_name="test",
+                lines=(),
+                intersections=(),
+                circles=(VisionCircle(x=220, y=40, radius=18, score=0.9, label="circle"),),
+                rectangles=(
+                    VisionRectangle(
+                        x1=10,
+                        y1=10,
+                        x2=110,
+                        y2=50,
+                        missing_side=None,
+                        score=0.7,
+                        label="rectangle",
+                    ),
+                ),
+                semicircles=(),
+                silhouettes=(),
+                message="test",
+            )
+            lab._recognition_result = result  # pylint: disable=protected-access
+            lab._populate_recognition_tree(result)  # pylint: disable=protected-access
+            item_ids = tuple(lab._recognition_tree_items)  # pylint: disable=protected-access
+            lab.recognition_tree.selection_set(*item_ids)
+            lab.recognition_tree.focus(item_ids[0])
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+
+            output_path = lab.save_official_baseline()
+
+            assert output_path == tmp_path / OFFICIAL_BASELINE_FOLDER_NAME / "camera_frame.json"
+            assert output_path.is_file()
+            payload = json.loads(output_path.read_text(encoding="utf-8"))
+            assert payload["standard_capture_id"] == "camera_frame"
+            assert payload["standard_position_id"] == "captured"
+            assert payload["relative_measurement"]["origin_circle"]["source"] == "circle"
+
+            score_path, score = lab.score_against_official_baseline()
+
+            assert score_path == tmp_path / VISION_SCORE_FOLDER_NAME / "camera_frame_score.json"
+            assert score_path.is_file()
+            assert score["ok"] is True
+            assert score["passed"] is True
+            assert score["metrics"]["max_shape_error_px"] == pytest.approx(0.0)
+            assert score["metrics"]["max_abs_xy_error_um"] == pytest.approx(0.0)
+        finally:
+            lab.destroy()
+    finally:
+        root.destroy()
+
+
+def test_vision_recognition_lab_save_official_allows_circle_only_selection(tmp_path):
+    import cv2
+    import numpy as np
+
+    image_path = tmp_path / "ball_only.bmp"
+    image = np.zeros((80, 80), dtype=np.uint8)
+    image[25:55, 25:55] = 220
+    assert cv2.imwrite(str(image_path), image)
+
+    root = _make_root()
+    try:
+        lab = VisionRecognitionLab(root, captured_image_path=image_path)
+        try:
+            lab.update_idletasks()
+            lab.add_roi(VisionROI("circle", 20, 20, 60, 60))
+            result = VisionRecognitionResult(
+                algorithm_name="test",
+                display_name="test",
+                lines=(),
+                intersections=(),
+                circles=(VisionCircle(x=40, y=40, radius=15, score=0.9, label="circle"),),
+                rectangles=(),
+                semicircles=(),
+                silhouettes=(),
+                message="test",
+            )
+            lab._recognition_result = result  # pylint: disable=protected-access
+            lab._populate_recognition_tree(result)  # pylint: disable=protected-access
+            item_ids = tuple(lab._recognition_tree_items)  # pylint: disable=protected-access
+            lab.recognition_tree.selection_set(*item_ids)
+            lab.recognition_tree.focus(item_ids[0])
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+
+            output_path = lab.save_official_baseline()
+
+            payload = json.loads(output_path.read_text(encoding="utf-8"))
+            assert payload["standard_capture_id"] == "ball_only"
+            assert payload["relative_measurement"] is None
+            assert payload["selected_recognition"]["roi_1"][0]["shape_kind"] == "circle"
+        finally:
+            lab.destroy()
+    finally:
+        root.destroy()
+
+
+def test_vision_recognition_lab_deselect_clears_selected_use_without_removing_roi(tmp_path):
+    import cv2
+    import numpy as np
+
+    image_path = tmp_path / "remove_roi.bmp"
+    image = np.zeros((100, 130), dtype=np.uint8)
+    image[20:70, 20:90] = 220
+    assert cv2.imwrite(str(image_path), image)
+
+    root = _make_root()
+    try:
+        lab = VisionRecognitionLab(root, captured_image_path=image_path)
+        try:
+            lab.update_idletasks()
+            lab.add_roi(VisionROI("circle", 10, 10, 60, 60))
+            lab.add_roi(VisionROI("rectangle", 65, 10, 120, 80))
+            result = VisionRecognitionResult(
+                algorithm_name="test",
+                display_name="test",
+                lines=(),
+                intersections=(),
+                circles=(VisionCircle(x=35, y=35, radius=18, score=0.9, label="circle"),),
+                rectangles=(
+                    VisionRectangle(
+                        x1=70,
+                        y1=20,
+                        x2=110,
+                        y2=70,
+                        missing_side=None,
+                        score=0.8,
+                        label="rectangle",
+                    ),
+                ),
+                semicircles=(),
+                silhouettes=(),
+                message="test",
+            )
+            lab._recognition_result = result  # pylint: disable=protected-access
+            lab._populate_recognition_tree(result)  # pylint: disable=protected-access
+            circle_item = next(
+                item_id
+                for item_id, item in lab._recognition_tree_items.items()  # pylint: disable=protected-access
+                if item.shape_kind == "circle"
+            )
+            lab.recognition_tree.selection_set(circle_item)
+            lab.recognition_tree.focus(circle_item)
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+            assert lab.recognition_tree.item(circle_item, "values")[0] == "Yes"
+
+            lab._clear_selected_recognition_roi()  # pylint: disable=protected-access
+
+            assert len(lab.current_rois()) == 2
+            assert [roi.kind for roi in lab.current_rois()] == ["circle", "rectangle"]
+            assert lab._recognition_result is result  # pylint: disable=protected-access
+            assert circle_item in lab.recognition_tree.get_children()
+            assert lab.recognition_tree.item(circle_item, "values")[0] == ""
+            assert "Deselected selected detection" in lab.tool_status_var.get()
+        finally:
+            lab.destroy()
+    finally:
+        root.destroy()
+
+
 def test_vision_recognition_lab_opens_captured_bmp_image(tmp_path):
     import cv2
     import numpy as np
@@ -1193,7 +1460,7 @@ def test_dark_silhouette_overlay_only_draws_circle_target_layers():
     try:
         lab = VisionRecognitionLab(root, image_root=STANDARD_POSITION_IMAGE_ROOT)
         try:
-            lab.select_position("6.0.0")
+            lab.select_position("1.1")
             lab.update_idletasks()
             lab.add_roi(VisionROI("silhouette", 620, 220, 1040, 720))
             assert lab.run_recognition() is not None
@@ -1245,7 +1512,7 @@ def test_rectangle_overlay_uses_distinct_color_for_bright_silhouette_rectangle()
     try:
         lab = VisionRecognitionLab(root, image_root=STANDARD_POSITION_IMAGE_ROOT)
         try:
-            lab.select_position("6.0.0")
+            lab.select_position("1.1")
             lab.update_idletasks()
             lab._recognition_result = VisionRecognitionResult(  # pylint: disable=protected-access
                 algorithm_name="test",
@@ -1294,6 +1561,16 @@ def test_rectangle_overlay_uses_distinct_color_for_bright_silhouette_rectangle()
             } == {BRIGHT_RECTANGLE_OVERLAY_COLOR}
             assert lab.edge_rectangle_legend_swatch.cget("background") == EDGE_RECTANGLE_OVERLAY_COLOR
             assert lab.bright_rectangle_legend_swatch.cget("background") == BRIGHT_RECTANGLE_OVERLAY_COLOR
+            assert not lab.recognition_legend_frame.winfo_ismapped()
+            assert lab.recognition_legend_toggle_button.cget("text") == "Legend"
+            lab._toggle_recognition_legend()  # pylint: disable=protected-access
+            lab.update_idletasks()
+            assert lab.recognition_legend_frame.winfo_ismapped()
+            assert lab.recognition_legend_toggle_button.cget("text") == "Hide"
+            lab._toggle_recognition_legend()  # pylint: disable=protected-access
+            lab.update_idletasks()
+            assert not lab.recognition_legend_frame.winfo_ismapped()
+            assert lab.recognition_legend_toggle_button.cget("text") == "Legend"
         finally:
             lab.destroy()
     finally:

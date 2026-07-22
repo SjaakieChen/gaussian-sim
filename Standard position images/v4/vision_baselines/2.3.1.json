@@ -1,0 +1,77 @@
+{
+  "action": "vision_lab_saved",
+  "image_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\newhead\\2.3.1.PNG",
+  "measurement": null,
+  "measurements": [],
+  "official_baseline": {
+    "baseline_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\vision_baselines\\2.3.1.json",
+    "capture_id": "2.3.1",
+    "image_rel_path": "newhead/2.3.1.PNG",
+    "position_id": "2.3",
+    "schema_version": 1
+  },
+  "ok": true,
+  "ready_for_recognition": true,
+  "recognition_result": {
+    "algorithm_name": "skimage_hough+dark_silhouette",
+    "circles": [
+      {
+        "label": "skimage hough",
+        "radius": 62.0,
+        "score": 0.424999999999999,
+        "x": 1275.0,
+        "y": 80.0
+      }
+    ],
+    "display_name": "scikit-image Canny + Hough + Dark silhouette",
+    "intersections": [],
+    "lines": [],
+    "message": "scikit-image Canny + Hough + Dark silhouette: 0 lines, 0 intersections, 1 circles, 0 rectangles, 0 semicircles, 0 silhouettes inside 1 ROI",
+    "rectangles": [],
+    "semicircles": [],
+    "silhouettes": []
+  },
+  "relative_measurement": null,
+  "roi_count": 1,
+  "rois": [
+    {
+      "kind": "circle",
+      "orientation": "right",
+      "x1": 1182.0,
+      "x2": 1356.0,
+      "y1": -18.0,
+      "y2": 156.0
+    }
+  ],
+  "schema_version": 3,
+  "selected_recognition": {
+    "roi_1": [
+      {
+        "roi": {
+          "kind": "circle",
+          "orientation": "right",
+          "x1": 1182.0,
+          "x2": 1356.0,
+          "y1": -18.0,
+          "y2": 156.0
+        },
+        "roi_index": 1,
+        "shape": {
+          "label": "skimage hough",
+          "radius": 62.0,
+          "score": 0.424999999999999,
+          "x": 1275.0,
+          "y": 80.0
+        },
+        "shape_kind": "circle",
+        "source": "circle"
+      }
+    ]
+  },
+  "session_status": "Official vision measurement saved for 2.3.1",
+  "standard_capture_id": "2.3.1",
+  "standard_image_rel_path": "newhead/2.3.1.PNG",
+  "standard_position_id": "2.3",
+  "status": "Official vision measurement saved for 2.3.1",
+  "yase_display": "Official vision measurement saved for 2.3.1"
+}

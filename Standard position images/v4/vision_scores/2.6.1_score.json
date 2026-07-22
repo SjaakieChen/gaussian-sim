@@ -1,0 +1,69 @@
+{
+  "baseline_image_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\newhead\\2.6.1.PNG",
+  "baseline_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\vision_baselines\\2.6.1.json",
+  "candidate_image_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\newhead\\2.6.1.PNG",
+  "candidate_path": null,
+  "capture_id": "2.6.1",
+  "comparisons": {
+    "selected_shapes": {
+      "balls": [
+        {
+          "abs_error": {
+            "radius": 2.0,
+            "x": 0.0,
+            "y": 2.0
+          },
+          "baseline": {
+            "radius": 147.0,
+            "roi_index": 1,
+            "shape_kind": "circle",
+            "source": "circle",
+            "x": 1501.0,
+            "y": 667.0
+          },
+          "baseline_roi_index": 1,
+          "candidate": {
+            "radius": 145.0,
+            "roi_index": 1,
+            "shape_kind": "circle",
+            "source": "circle",
+            "x": 1501.0,
+            "y": 665.0
+          },
+          "candidate_roi_index": 1,
+          "center_error_px": 2.0,
+          "selection_index": 1,
+          "signed_error": {
+            "radius": -2.0,
+            "x": 0.0,
+            "y": -2.0
+          }
+        }
+      ],
+      "rectangles": []
+    }
+  },
+  "image_rel_path": "newhead/2.6.1.PNG",
+  "kind": "vision_score",
+  "metrics": {
+    "compared_ball_count": 1,
+    "compared_rectangle_count": 0,
+    "max_ball_center_error_px": 2.0,
+    "max_ball_radius_error_px": 2.0,
+    "max_rectangle_center_error_px": 0.0,
+    "max_rectangle_size_error_px": 0.0,
+    "max_shape_error_px": 2.0,
+    "rms_shape_error_px": 1.632993161855452
+  },
+  "ok": true,
+  "passed": true,
+  "position_id": "2.6",
+  "schema_version": 1,
+  "score_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\vision_scores\\2.6.1_score.json",
+  "status": "passed",
+  "thresholds": {
+    "max_abs_xy_error_um": 5.0,
+    "max_distance_error_um": 5.0,
+    "max_shape_error_px": 5.0
+  }
+}

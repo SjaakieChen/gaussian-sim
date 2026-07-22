@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "command": "solve_macro",
+  "memory": {
+    "schema_version": 1,
+    "action": "v5_sequence_capture_memory",
+    "standard_positions_path": "Standard position images/v4/standard_positions.json",
+    "physical_constants_um": {
+      "laser_rectangle_short_edge_um": 500.0,
+      "ball_diameter_um": 500.0,
+      "trench_depth_um": 300.0
+    },
+    "targets": ["ball_1", "ball_2"],
+    "machine_y_source": "trench_model",
+    "auto_detect_gross_sessions": true,
+    "auto_detect_missing_sessions": true,
+    "auto_detect_side_references": true,
+    "capture_records": {},
+    "official_baselines": {}
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "standard_positions": {
+    "positions": [
+      {
+        "id": "2.4",
+        "captured_images": ["newhead/2.4.1.PNG"],
+        "machine_positions_um": {
+          "camera": { "x": -38997, "y": -45395, "z": -93995 }
+        }
+      },
+      {
+        "id": "2.5",
+        "captured_images": ["newhead/2.5.1.PNG"],
+        "machine_positions_um": {
+          "camera": { "x": -38997, "y": -44996, "z": -93995 }
+        }
+      }
+    ]
+  },
+  "targets": ["ball_1"],
+  "sessions": {
+    "2.4.1": {
+      "selected_recognition": {
+        "roi_1": [
+          {
+            "shape_kind": "rectangle",
+            "shape": {
+              "corners": [
+                { "x": 0.0, "y": 0.0 },
+                { "x": 200.0, "y": 0.0 },
+                { "x": 200.0, "y": 100.0 },
+                { "x": 0.0, "y": 100.0 }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "2.5.1": {
+      "selected_recognition": {
+        "roi_1": [
+          {
+            "shape_kind": "circle",
+            "shape": { "x": 112.0, "y": 44.0, "radius": 50.0 }
+          }
+        ]
+      }
+    }
+  }
+}

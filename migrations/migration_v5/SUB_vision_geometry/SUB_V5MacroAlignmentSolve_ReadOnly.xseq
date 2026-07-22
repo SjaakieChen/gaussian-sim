@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_V5MacroAlignmentSolve_ReadOnly</Comment>
+   <Comment>Migration v5 read-only macro alignment solver. Calls TMPython sequence memory workflow and stores returned machine_coordinates_um JSON.</Comment>
+   <Comment>No camera acquisition and no hardware motion are used in this sequence. Capture/session recording stays in separate reviewed steps.</Comment>
+   <Statement Label="L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Checkout status." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="V5 macro alignment read-only solve: building TMPython JSON" />
+   </Statement>
+   <Statement Label="L_BuildPythonInput" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="JSON request for Python. Forward slashes avoid JSON backslash escaping in YASE." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;schema_version&quot;:1,&quot;command&quot;:&quot;solve_macro&quot;,&quot;memory&quot;:{&quot;schema_version&quot;:1,&quot;action&quot;:&quot;v5_sequence_capture_memory&quot;,&quot;standard_positions_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/standard_positions.json&quot;,&quot;physical_constants_um&quot;:{&quot;laser_rectangle_short_edge_um&quot;:500.0,&quot;ball_diameter_um&quot;:500.0,&quot;trench_depth_um&quot;:300.0},&quot;targets&quot;:[&quot;ball_1&quot;,&quot;ball_2&quot;],&quot;machine_y_source&quot;:&quot;trench_model&quot;,&quot;auto_detect_gross_sessions&quot;:true,&quot;auto_detect_missing_sessions&quot;:true,&quot;auto_detect_side_references&quot;:true,&quot;capture_records&quot;:{},&quot;official_baselines&quot;:{}}}" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="JSON sent to TMPython." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonInputJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStringVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Only used when valid for is Path." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where string is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="PythonVisionGeometryV5" />
+      <Parameter Name="Name" Description="Parameter: Name of string to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="LastInputJson" />
+      <Parameter Name="VarStringIn" Description="Parameter: String to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="Diagnostic copy of the Python request." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\v5_macro_alignment_input.json" />
+      <Parameter Name="Mode" Description="Create or replace the file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Request JSON." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="success" Description="True when the request was written." Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_V5MacroAlignmentInputWritten" />
+   </Statement>
+   <Statement Label="L_CallPython" Editable="FALSE" Name="TMPython_ExecuteScript" Library="">
+      <Parameter Name="Interpreter" Description="TMPython.ini section." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Python_310_PYTHON_AUTOMATION_INTERPRETER" />
+      <Parameter Name="Module" Description="Python package copied into python_env." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="python_vision_geometry.sequence_memory_workflow" />
+      <Parameter Name="Class" Description="TMPython statement class." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="VisionSequenceMemoryWorkflowStep" />
+      <Parameter Name="ParamIn" Description="JSON payload." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="ParamOut" Description="Returned JSON." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Display Python ParamOut JSON containing machine_coordinates_um." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStringVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Only used when valid for is Path." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where string is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="PythonVisionGeometryV5" />
+      <Parameter Name="Name" Description="Parameter: Name of string to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="LastResultJson" />
+      <Parameter Name="VarStringIn" Description="Parameter: String to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="Diagnostic copy of the Python result." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\v5_macro_alignment_result.json" />
+      <Parameter Name="Mode" Description="Create or replace the file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Returned JSON." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+      <Parameter Name="success" Description="True when the result was written." Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_V5MacroAlignmentResultWritten" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   </Statement>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description>Read-only v5 macro alignment sequence-memory solve through TMPython.</Sequence-Description>
+      <Entry>2026-07-22 Created solver-only v5 macro alignment bridge</Entry>
+   </History>
+</Sequence>

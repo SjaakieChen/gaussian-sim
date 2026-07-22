@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "standard_positions_path": "Standard position images/v4/standard_positions.json",
+  "auto_detect_gross_sessions": true,
+  "auto_detect_missing_sessions": true,
+  "auto_detect_side_references": true,
+  "machine_y_source": "trench_model",
+  "physical_constants_um": {
+    "laser_rectangle_short_edge_um": 500.0,
+    "ball_diameter_um": 500.0,
+    "trench_depth_um": 300.0
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "baseline_image_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\newhead\\4.4.1.PNG",
+  "baseline_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\vision_baselines\\4.4.1.json",
+  "candidate_image_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\newhead\\4.4.1.PNG",
+  "candidate_path": null,
+  "capture_id": "4.4.1",
+  "comparisons": {
+    "selected_shapes": {
+      "balls": [],
+      "rectangles": [
+        {
+          "abs_error": {
+            "height": 0.0,
+            "width": 0.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "baseline": {
+            "center_x": 837.9552001953125,
+            "center_y": 415.52148056030273,
+            "corners": [
+              {
+                "x": -1.3822021484375,
+                "y": 93.12687683105469
+              },
+              {
+                "x": 1675.9072265625,
+                "y": 89.54290771484375
+              },
+              {
+                "x": 1677.2926025390625,
+                "y": 737.9160766601562
+              },
+              {
+                "x": 0.003173828125,
+                "y": 741.5000610351562
+              }
+            ],
+            "height": 651.9571533203125,
+            "roi_index": 1,
+            "shape_kind": "rectangle",
+            "source": "rectangle",
+            "width": 1678.6748046875,
+            "x1": -1.3822021484375,
+            "x2": 1677.2926025390625,
+            "y1": 89.54290771484375,
+            "y2": 741.5000610351562
+          },
+          "baseline_roi_index": 1,
+          "candidate": {
+            "center_x": 837.9552001953125,
+            "center_y": 415.52148056030273,
+            "corners": [
+              {
+                "x": -1.3822021484375,
+                "y": 93.12687683105469
+              },
+              {
+                "x": 1675.9072265625,
+                "y": 89.54290771484375
+              },
+              {
+                "x": 1677.2926025390625,
+                "y": 737.9160766601562
+              },
+              {
+                "x": 0.003173828125,
+                "y": 741.5000610351562
+              }
+            ],
+            "height": 651.9571533203125,
+            "roi_index": 1,
+            "shape_kind": "rectangle",
+            "source": "rectangle",
+            "width": 1678.6748046875,
+            "x1": -1.3822021484375,
+            "x2": 1677.2926025390625,
+            "y1": 89.54290771484375,
+            "y2": 741.5000610351562
+          },
+          "candidate_roi_index": 1,
+          "center_abs_error": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "center_error_px": 0.0,
+          "center_signed_error": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "corners": [
+            {
+              "abs_error": {
+                "x": 0.0,
+                "y": 0.0
+              },
+              "baseline": {
+                "x": -1.3822021484375,
+                "y": 93.12687683105469
+              },
+              "candidate": {
+                "x": -1.3822021484375,
+                "y": 93.12687683105469
+              },
+              "corner_index": 1,
+              "distance_error_px": 0.0,
+              "signed_error": {
+                "x": 0.0,
+                "y": 0.0
+              }
+            },
+            {
+              "abs_error": {
+                "x": 0.0,
+                "y": 0.0
+              },
+              "baseline": {
+                "x": 1675.9072265625,
+                "y": 89.54290771484375
+              },
+              "candidate": {
+                "x": 1675.9072265625,
+                "y": 89.54290771484375
+              },
+              "corner_index": 2,
+              "distance_error_px": 0.0,
+              "signed_error": {
+                "x": 0.0,
+                "y": 0.0
+              }
+            },
+            {
+              "abs_error": {
+                "x": 0.0,
+                "y": 0.0
+              },
+              "baseline": {
+                "x": 1677.2926025390625,
+                "y": 737.9160766601562
+              },
+              "candidate": {
+                "x": 1677.2926025390625,
+                "y": 737.9160766601562
+              },
+              "corner_index": 3,
+              "distance_error_px": 0.0,
+              "signed_error": {
+                "x": 0.0,
+                "y": 0.0
+              }
+            },
+            {
+              "abs_error": {
+                "x": 0.0,
+                "y": 0.0
+              },
+              "baseline": {
+                "x": 0.003173828125,
+                "y": 741.5000610351562
+              },
+              "candidate": {
+                "x": 0.003173828125,
+                "y": 741.5000610351562
+              },
+              "corner_index": 4,
+              "distance_error_px": 0.0,
+              "signed_error": {
+                "x": 0.0,
+                "y": 0.0
+              }
+            }
+          ],
+          "max_corner_error_px": 0.0,
+          "selection_index": 1,
+          "signed_error": {
+            "height": 0.0,
+            "width": 0.0,
+            "x": 0.0,
+            "y": 0.0
+          }
+        }
+      ]
+    }
+  },
+  "image_rel_path": "newhead/4.4.1.PNG",
+  "kind": "vision_score",
+  "metrics": {
+    "compared_ball_count": 0,
+    "compared_rectangle_count": 1,
+    "max_ball_center_error_px": 0.0,
+    "max_ball_radius_error_px": 0.0,
+    "max_rectangle_center_error_px": 0.0,
+    "max_rectangle_corner_error_px": 0.0,
+    "max_rectangle_size_error_px": 0.0,
+    "max_shape_error_px": 0.0,
+    "rms_shape_error_px": 0.0
+  },
+  "ok": true,
+  "passed": true,
+  "position_id": "4.4",
+  "schema_version": 1,
+  "score_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\vision_scores\\4.4.1_score.json",
+  "status": "passed",
+  "thresholds": {
+    "max_abs_xy_error_um": 5.0,
+    "max_distance_error_um": 5.0,
+    "max_shape_error_px": 5.0
+  }
+}

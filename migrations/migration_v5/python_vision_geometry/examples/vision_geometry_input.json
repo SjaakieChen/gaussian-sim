@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "max_axis_disagreement_um": 10.0,
+  "view_mappings": {
+    "top_xz": {
+      "image_x": { "axis": "machine_z_um", "sign": 1.0 },
+      "image_y": { "axis": "machine_x_um", "sign": 1.0 }
+    },
+    "mirror_side_xy": {
+      "image_x": { "axis": "machine_x_um", "sign": 1.0 },
+      "image_y": { "axis": "machine_y_um", "sign": 1.0 }
+    }
+  },
+  "captures": [
+    {
+      "capture_id": "2.5.1",
+      "target": "ball_1",
+      "view": "top_xz",
+      "session": {
+        "relative_measurement": {
+          "edge_midpoint_relative_um": { "x": 30.0, "y": -120.0, "distance": 123.69316876852982 },
+          "circles": [
+            { "selection_index": 1, "x_um": 0.0, "y_um": 0.0, "distance_um": 0.0 }
+          ]
+        }
+      }
+    },
+    {
+      "capture_id": "2.6.1",
+      "target": "ball_1",
+      "view": "mirror_side_xy",
+      "session": {
+        "relative_measurement": {
+          "edge_midpoint_relative_um": { "x": -121.0, "y": -12.0, "distance": 121.59358535712317 },
+          "circles": [
+            { "selection_index": 1, "x_um": 0.0, "y_um": 0.0, "distance_um": 0.0 }
+          ]
+        }
+      }
+    },
+    {
+      "capture_id": "4.5.1",
+      "target": "ball_2",
+      "view": "top_xz",
+      "session": {
+        "relative_measurement": {
+          "edge_midpoint_relative_um": { "x": -42.0, "y": -820.0, "distance": 821.0755146841605 },
+          "circles": [
+            { "selection_index": 1, "x_um": 0.0, "y_um": 0.0, "distance_um": 0.0 }
+          ]
+        }
+      }
+    },
+    {
+      "capture_id": "4.6.2",
+      "target": "ball_2",
+      "view": "mirror_side_xy",
+      "session": {
+        "relative_measurement": {
+          "edge_midpoint_relative_um": { "x": -818.0, "y": 15.0, "distance": 818.1375183945775 },
+          "circles": [
+            { "selection_index": 1, "x_um": 0.0, "y_um": 0.0, "distance_um": 0.0 }
+          ]
+        }
+      }
+    }
+  ]
+}
+

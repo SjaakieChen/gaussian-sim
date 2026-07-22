@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "standard_positions_path": "Standard position images/v4/standard_positions.json",
+  "auto_detect_gross_sessions": true,
+  "default_close_position_bias": {
+    "max_bias_um": 350.0,
+    "fail_if_gross_offset_exceeds_um": 900.0
+  },
+  "gross_observations": [
+    {
+      "target": "ball_1",
+      "gross_capture_id": "2.1.1",
+      "um_per_pixel": 0.5
+    },
+    {
+      "target": "ball_2",
+      "gross_capture_id": "4.1.1",
+      "um_per_pixel": 0.5
+    }
+  ]
+}

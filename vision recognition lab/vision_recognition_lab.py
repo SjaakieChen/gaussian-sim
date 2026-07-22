@@ -10,7 +10,7 @@ import tkinter as tk
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from tkinter import ttk
+from tkinter import messagebox, ttk
 from typing import Any, Callable, Sequence
 
 import cv2
@@ -28,13 +28,16 @@ except Exception:  # pragma: no cover - developer machines do not have TMPython
 
 
 DEFAULT_STANDARD_POSITION_IMAGE_ROOT = Path(__file__).resolve().parents[1] / "Standard position images"
+DEFAULT_STANDARD_BATCH_NAMES = ("v4",)
+OFFICIAL_BASELINE_FOLDER_NAME = "vision_baselines"
+VISION_SCORE_FOLDER_NAME = "vision_scores"
 IMAGE_EXTENSIONS = frozenset({".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff"})
 LEGACY_POSITION_ID_RE = re.compile(r"^\d{3}$")
 SEMANTIC_POSITION_ID_RE = re.compile(r"^\d+\.\d+\.\d+$")
 IMAGE_POSITION_STEM_RE = re.compile(r"^(?P<id>\d{3}|\d+\.\d+\.\d+)(?:[_-].*)?$")
 MAX_OVERLAY_ITEMS = 80
 MAX_SILHOUETTE_CONTOUR_SEGMENTS = 900
-DEFAULT_START_POSITION_ID = "6.0.0"
+DEFAULT_START_POSITION_ID = "1.1"
 DEFAULT_GEOMETRY_SENSITIVITY = 0.65
 MIN_GEOMETRY_SENSITIVITY = 0.05
 MAX_GEOMETRY_SENSITIVITY = 1.00
@@ -287,9 +290,21 @@ RECOGNIZERS = (
         quantile=0.985,
     ),
     VisionRecognizer(
+        name="opencv_hough_sized",
+        display_name="OpenCV Hough size-prior",
+        mode="opencv_hough_sized",
+        quantile=0.985,
+    ),
+    VisionRecognizer(
         name="skimage_hough",
         display_name="scikit-image Canny + Hough",
         mode="skimage_hough",
+        quantile=0.985,
+    ),
+    VisionRecognizer(
+        name="skimage_hough_sized",
+        display_name="scikit-image Hough size-prior",
+        mode="skimage_hough_sized",
         quantile=0.985,
     ),
     VisionRecognizer(
@@ -330,16 +345,18 @@ RECOGNIZERS = (
     ),
 )
 RECOGNIZER_BY_NAME = {recognizer.name: recognizer for recognizer in RECOGNIZERS}
-DEFAULT_GEOMETRY_RECOGNIZER_NAME = "opencv_hough"
+DEFAULT_GEOMETRY_RECOGNIZER_NAME = "skimage_hough_sized"
 DEFAULT_SILHOUETTE_RECOGNIZER_NAME = "dark_silhouette"
 DEFAULT_RECOGNIZER_NAME = DEFAULT_GEOMETRY_RECOGNIZER_NAME
 GEOMETRY_RECOGNIZER_NAMES = (
-    "dark_adaptive",
-    "opencv_adaptive_dark",
-    "opencv_hough",
+    "skimage_hough_sized",
     "skimage_hough",
+    "opencv_hough_sized",
+    "opencv_hough",
 )
-HOUGH_GEOMETRY_RECOGNIZER_NAMES = frozenset({"opencv_hough", "skimage_hough"})
+HOUGH_GEOMETRY_RECOGNIZER_NAMES = frozenset(
+    {"opencv_hough", "opencv_hough_sized", "skimage_hough", "skimage_hough_sized"}
+)
 GEOMETRY_ROI_KINDS = frozenset({"box", "edges", "rectangle", "circle"})
 SILHOUETTE_RECOGNIZER_OFF_LABEL = "Off"
 
@@ -403,6 +420,8 @@ def standard_position_sort_key(position_id: str) -> tuple[int, tuple[int, int, i
 
 def load_standard_position_library(
     image_root: str | Path = DEFAULT_STANDARD_POSITION_IMAGE_ROOT,
+    *,
+    batch_names: Sequence[str] | None = DEFAULT_STANDARD_BATCH_NAMES,
 ) -> VisionPositionLibrary:
     root = Path(image_root)
     position_labels: dict[str, str] = {}
@@ -410,7 +429,7 @@ def load_standard_position_library(
     images: list[VisionPositionImage] = []
     seen_images: set[tuple[str, Path]] = set()
 
-    for batch_dir in _iter_batch_dirs(root):
+    for batch_dir in _iter_batch_dirs(root, batch_names=batch_names):
         batch = batch_dir.name
         for raw_position in _read_batch_positions(batch_dir):
             position_id = normalize_standard_position_id(raw_position.get("id", ""))
@@ -419,8 +438,7 @@ def load_standard_position_library(
             label = str(raw_position.get("label") or "").strip()
             _record_position(position_id, label, batch, position_labels, position_batches)
 
-            captured_image = raw_position.get("captured_image")
-            if captured_image:
+            for captured_image in _position_captured_images(raw_position):
                 image_path = batch_dir / str(captured_image)
                 _record_image(
                     position_id,
@@ -501,12 +519,33 @@ def _record_image(
     )
 
 
-def _iter_batch_dirs(root: Path) -> tuple[Path, ...]:
+def _position_captured_images(raw_position: dict[str, Any]) -> tuple[str, ...]:
+    captured_images = raw_position.get("captured_images")
+    if isinstance(captured_images, list):
+        return tuple(str(image) for image in captured_images if image)
+    captured_image = raw_position.get("captured_image")
+    if captured_image:
+        return (str(captured_image),)
+    return ()
+
+
+def _iter_batch_dirs(
+    root: Path,
+    *,
+    batch_names: Sequence[str] | None = DEFAULT_STANDARD_BATCH_NAMES,
+) -> tuple[Path, ...]:
     if not root.is_dir():
         return ()
+    allowed_batches = None if batch_names is None else {str(batch).lower() for batch in batch_names}
+    if root.name.lower().startswith("v"):
+        candidates = (root,)
+    else:
+        candidates = tuple(path for path in root.iterdir() if path.is_dir() and path.name.lower().startswith("v"))
+    if allowed_batches is not None:
+        candidates = tuple(path for path in candidates if path.name.lower() in allowed_batches)
     return tuple(
         sorted(
-            (path for path in root.iterdir() if path.is_dir() and path.name.lower().startswith("v")),
+            candidates,
             key=lambda path: _batch_sort_key(path.name),
         )
     )
@@ -1119,11 +1158,11 @@ def recognition_mask(
         if not mask.any():
             feature = np.maximum(local_mean(gray_image, radius=17) - gray_image, 0.0)
             mask = high_feature_mask(feature, recognizer.quantile)
-    elif recognizer.mode == "opencv_hough":
+    elif recognizer.mode in {"opencv_hough", "opencv_hough_sized"}:
         mask = opencv_canny_mask(gray_image, sensitivity=sensitivity)
         if not mask.any():
             mask = high_feature_mask(gradient_magnitude(gray_image), recognizer.quantile)
-    elif recognizer.mode == "skimage_hough":
+    elif recognizer.mode in {"skimage_hough", "skimage_hough_sized"}:
         mask = skimage_canny_mask(gray_image, sensitivity=sensitivity)
         if not mask.any():
             mask = high_feature_mask(gradient_magnitude(gray_image), recognizer.quantile)
@@ -1488,9 +1527,9 @@ def _library_hough_lines(
     recognizer: VisionRecognizer,
     sensitivity: float,
 ) -> list[VisionLine]:
-    if recognizer.mode == "opencv_hough":
+    if recognizer.mode in {"opencv_hough", "opencv_hough_sized"}:
         return _opencv_hough_lines(mask, rois, scale, sensitivity)
-    if recognizer.mode == "skimage_hough":
+    if recognizer.mode in {"skimage_hough", "skimage_hough_sized"}:
         return _skimage_hough_lines(mask, rois, scale, sensitivity)
     return []
 
@@ -1507,8 +1546,12 @@ def _library_hough_circles(
         return []
     if recognizer.mode == "opencv_hough":
         return _opencv_hough_circles(gray_image, rois, scale, sensitivity)
+    if recognizer.mode == "opencv_hough_sized":
+        return _opencv_hough_circles(gray_image, rois, scale, sensitivity, prefer_roi_radius=True)
     if recognizer.mode == "skimage_hough":
         return _skimage_hough_circles(mask, rois, scale, sensitivity)
+    if recognizer.mode == "skimage_hough_sized":
+        return _skimage_hough_circles(mask, rois, scale, sensitivity, prefer_roi_radius=True)
     return []
 
 
@@ -1601,6 +1644,8 @@ def _opencv_hough_circles(
     rois: tuple[VisionROI, ...],
     scale: int,
     sensitivity: float,
+    *,
+    prefer_roi_radius: bool = False,
 ) -> list[VisionCircle]:
     sensitivity = clamp_geometry_sensitivity(sensitivity)
     circles: list[VisionCircle] = []
@@ -1611,13 +1656,19 @@ def _opencv_hough_circles(
             continue
         crop = cv2.medianBlur(crop, 5) if min(crop.shape) >= 5 else crop
         roi_radius = max(5.0, 0.5 * min(roi.width, roi.height) / max(scale, 1))
-        min_radius = max(4, int(0.35 * roi_radius))
-        max_radius = max(min_radius + 2, int(1.08 * roi_radius))
+        if prefer_roi_radius:
+            min_radius = max(4, int(0.70 * roi_radius))
+            max_radius = max(min_radius + 2, int(1.30 * roi_radius))
+            min_distance = max(8.0, 0.45 * roi_radius)
+        else:
+            min_radius = max(4, int(0.35 * roi_radius))
+            max_radius = max(min_radius + 2, int(1.08 * roi_radius))
+            min_distance = max(12.0, 0.75 * roi_radius)
         raw_circles = cv2.HoughCircles(
             crop,
             cv2.HOUGH_GRADIENT,
             dp=1.2,
-            minDist=max(12.0, 0.75 * roi_radius),
+            minDist=min_distance,
             param1=max(35, int(round(120.0 - 70.0 * sensitivity))),
             param2=max(8, int(round(28.0 - 16.0 * sensitivity))),
             minRadius=min_radius,
@@ -1625,21 +1676,38 @@ def _opencv_hough_circles(
         )
         if raw_circles is None:
             continue
+        crop_circles: list[VisionCircle] = []
         for local_x, local_y, radius in np.round(raw_circles[0, :8]).astype(float):
             circle_x = (x1 + local_x) * scale
             circle_y = (y1 + local_y) * scale
             circle_radius = radius * scale
             if not point_in_roi(circle_x, circle_y, roi):
                 continue
-            circles.append(
+            if prefer_roi_radius:
+                score = _circle_roi_prior_score(
+                    circle_x,
+                    circle_y,
+                    circle_radius,
+                    roi,
+                    roi_radius,
+                    scale,
+                    base_score=1.0,
+                )
+                label = "opencv hough size-prior"
+            else:
+                score = 0.90
+                label = "opencv hough"
+            crop_circles.append(
                 VisionCircle(
                     x=float(circle_x),
                     y=float(circle_y),
                     radius=float(circle_radius),
-                    score=0.90,
-                    label="opencv hough",
+                    score=float(score),
+                    label=label,
                 )
             )
+        crop_circles.sort(key=lambda circle: circle.score, reverse=True)
+        circles.extend(crop_circles)
     return circles
 
 
@@ -1648,6 +1716,8 @@ def _skimage_hough_circles(
     rois: tuple[VisionROI, ...],
     scale: int,
     sensitivity: float,
+    *,
+    prefer_roi_radius: bool = False,
 ) -> list[VisionCircle]:
     sensitivity = clamp_geometry_sensitivity(sensitivity)
     circles: list[VisionCircle] = []
@@ -1657,8 +1727,16 @@ def _skimage_hough_circles(
         if crop.size == 0 or not crop.any():
             continue
         roi_radius = max(5.0, 0.5 * min(roi.width, roi.height) / max(scale, 1))
-        min_radius = max(4, int(0.35 * roi_radius))
-        max_radius = max(min_radius + 2, int(1.08 * roi_radius))
+        if prefer_roi_radius:
+            min_radius = max(4, int(0.70 * roi_radius))
+            max_radius = max(min_radius + 2, int(1.30 * roi_radius))
+            min_distance = max(4, int(0.45 * roi_radius))
+            total_peaks = 8
+        else:
+            min_radius = max(4, int(0.35 * roi_radius))
+            max_radius = max(min_radius + 2, int(1.08 * roi_radius))
+            min_distance = max(4, int(0.5 * roi_radius))
+            total_peaks = 5
         radius_step = max(1, int((max_radius - min_radius) / 24))
         hough_radii = np.arange(min_radius, max_radius + 1, radius_step)
         if hough_radii.size == 0:
@@ -1667,27 +1745,63 @@ def _skimage_hough_circles(
         accums, centers_x, centers_y, radii = hough_circle_peaks(
             hough_res,
             hough_radii,
-            total_num_peaks=5,
-            min_xdistance=max(4, int(0.5 * roi_radius)),
-            min_ydistance=max(4, int(0.5 * roi_radius)),
+            total_num_peaks=total_peaks,
+            min_xdistance=min_distance,
+            min_ydistance=min_distance,
             threshold=0.08 + 0.18 * (1.0 - sensitivity),
         )
+        crop_circles: list[VisionCircle] = []
         for accum, local_x, local_y, radius in zip(accums, centers_x, centers_y, radii):
             circle_x = (x1 + float(local_x)) * scale
             circle_y = (y1 + float(local_y)) * scale
             circle_radius = float(radius) * scale
             if not point_in_roi(circle_x, circle_y, roi):
                 continue
-            circles.append(
+            if prefer_roi_radius:
+                score = _circle_roi_prior_score(
+                    circle_x,
+                    circle_y,
+                    circle_radius,
+                    roi,
+                    roi_radius,
+                    scale,
+                    base_score=min(1.0, float(accum)),
+                )
+                label = "skimage hough size-prior"
+            else:
+                score = min(1.0, float(accum))
+                label = "skimage hough"
+            crop_circles.append(
                 VisionCircle(
                     x=float(circle_x),
                     y=float(circle_y),
                     radius=float(circle_radius),
-                    score=min(1.0, float(accum)),
-                    label="skimage hough",
+                    score=float(score),
+                    label=label,
                 )
             )
+        crop_circles.sort(key=lambda circle: circle.score, reverse=True)
+        circles.extend(crop_circles)
     return circles
+
+
+def _circle_roi_prior_score(
+    circle_x: float,
+    circle_y: float,
+    circle_radius: float,
+    roi: VisionROI,
+    roi_radius: float,
+    scale: int,
+    *,
+    base_score: float,
+) -> float:
+    roi_center_x = 0.5 * (roi.x1 + roi.x2)
+    roi_center_y = 0.5 * (roi.y1 + roi.y2)
+    target_radius = roi_radius * max(scale, 1)
+    radius_error = abs(circle_radius - target_radius) / max(target_radius, 1.0)
+    center_error = math.hypot(circle_x - roi_center_x, circle_y - roi_center_y) / max(target_radius, 1.0)
+    prior_score = 1.0 - 0.62 * min(radius_error, 1.0) - 0.25 * min(center_error, 1.0)
+    return max(0.05, min(0.99, 0.55 * min(max(base_score, 0.0), 1.0) + 0.45 * prior_score))
 
 
 def _merge_axis_aligned_hough_lines(
@@ -2929,6 +3043,7 @@ class VisionRecognitionLab(tk.Toplevel):
         self._active_recognition_item_ids: set[str] = set()
         self._selected_measurement: VisionRectangleCircleMeasurement | None = None
         self._selected_measurements: tuple[VisionSelectedMeasurement, ...] = ()
+        self._recognition_legend_visible = False
 
         self.title(VISION_RECOGNITION_LAB_TITLE)
         self.minsize(980, 620)
@@ -3194,16 +3309,53 @@ class VisionRecognitionLab(tk.Toplevel):
         recognition_actions.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
         recognition_actions.columnconfigure(0, weight=1)
         recognition_actions.columnconfigure(1, weight=1)
+        recognition_actions.columnconfigure(2, weight=1)
+        recognition_actions.columnconfigure(3, weight=1)
+        recognition_actions.columnconfigure(4, weight=0)
         ttk.Button(recognition_actions, text="Use selected", command=self._use_selected_recognition_row).grid(
             row=0,
             column=0,
             sticky="ew",
             padx=(0, 4),
         )
-        ttk.Button(recognition_actions, text="Clear selected use", command=self._clear_selected_recognition_roi).grid(
+        ttk.Button(recognition_actions, text="Deselect", command=self._clear_selected_recognition_roi).grid(
             row=0,
             column=1,
             sticky="ew",
+            padx=(0, 4),
+        )
+        self.save_official_button = ttk.Button(
+            recognition_actions,
+            text="Save official",
+            command=self._save_official_baseline_from_ui,
+        )
+        self.save_official_button.grid(
+            row=0,
+            column=2,
+            sticky="ew",
+            padx=(0, 4),
+        )
+        self.score_official_button = ttk.Button(
+            recognition_actions,
+            text="Score",
+            command=self._score_against_official_baseline_from_ui,
+        )
+        self.score_official_button.grid(
+            row=0,
+            column=3,
+            sticky="ew",
+            padx=(0, 4),
+        )
+        self.recognition_legend_toggle_button = ttk.Button(
+            recognition_actions,
+            text="Legend",
+            command=self._toggle_recognition_legend,
+            width=7,
+        )
+        self.recognition_legend_toggle_button.grid(
+            row=0,
+            column=4,
+            sticky="e",
         )
 
         measurement = ttk.Frame(result_frame)
@@ -3273,6 +3425,7 @@ class VisionRecognitionLab(tk.Toplevel):
 
     def _build_recognition_legend(self, parent: tk.Widget) -> None:
         legend = ttk.Frame(parent)
+        self.recognition_legend_frame = legend
         legend.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(4, 0))
         legend.columnconfigure(1, weight=1)
 
@@ -3303,6 +3456,17 @@ class VisionRecognitionLab(tk.Toplevel):
             sticky="w",
             pady=(2, 0),
         )
+        legend.grid_remove()
+
+    def _toggle_recognition_legend(self) -> None:
+        if self._recognition_legend_visible:
+            self.recognition_legend_frame.grid_remove()
+            self.recognition_legend_toggle_button.configure(text="Legend")
+            self._recognition_legend_visible = False
+            return
+        self.recognition_legend_frame.grid()
+        self.recognition_legend_toggle_button.configure(text="Hide")
+        self._recognition_legend_visible = True
 
     def reload_library(self) -> None:
         if self._captured_image_path is not None:
@@ -3444,6 +3608,152 @@ class VisionRecognitionLab(tk.Toplevel):
     def selected_yase_display_status(self, fallback_status: str) -> str:
         return format_relative_measurement_for_yase(self.selected_relative_measurement_payload(), fallback_status)
 
+    def current_session_payload(self, status: str) -> dict[str, Any]:
+        if self._selected_image is None:
+            raise ValueError("No image is loaded.")
+        return vision_session_payload(
+            image_path=self._selected_image.path,
+            rois=self.current_rois(),
+            result=self._recognition_result,
+            status=status,
+            selected_recognition=self.selected_recognition_payload(),
+            measurement=self.selected_measurement_payload(),
+            measurements=self.selected_measurements_payload(),
+            relative_measurement=self.selected_relative_measurement_payload(),
+            yase_display=self.selected_yase_display_status(status),
+        )
+
+    def official_baseline_path(self) -> Path:
+        if self._selected_image is None:
+            raise ValueError("No image is loaded.")
+        return self._official_baseline_dir(self._selected_image) / f"{self._selected_image.path.stem}.json"
+
+    def official_score_path(self) -> Path:
+        if self._selected_image is None:
+            raise ValueError("No image is loaded.")
+        return self._official_score_dir(self._selected_image) / f"{self._selected_image.path.stem}_score.json"
+
+    def save_official_baseline(self, *, confirm_replace: bool = False) -> Path | None:
+        if self._selected_image is None:
+            raise ValueError("No image is loaded.")
+        capture_id = self._selected_image.path.stem
+        payload = self.current_session_payload(f"Official vision measurement saved for {capture_id}")
+        selected_recognition = payload["selected_recognition"]
+        if not selected_recognition:
+            raise ValueError("Select at least one detected shape with Use selected before saving.")
+        output_path = self.official_baseline_path()
+        if output_path.exists() and confirm_replace:
+            replace = messagebox.askyesno(
+                "Replace official measurement?",
+                f"Replace the existing official measurement for {capture_id}?",
+                parent=self,
+            )
+            if not replace:
+                return None
+        payload["standard_capture_id"] = capture_id
+        payload["standard_position_id"] = self._selected_image.position_id
+        payload["standard_image_rel_path"] = self._selected_image_rel_path(self._selected_image)
+        payload["official_baseline"] = {
+            "schema_version": 1,
+            "capture_id": capture_id,
+            "position_id": self._selected_image.position_id,
+            "image_rel_path": self._selected_image_rel_path(self._selected_image),
+            "baseline_path": str(output_path),
+        }
+        _write_json(output_path, payload)
+        return output_path
+
+    def _save_official_baseline_from_ui(self) -> None:
+        try:
+            output_path = self.save_official_baseline(confirm_replace=True)
+        except (OSError, ValueError) as exc:
+            self.tool_status_var.set(f"Official save failed: {exc}")
+            messagebox.showerror("Official save failed", str(exc), parent=self)
+            return
+        if output_path is None:
+            self.tool_status_var.set("Official save cancelled")
+            return
+        self.tool_status_var.set(f"Official saved: {output_path}")
+        messagebox.showinfo("Official saved", f"Saved official measurement:\n{output_path}", parent=self)
+
+    def score_against_official_baseline(self) -> tuple[Path, dict[str, Any]]:
+        if self._selected_image is None:
+            raise ValueError("No image is loaded.")
+        baseline_path = self.official_baseline_path()
+        if not baseline_path.is_file():
+            raise FileNotFoundError(f"No official measurement saved for {self._selected_image.path.stem}: {baseline_path}")
+        baseline_payload = json.loads(baseline_path.read_text(encoding="utf-8"))
+        capture_id = self._selected_image.path.stem
+        candidate_payload = self.current_session_payload(f"Vision score checked against official for {capture_id}")
+        from vision_scoring import score_session_payloads
+
+        score = score_session_payloads(
+            baseline_payload,
+            candidate_payload,
+            capture_id=capture_id,
+            position_id=self._selected_image.position_id,
+            image_rel_path=self._selected_image_rel_path(self._selected_image),
+            baseline_path=baseline_path,
+        )
+        output_path = self.official_score_path()
+        score["score_path"] = str(output_path)
+        _write_json(output_path, score)
+        return output_path, score
+
+    def _score_against_official_baseline_from_ui(self) -> None:
+        try:
+            output_path, score = self.score_against_official_baseline()
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            self.tool_status_var.set(f"Official score failed: {exc}")
+            messagebox.showerror("Official score failed", str(exc), parent=self)
+            return
+        status = "Score passed" if score.get("passed") is True else "Score failed"
+        self.tool_status_var.set(f"{status}: {score.get('status')}")
+        messagebox.showinfo(
+            "Official score",
+            self._format_official_score_message(score, output_path),
+            parent=self,
+        )
+
+    def _official_baseline_dir(self, image: VisionPositionImage) -> Path:
+        if image.batch and image.batch != "capture":
+            return self.image_root / image.batch / OFFICIAL_BASELINE_FOLDER_NAME
+        return image.path.parent / OFFICIAL_BASELINE_FOLDER_NAME
+
+    def _official_score_dir(self, image: VisionPositionImage) -> Path:
+        if image.batch and image.batch != "capture":
+            return self.image_root / image.batch / VISION_SCORE_FOLDER_NAME
+        return image.path.parent / VISION_SCORE_FOLDER_NAME
+
+    def _format_official_score_message(self, score: dict[str, Any], output_path: Path) -> str:
+        lines = [
+            f"{'PASS' if score.get('passed') is True else 'FAIL'}: {score.get('status')}",
+        ]
+        metrics = score.get("metrics") if isinstance(score.get("metrics"), dict) else {}
+        if metrics.get("max_shape_error_px") is not None:
+            lines.append(f"Max shape error: {float(metrics['max_shape_error_px']):.3f} px")
+        if metrics.get("max_ball_center_error_px") is not None:
+            lines.append(f"Max ball center error: {float(metrics['max_ball_center_error_px']):.3f} px")
+        if metrics.get("max_rectangle_center_error_px") is not None:
+            lines.append(f"Max rectangle center error: {float(metrics['max_rectangle_center_error_px']):.3f} px")
+        if metrics.get("max_abs_xy_error_um") is not None:
+            lines.append(f"Max relative XY error: {float(metrics['max_abs_xy_error_um']):.3f} um")
+        if metrics.get("max_distance_error_um") is not None:
+            lines.append(f"Max distance error: {float(metrics['max_distance_error_um']):.3f} um")
+        lines.append(f"Score JSON: {output_path}")
+        return "\n".join(lines)
+
+    def _selected_image_rel_path(self, image: VisionPositionImage) -> str:
+        if image.batch and image.batch != "capture":
+            try:
+                return image.path.relative_to(self.image_root / image.batch).as_posix()
+            except ValueError:
+                pass
+        try:
+            return image.path.relative_to(self.image_root).as_posix()
+        except ValueError:
+            return image.path.name
+
     def _selected_measurement_to_dict(self, selected: VisionSelectedMeasurement) -> dict[str, Any]:
         measurement = selected.measurement
         rectangle_selection = selected.rectangle_selection
@@ -3550,7 +3860,7 @@ class VisionRecognitionLab(tk.Toplevel):
         for index, image in enumerate(images):
             item_id = f"image_{index}"
             self._image_item_to_image[item_id] = image
-            self.image_tree.insert("", "end", iid=item_id, values=(image.batch, image.path.name))
+            self.image_tree.insert("", "end", iid=item_id, values=(image.batch, self._image_tree_file_label(image)))
         if images:
             first_item = "image_0"
             self.image_tree.selection_set(first_item)
@@ -3558,6 +3868,14 @@ class VisionRecognitionLab(tk.Toplevel):
             self._load_image(images[0])
         else:
             self._clear_image("No captured image for this position")
+
+    def _image_tree_file_label(self, image: VisionPositionImage) -> str:
+        if image.batch and image.batch != "capture":
+            try:
+                return image.path.relative_to(self.image_root / image.batch).as_posix()
+            except ValueError:
+                pass
+        return image.path.name
 
     def _on_image_selected(self, _event: tk.Event | None = None) -> None:
         selection = self.image_tree.selection()
@@ -4074,9 +4392,10 @@ class VisionRecognitionLab(tk.Toplevel):
         for item in selected_items:
             drawn += self._draw_recognition_item_highlight(
                 item,
-                color="#ffffff",
+                color="#ff2a6d",
                 width=3,
                 tags=("recognition_overlay", "selected_recognition"),
+                corner_points=item.shape_kind == "rectangle",
             )
 
         for selected in self._selected_measurements:
@@ -4126,6 +4445,7 @@ class VisionRecognitionLab(tk.Toplevel):
         color: str,
         width: int,
         tags: tuple[str, ...],
+        corner_points: bool = False,
     ) -> int:
         if item.shape_kind == "line":
             shape = item.shape
@@ -4134,7 +4454,13 @@ class VisionRecognitionLab(tk.Toplevel):
             self.image_canvas.create_line(x1, y1, x2, y2, fill=color, width=width, tags=tags)
             return 1
         if item.shape_kind == "rectangle":
-            return self._draw_highlight_rectangle(item.shape, color=color, width=width, tags=tags)
+            return self._draw_highlight_rectangle(
+                item.shape,
+                color=color,
+                width=width,
+                tags=tags,
+                corner_points=corner_points,
+            )
         if item.shape_kind == "circle":
             return self._draw_highlight_circle(
                 VisionCircleReference(
@@ -4179,7 +4505,13 @@ class VisionRecognitionLab(tk.Toplevel):
                     score=shape.score,
                     label=shape.label,
                 )
-                return self._draw_highlight_rectangle(rectangle, color=color, width=width, tags=tags)
+                return self._draw_highlight_rectangle(
+                    rectangle,
+                    color=color,
+                    width=width,
+                    tags=tags,
+                    corner_points=corner_points,
+                )
         if item.shape_kind == "intersection":
             shape = item.shape
             x, y = self._image_to_canvas_point(shape.x, shape.y)
@@ -4196,9 +4528,11 @@ class VisionRecognitionLab(tk.Toplevel):
         color: str,
         width: int,
         tags: tuple[str, ...],
+        corner_points: bool = False,
     ) -> int:
         corners = rectangle_measurement_corners(rectangle)
         canvas_corners = [self._image_to_canvas_point(x, y) for x, y in corners]
+        drawn = 0
         for index, start in enumerate(canvas_corners):
             end = canvas_corners[(index + 1) % len(canvas_corners)]
             self.image_canvas.create_line(
@@ -4210,7 +4544,23 @@ class VisionRecognitionLab(tk.Toplevel):
                 width=width,
                 tags=tags,
             )
-        return len(canvas_corners)
+            drawn += 1
+        if corner_points:
+            marker_radius = 5
+            marker_tags = (*tags, "rectangle_corner")
+            for x, y in canvas_corners:
+                self.image_canvas.create_oval(
+                    x - marker_radius,
+                    y - marker_radius,
+                    x + marker_radius,
+                    y + marker_radius,
+                    outline="#ffffff",
+                    fill=color,
+                    width=1,
+                    tags=marker_tags,
+                )
+                drawn += 1
+        return drawn
 
     def _draw_highlight_circle(
         self,
@@ -4393,15 +4743,9 @@ class VisionRecognitionLab(tk.Toplevel):
         if not item_ids:
             return "break"
         for item_id in item_ids:
-            if item_id in self._selected_recognition_item_ids:
-                self._selected_recognition_item_ids.remove(item_id)
-                self._selected_recognition_item_order = [
-                    selected_id for selected_id in self._selected_recognition_item_order if selected_id != item_id
-                ]
-            else:
-                self._selected_recognition_item_ids.add(item_id)
-                if item_id not in self._selected_recognition_item_order:
-                    self._selected_recognition_item_order.append(item_id)
+            self._selected_recognition_item_ids.add(item_id)
+            if item_id not in self._selected_recognition_item_order:
+                self._selected_recognition_item_order.append(item_id)
         self._active_recognition_item_ids = set(item_ids)
         self._update_recognition_tree_selection_marks()
         self._update_selected_measurement()
@@ -4415,9 +4759,11 @@ class VisionRecognitionLab(tk.Toplevel):
             self._selected_recognition_item_order = [
                 item_id for item_id in self._selected_recognition_item_order if item_id not in item_ids
             ]
+            self.tool_status_var.set("Deselected selected detection")
         else:
             self._selected_recognition_item_ids.clear()
             self._selected_recognition_item_order.clear()
+            self.tool_status_var.set("Deselected all detections")
         self._update_recognition_tree_selection_marks()
         self._update_selected_measurement()
         self._render_current_image()

@@ -1,0 +1,145 @@
+{
+  "baseline_image_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\newhead\\2.4.1.PNG",
+  "baseline_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\vision_baselines\\2.4.1.json",
+  "candidate_image_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\newhead\\2.4.1.PNG",
+  "candidate_path": null,
+  "capture_id": "2.4.1",
+  "comparisons": {
+    "selected_shapes": {
+      "balls": [],
+      "rectangles": [
+        {
+          "abs_error": {
+            "height": 0.61395263671875,
+            "width": 64.01521110534668,
+            "x": 32.013110637664795,
+            "x1": 64.02070426940918,
+            "x2": 0.0054931640625,
+            "y": 0.338836669921875,
+            "y1": 0.64581298828125,
+            "y2": 0.0318603515625
+          },
+          "baseline": {
+            "center_x": 900.9036169052124,
+            "center_y": 1303.8406982421875,
+            "corners": [
+              {
+                "x": 64.03515625,
+                "y": 972.420166015625
+              },
+              {
+                "x": 1744.127197265625,
+                "y": 988.9403076171875
+              },
+              {
+                "x": 1737.7720947265625,
+                "y": 1635.26123046875
+              },
+              {
+                "x": 57.68001937866211,
+                "y": 1618.7410888671875
+              }
+            ],
+            "height": 662.841064453125,
+            "roi_index": 1,
+            "shape_kind": "rectangle",
+            "source": "rectangle",
+            "width": 1686.447177886963,
+            "x1": 57.68001937866211,
+            "x2": 1744.127197265625,
+            "y1": 972.420166015625,
+            "y2": 1635.26123046875
+          },
+          "baseline_roi_index": 1,
+          "bbox_abs_error": {
+            "x1": 64.02070426940918,
+            "x2": 0.0054931640625,
+            "y1": 0.64581298828125,
+            "y2": 0.0318603515625
+          },
+          "bbox_signed_error": {
+            "x1": -64.02070426940918,
+            "x2": -0.0054931640625,
+            "y1": -0.64581298828125,
+            "y2": -0.0318603515625
+          },
+          "candidate": {
+            "center_x": 868.8905062675476,
+            "center_y": 1303.5018615722656,
+            "corners": [
+              {
+                "x": 0.002197265625,
+                "y": 971.7743530273438
+              },
+              {
+                "x": 1744.1217041015625,
+                "y": 988.8903198242188
+              },
+              {
+                "x": 1737.77880859375,
+                "y": 1635.2293701171875
+              },
+              {
+                "x": -6.34068489074707,
+                "y": 1618.1134033203125
+              }
+            ],
+            "height": 663.4550170898438,
+            "roi_index": 1,
+            "shape_kind": "rectangle",
+            "source": "rectangle",
+            "width": 1750.4623889923096,
+            "x1": -6.34068489074707,
+            "x2": 1744.1217041015625,
+            "y1": 971.7743530273438,
+            "y2": 1635.2293701171875
+          },
+          "candidate_roi_index": 1,
+          "center_abs_error": {
+            "x": 32.013110637664795,
+            "y": 0.338836669921875
+          },
+          "center_error_px": 32.01490376353255,
+          "center_signed_error": {
+            "x": -32.013110637664795,
+            "y": -0.338836669921875
+          },
+          "selection_index": 1,
+          "signed_error": {
+            "height": 0.61395263671875,
+            "width": 64.01521110534668,
+            "x": -32.013110637664795,
+            "x1": -64.02070426940918,
+            "x2": -0.0054931640625,
+            "y": -0.338836669921875,
+            "y1": -0.64581298828125,
+            "y2": -0.0318603515625
+          }
+        }
+      ]
+    }
+  },
+  "image_rel_path": "newhead/2.4.1.PNG",
+  "kind": "vision_score",
+  "metrics": {
+    "compared_ball_count": 0,
+    "compared_rectangle_count": 1,
+    "max_ball_center_error_px": 0.0,
+    "max_ball_radius_error_px": 0.0,
+    "max_rectangle_center_error_px": 32.01490376353255,
+    "max_rectangle_size_error_px": 64.01521110534668,
+    "max_shape_error_px": 64.02070426940918,
+    "rms_shape_error_px": 29.223343288690987
+  },
+  "ok": true,
+  "passed": false,
+  "position_id": "2.4",
+  "schema_version": 1,
+  "score_path": "C:\\Users\\chenj\\OneDrive - Imperial College London\\Imec\\Coding\\Gaussian sim\\Standard position images\\v4\\vision_scores\\2.4.1_score.json",
+  "status": "failed threshold",
+  "thresholds": {
+    "max_abs_xy_error_um": 5.0,
+    "max_distance_error_um": 5.0,
+    "max_shape_error_px": 5.0
+  }
+}
