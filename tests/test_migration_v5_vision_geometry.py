@@ -642,6 +642,59 @@ def test_migration_v5_bias_planner_requires_scale_for_gross_pixel_shift():
     assert "estimate_um_per_pixel_from_ball_diameter" in result["status"]
 
 
+def test_migration_v5_bias_planner_rebases_close_positions_from_live_gross_coordinates():
+    payload = _bias_payload()
+    payload["gross_observations"][0]["candidate_machine_positions_um"] = {
+        "camera": {"x": -38000.0, "y": -45000.0, "z": -93000.0},
+        "tower_1": {"x": 6000.0, "y": 13000.0, "z": 16000.0},
+    }
+
+    result = plan_biased_close_positions(payload)
+
+    assert result["ok"] is True
+    plan = result["plans"][0]
+    planned_2_4 = next(position for position in plan["planned_positions"] if position["id"] == "2.4")
+    assert planned_2_4["machine_positions_um"]["camera"] == pytest.approx(
+        {"x": -38000.0, "y": -44399.0, "z": -89301.0}
+    )
+    assert planned_2_4["machine_positions_um"]["tower_1"] == pytest.approx(
+        {"x": 5980.0, "y": 12001.0, "z": 18240.0}
+    )
+    rebase = planned_2_4["bias_plan"]["gross_rebase"]
+    assert rebase["source"] == "candidate_gross_machine_positions_plus_standard_gross_to_close_delta"
+    assert rebase["standard_gross_to_close_delta_um"]["camera"] == {"x": 0.0, "y": 601.0, "z": 3699.0}
+    assert planned_2_4["bias_plan"]["camera_positions_unchanged"] is False
+
+
+def test_migration_v5_memory_next_action_uses_recorded_gross_machine_coordinates_for_fine_view():
+    memory = initialize_sequence_memory({"schema_version": 1, "targets": ["ball_1"]})
+    memory = record_sequence_capture(
+        {
+            "schema_version": 1,
+            "memory": memory,
+            "capture_id": "2.1.1",
+            "session": _selected_circle_session(100.0, 200.0),
+            "machine_positions_um": {
+                "camera": {"x": -38000.0, "y": -45000.0, "z": -93000.0},
+                "tower_1": {"x": 6000.0, "y": 13000.0, "z": 16000.0},
+            },
+            "official_baseline": True,
+        }
+    )
+
+    result = next_sequence_action_from_sequence_memory(memory)
+
+    assert result["ok"] is True
+    assert result["action"] == "capture_required"
+    capture = result["next_capture"]
+    assert capture["capture_id"] == "2.4.1"
+    assert capture["planned_from_gross_bias"] is True
+    assert capture["machine_positions_um"]["camera"] == pytest.approx(
+        {"x": -38000.0, "y": -44399.0, "z": -89301.0}
+    )
+    assert capture["bias_plan"]["gross_rebase"]["standard_close_position_id"] == "2.4"
+
+
 def test_migration_v5_solver_fuses_top_and_mirror_side_axes():
     result = solve_common_geometry(_payload())
 

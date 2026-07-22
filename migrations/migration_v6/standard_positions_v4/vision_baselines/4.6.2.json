@@ -1,0 +1,59 @@
+{
+  "action": "auto_feature_session",
+  "auto_detected": true,
+  "auto_feature_kind": "side_ball_circle",
+  "image_path": "standard_positions_v4/newhead/4.6.2.PNG",
+  "mirror_flip_y": true,
+  "mirror_note": "V6 treats side view as a mirror: top of mirror corresponds to trench-bottom/chip-side direction.",
+  "mirror_view": true,
+  "ok": true,
+  "rois": [
+    {
+      "kind": "circle",
+      "orientation": "right",
+      "x1": 650.0,
+      "x2": 1600.0,
+      "y1": 500.0,
+      "y2": 1600.0
+    }
+  ],
+  "schema_version": 3,
+  "selected_recognition": {
+    "roi_1": [
+      {
+        "roi": {
+          "kind": "circle",
+          "orientation": "right",
+          "x1": 650.0,
+          "x2": 1600.0,
+          "y1": 500.0,
+          "y2": 1600.0
+        },
+        "roi_index": 1,
+        "shape": {
+          "auto_hough": {
+            "dp": 1.2,
+            "param1": 60.0,
+            "param2": 18.0
+          },
+          "label": "auto hough ball circle",
+          "radius": 285.4800109863281,
+          "score": 18.0,
+          "x": 1467.800048828125,
+          "y": 944.5999755859375
+        },
+        "shape_kind": "circle",
+        "source": "auto_ball_circle"
+      }
+    ]
+  },
+  "side_reference_line": {
+    "score": 9.78478260869565,
+    "source": "auto_horizontal_bright_to_dark_edge",
+    "x1_px": 650.0,
+    "x2_px": 1800.0,
+    "y_px": 403.0
+  },
+  "standard_capture_id": "4.6.2",
+  "status": "V6 side baseline with mirror side-reference for 4.6.2"
+}

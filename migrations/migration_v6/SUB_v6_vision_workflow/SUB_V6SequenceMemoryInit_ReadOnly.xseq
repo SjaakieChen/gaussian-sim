@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_V6SequenceMemoryInit_ReadOnly</Comment>
+   <Comment>Initialize v6 vision workflow memory.</Comment>
+   <Comment>Review MACHINE_CONFIGURATION.md and COMMON_MISTAKES.md before machine use.</Comment>
+   <Statement Label="L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6SequenceMemoryInit_ReadOnly" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;schema_version&quot;:1,&quot;command&quot;:&quot;init&quot;,&quot;memory_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_vision_memory.json&quot;,&quot;standard_positions_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/standard_positions.json&quot;,&quot;standard_baseline_dir&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/vision_baselines&quot;,&quot;output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_vision_memory.json&quot;}" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonInputJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\v6_init_input.json" />
+      <Parameter Name="Mode" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="success" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_V6InitInputWritten" />
+   </Statement>
+   <Statement Label="L_CallPython" Editable="FALSE" Name="TMPython_ExecuteScript" Library="">
+      <Parameter Name="Interpreter" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Python_310_PYTHON_AUTOMATION_INTERPRETER" />
+      <Parameter Name="Module" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="python_vision_geometry.v6_offset_workflow" />
+      <Parameter Name="Class" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="V6VisionWorkflowStep" />
+      <Parameter Name="ParamIn" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="ParamOut" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\v6_init_result_from_yase.json" />
+      <Parameter Name="Mode" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+      <Parameter Name="success" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_V6InitResultWritten" />
+   </Statement>
+   <Statement Label="L_Success" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6SequenceMemoryInit_ReadOnly complete." />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Statement Label="L_End" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQDefinition">
+      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
+      <Parameter Name="Value" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   </Statement>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description>Initialize v6 vision workflow memory.</Sequence-Description>
+      <Entry>2026-07-22 Generated for migration v6 guarded vision workflow</Entry>
+   </History>
+</Sequence>

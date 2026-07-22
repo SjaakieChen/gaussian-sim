@@ -141,3 +141,43 @@ Prevention:
   reason and compatible timeout behavior.
 - A sequence abort must invoke an explicit, verified controller stop if the
   safety requirement is to halt physical motion.
+
+## 11. Do not use fast speed for close-to-chip correction moves
+
+Migration v4 proved the direct hardcoded-position XML shape, but it used fast
+stage velocities. Fast approach can be appropriate for reviewed long camera
+moves, but it is too aggressive once the camera, towers, chip, ball, trench, or
+mirror are already close.
+
+Prevention:
+
+- Use medium speed for reviewed approach moves between nearby standard vision
+  positions.
+- Use slow speed for image-derived offset corrections.
+- Never use `VelocityAlignFast`, `VelocityCameraFast`, or
+  `VelocityCameraXFast` in a close-to-chip correction subsequence.
+- Still check movement duration against the active wait timeout. Slow speed can
+  time out on long moves, so do not blindly replace every approach move with
+  slow speed.
+
+## 12. Do not rebase a multi-step transition after every one-axis move
+
+Observed during migration v6 audit:
+
+- A transition helper can be called repeatedly by YASE, applying one returned
+  move per loop.
+- If Python recalculates `target = current + standard_delta` on every loop,
+  the target drifts after the first axis moves. The same standard delta can be
+  applied repeatedly even though the final coordinate looked correct on the
+  first call.
+- If tower X/Z motion is requested while the tower is still low, the tower can
+  move laterally near the trench before reaching the final safe coordinate.
+
+Prevention:
+
+- Anchor the transition target once at the start of the transition and store
+  it in sequence memory until the transition completes.
+- Before tower X/Z motion, raise the active tower Y to a reviewed clearance
+  coordinate; only lower Y after lateral axes are at target.
+- Treat direct hardcoded-position subsequences the same way, because operators
+  can run them independently from an unknown current position.

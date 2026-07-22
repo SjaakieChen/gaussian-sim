@@ -1,0 +1,117 @@
+{
+  "action": "vision_lab_saved",
+  "image_path": "standard_positions_v4/newhead/4.4.1.PNG",
+  "measurement": null,
+  "measurements": [],
+  "official_baseline": {
+    "baseline_path": "standard_positions_v4/vision_baselines/4.4.1.json",
+    "capture_id": "4.4.1",
+    "image_rel_path": "newhead/4.4.1.PNG",
+    "position_id": "4.4",
+    "schema_version": 1
+  },
+  "ok": true,
+  "ready_for_recognition": true,
+  "recognition_result": {
+    "algorithm_name": "skimage_hough_sized+dark_silhouette",
+    "circles": [],
+    "display_name": "scikit-image Hough size-prior + Dark silhouette",
+    "intersections": [],
+    "lines": [],
+    "message": "scikit-image Hough size-prior + Dark silhouette: 0 lines, 0 intersections, 0 circles, 1 rectangles, 0 semicircles, 0 silhouettes inside 1 ROI",
+    "rectangles": [
+      {
+        "corners": [
+          {
+            "x": -1.3822021484375,
+            "y": 93.12687683105469
+          },
+          {
+            "x": 1675.9072265625,
+            "y": 89.54290771484375
+          },
+          {
+            "x": 1677.2926025390625,
+            "y": 737.9160766601562
+          },
+          {
+            "x": 0.003173828125,
+            "y": 741.5000610351562
+          }
+        ],
+        "label": "bright silhouette",
+        "missing_side": null,
+        "score": 0.9951179675725261,
+        "x1": -1.3822021484375,
+        "x2": 1677.2926025390625,
+        "y1": 89.54290771484375,
+        "y2": 741.5000610351562
+      }
+    ],
+    "semicircles": [],
+    "silhouettes": []
+  },
+  "relative_measurement": null,
+  "roi_count": 1,
+  "rois": [
+    {
+      "kind": "rectangle",
+      "orientation": "right",
+      "x1": 0.0,
+      "x2": 1796.0,
+      "y1": 20.0,
+      "y2": 796.0
+    }
+  ],
+  "schema_version": 3,
+  "selected_recognition": {
+    "roi_1": [
+      {
+        "roi": {
+          "kind": "rectangle",
+          "orientation": "right",
+          "x1": 0.0,
+          "x2": 1796.0,
+          "y1": 20.0,
+          "y2": 796.0
+        },
+        "roi_index": 1,
+        "shape": {
+          "corners": [
+            {
+              "x": -1.3822021484375,
+              "y": 93.12687683105469
+            },
+            {
+              "x": 1675.9072265625,
+              "y": 89.54290771484375
+            },
+            {
+              "x": 1677.2926025390625,
+              "y": 737.9160766601562
+            },
+            {
+              "x": 0.003173828125,
+              "y": 741.5000610351562
+            }
+          ],
+          "label": "bright silhouette",
+          "missing_side": null,
+          "score": 0.9951179675725261,
+          "x1": -1.3822021484375,
+          "x2": 1677.2926025390625,
+          "y1": 89.54290771484375,
+          "y2": 741.5000610351562
+        },
+        "shape_kind": "rectangle",
+        "source": "rectangle"
+      }
+    ]
+  },
+  "session_status": "Official vision measurement saved for 4.4.1",
+  "standard_capture_id": "4.4.1",
+  "standard_image_rel_path": "newhead/4.4.1.PNG",
+  "standard_position_id": "4.4",
+  "status": "Official vision measurement saved for 4.4.1",
+  "yase_display": "Official vision measurement saved for 4.4.1"
+}

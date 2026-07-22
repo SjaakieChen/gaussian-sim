@@ -1,0 +1,56 @@
+{
+  "action": "auto_feature_session",
+  "auto_detected": true,
+  "auto_feature_kind": "top_ball_circle",
+  "image_path": "standard_positions_v4/newhead/2.5.1.PNG",
+  "official_baseline": {
+    "capture_id": "2.5.1",
+    "image_rel_path": "newhead/2.5.1.PNG",
+    "position_id": "2.5",
+    "schema_version": 1
+  },
+  "ok": true,
+  "rois": [
+    {
+      "kind": "circle",
+      "orientation": "right",
+      "x1": 400.0,
+      "x2": 1700.0,
+      "y1": 50.0,
+      "y2": 1300.0
+    }
+  ],
+  "schema_version": 3,
+  "selected_recognition": {
+    "roi_1": [
+      {
+        "roi": {
+          "kind": "circle",
+          "orientation": "right",
+          "x1": 400.0,
+          "x2": 1700.0,
+          "y1": 50.0,
+          "y2": 1300.0
+        },
+        "roi_index": 1,
+        "shape": {
+          "auto_hough": {
+            "dp": 1.2,
+            "param1": 60.0,
+            "param2": 18.0
+          },
+          "label": "auto hough ball circle",
+          "radius": 316.32000732421875,
+          "score": 18.0,
+          "x": 1102.60009765625,
+          "y": 549.800048828125
+        },
+        "shape_kind": "circle",
+        "source": "auto_ball_circle"
+      }
+    ]
+  },
+  "standard_capture_id": "2.5.1",
+  "standard_position_id": "2.5",
+  "status": "Auto-generated v6 standard top-ball baseline for 2.5.1"
+}

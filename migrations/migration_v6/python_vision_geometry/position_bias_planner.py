@@ -803,7 +803,7 @@ def _parse_args(argv: Sequence[str] | None = None) -> Any:
     import argparse
 
     parser = argparse.ArgumentParser(description="Plan v5 biased close-position targets.")
-    parser.add_argument("input_json", help="Input JSON payload path.")
+    parser.add_argument("input_json", help="ParamIn payload path.")
     return parser.parse_args(argv)
 
 

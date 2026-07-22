@@ -1,0 +1,319 @@
+{
+  "schema_version": 1,
+  "description": "Standard machine positions transcribed from v4 notebook photos (Automation / Jiaqi / 17/07/26). Crossed-out handwritten values are intentionally ignored.",
+  "source": {
+    "folder": "Standard position images/v4",
+    "note_pages": {
+      "IMG_4317.jpeg": "positions 1.0, 1.1, 2.1–2.5",
+      "IMG_4318.jpeg": "positions 2.6, 3.0, 3.1, 4.1–4.3",
+      "IMG_4319.jpeg": "positions 4.4, 4.5, 4.6.1, 4.6.2",
+      "IMG_4320.jpeg": "title page; grippers kept open during capture"
+    },
+    "session_note": "Done using the grippers kept open.",
+    "captured_image_folder": "newhead",
+    "captured_image_naming": "{position_id}.{picture_index}.PNG",
+    "orphan_captures": [],
+    "rules": {
+      "position_units": "um",
+      "crossed_out_values": "ignored",
+      "unknown_values": null
+    },
+    "transcription_review": []
+  },
+  "positions": [
+    {
+      "id": "1.0",
+      "label": "pickup_b1_side_view",
+      "source_note": "IMG_4317.jpeg",
+      "captured_images": [],
+      "machine_positions_um": {
+        "tower_1": { "x": -26223, "y": 17000, "z": 49998 },
+        "tower_2": { "x": null, "y": null, "z": null },
+        "camera": { "x": -74996, "y": -44001, "z": -60395 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 11000, "as_written": "1.1E4", "units": null },
+        "zoom": { "value": 0, "as_written": "0", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Pickup b1, side view."]
+    },
+    {
+      "id": "1.1",
+      "label": "pickup_b1_lowered_vacuum",
+      "source_note": "IMG_4317.jpeg",
+      "captured_images": ["newhead/1.1.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": -26223, "y": 11710, "z": 49998 },
+        "tower_2": { "x": null, "y": null, "z": null },
+        "camera": { "x": -74996, "y": -44001, "z": -60395 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 11000, "as_written": "1.1E4", "units": null },
+        "zoom": { "value": 0, "as_written": "0", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Lowered vacuum."]
+    },
+    {
+      "id": "2.1",
+      "label": "dual_view_focus",
+      "source_note": "IMG_4317.jpeg",
+      "captured_images": ["newhead/2.1.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": 5331, "y": 13290, "z": 12998 },
+        "tower_2": { "x": null, "y": null, "z": null },
+        "camera": { "x": -38997, "y": -45996, "z": -97694 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 11000, "as_written": "1.1E4", "units": null },
+        "zoom": { "value": 0, "as_written": "0", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Dual view."]
+    },
+    {
+      "id": "2.2",
+      "label": "side_height_dual",
+      "source_note": "IMG_4317.jpeg",
+      "captured_images": ["newhead/2.2.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": 6331, "y": 12091, "z": 12998 },
+        "tower_2": { "x": null, "y": null, "z": null },
+        "camera": { "x": -38997, "y": -45996, "z": -97694 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 11000, "as_written": "1.1E4", "units": null },
+        "zoom": { "value": 0, "as_written": "0", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Side height, dual view."]
+    },
+    {
+      "id": "2.3",
+      "label": "top_close",
+      "source_note": "IMG_4317.jpeg",
+      "captured_images": ["newhead/2.3.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": 5331, "y": 12291, "z": 15198 },
+        "tower_2": { "x": null, "y": null, "z": null },
+        "camera": { "x": -38997, "y": -45996, "z": -97694 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 11000, "as_written": "1.1E4", "units": null },
+        "zoom": { "value": 0, "as_written": "0", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Top close."]
+    },
+    {
+      "id": "2.4",
+      "label": "top_close_zoom_focus_plank",
+      "source_note": "IMG_4317.jpeg",
+      "captured_images": ["newhead/2.4.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": 5331, "y": 12291, "z": 15198 },
+        "tower_2": { "x": null, "y": null, "z": null },
+        "camera": { "x": -38997, "y": -45395, "z": -93995 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 11000, "as_written": "1.1E4", "units": null },
+        "zoom": { "value": 4500, "as_written": "4500", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Top close, zoom, focus plank."]
+    },
+    {
+      "id": "2.5",
+      "label": "top_close_zoom_focus_ball",
+      "source_note": "IMG_4317.jpeg",
+      "captured_images": ["newhead/2.5.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": 5331, "y": 12291, "z": 15198 },
+        "tower_2": { "x": null, "y": null, "z": null },
+        "camera": { "x": -38997, "y": -44996, "z": -93995 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 11000, "as_written": "1.1E4", "units": null },
+        "zoom": { "value": 4500, "as_written": "4500", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Top close, zoom, focus ball."]
+    },
+    {
+      "id": "2.6",
+      "label": "side_close_focus_ball",
+      "source_note": "IMG_4318.jpeg",
+      "captured_images": ["newhead/2.6.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": 6330, "y": 12090, "z": 12998 },
+        "tower_2": { "x": null, "y": null, "z": null },
+        "camera": { "x": -38498, "y": -47996, "z": -99694 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 11000, "as_written": "1.1E4", "units": null },
+        "zoom": { "value": 4500, "as_written": "4500", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Side close, focus ball."]
+    },
+    {
+      "id": "3.0",
+      "label": "pickup_ball_2",
+      "source_note": "IMG_4318.jpeg",
+      "captured_images": ["newhead/3.0.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": null, "y": null, "z": null },
+        "tower_2": { "x": 35599, "y": 12000, "z": -32200 },
+        "camera": { "x": -3500, "y": -43995, "z": -119194 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 11000, "as_written": "1.1E4", "units": null },
+        "zoom": { "value": 0, "as_written": "0", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["careful mirror (operator note on notebook)."]
+    },
+    {
+      "id": "3.1",
+      "label": "pickup_ball_2_vac",
+      "source_note": "IMG_4318.jpeg",
+      "captured_images": [],
+      "machine_positions_um": {
+        "tower_1": { "x": null, "y": null, "z": null },
+        "tower_2": { "x": 35746, "y": 11099, "z": -32200 },
+        "camera": { "x": -3500, "y": -43995, "z": -119194 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 11000, "as_written": "1.1E4", "units": null },
+        "zoom": { "value": 0, "as_written": "0", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Pickup ball 2, vac lowered."]
+    },
+    {
+      "id": "4.1",
+      "label": "dual_view_focus_ball",
+      "source_note": "IMG_4318.jpeg",
+      "captured_images": ["newhead/4.1.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": null, "y": null, "z": null },
+        "tower_2": { "x": 940, "y": 13000, "z": -13140 },
+        "camera": { "x": -38997, "y": -45996, "z": -97694 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 14000, "as_written": "1.4E4", "units": null },
+        "zoom": { "value": 0, "as_written": "0", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Dual view, focus ball."]
+    },
+    {
+      "id": "4.2",
+      "label": "dual_view_side_in_trench",
+      "source_note": "IMG_4318.jpeg",
+      "captured_images": ["newhead/4.2.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": null, "y": null, "z": null },
+        "tower_2": { "x": -60, "y": 11600, "z": -13140 },
+        "camera": { "x": -38997, "y": -45996, "z": -97694 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 14000, "as_written": "1.4E4", "units": null },
+        "zoom": { "value": 0, "as_written": "0", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Dual view side in trench.", "tower_2 z: crossed-out -12200 ignored; -13140 used."]
+    },
+    {
+      "id": "4.3",
+      "label": "top_close",
+      "source_note": "IMG_4318.jpeg",
+      "captured_images": ["newhead/4.3.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": null, "y": null, "z": null },
+        "tower_2": { "x": -1060, "y": 11900, "z": -12000 },
+        "camera": { "x": -38997, "y": -45996, "z": -97694 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 10100, "as_written": "1.01E4", "units": null },
+        "zoom": { "value": 0, "as_written": "0", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Top close."]
+    },
+    {
+      "id": "4.4",
+      "label": "top_close_focus_plank_zoom",
+      "source_note": "IMG_4319.jpeg",
+      "captured_images": ["newhead/4.4.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": null, "y": null, "z": null },
+        "tower_2": { "x": -1060, "y": 11900, "z": -12000 },
+        "camera": { "x": -38997, "y": -45345, "z": -94696 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 10100, "as_written": "1.01E4", "units": null },
+        "zoom": { "value": 4500, "as_written": "4500", "units": null },
+        "illumination": 0.9
+      },
+      "notes": [
+        "Top close, focus plank, zoom.",
+        "tower_2 x: crossed-out -60 ignored; -1060 used."
+      ]
+    },
+    {
+      "id": "4.5",
+      "label": "top_close_focus_ball_zoom",
+      "source_note": "IMG_4319.jpeg",
+      "captured_images": ["newhead/4.5.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": null, "y": null, "z": null },
+        "tower_2": { "x": -1060, "y": 11900, "z": -12000 },
+        "camera": { "x": -38997, "y": -44843, "z": -94696 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 10100, "as_written": "1.01E4", "units": null },
+        "zoom": { "value": 4500, "as_written": "4500", "units": null },
+        "illumination": 0.9
+      },
+      "notes": ["Top close, focus ball, zoom."]
+    },
+    {
+      "id": "4.6.1",
+      "label": "side_close_zoom_focus_ball",
+      "source_note": "IMG_4319.jpeg",
+      "captured_images": ["newhead/4.6.1.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": null, "y": null, "z": null },
+        "tower_2": { "x": -60, "y": 11600, "z": -13140 },
+        "camera": { "x": -38196, "y": -48097, "z": -99192 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 100000, "as_written": "1.00E5", "units": null },
+        "zoom": { "value": 4500, "as_written": "4500", "units": null },
+        "illumination": { "value": 0, "as_written": "illum 1=0", "units": null }
+      },
+      "notes": ["Side close, zoom, focus ball."]
+    },
+    {
+      "id": "4.6.2",
+      "label": "side_close_settings_only",
+      "source_note": "IMG_4319.jpeg",
+      "captured_images": ["newhead/4.6.2.PNG"],
+      "machine_positions_um": {
+        "tower_1": { "x": null, "y": null, "z": null },
+        "tower_2": { "x": -60, "y": 11600, "z": -13140 },
+        "camera": { "x": -38196, "y": -48097, "z": -99192 }
+      },
+      "camera_settings": {
+        "exposure": { "value": 200000, "as_written": "2E5", "units": null },
+        "zoom": { "value": 4500, "as_written": "4500", "units": null },
+        "illumination": { "value": 0, "as_written": "illum 1=0", "units": null }
+      },
+      "notes": [
+        "Notebook row listed illum and exposure only; tower and camera match 4.6.1 per operator fill-in."
+      ]
+    }
+  ]
+}
