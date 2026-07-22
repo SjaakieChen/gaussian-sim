@@ -285,8 +285,12 @@ def solve_target_geometry(
     )
 
     rectangle = selected_rectangle_feature(reference_session, constants.laser_rectangle_short_edge_um)
-    top_ball = selected_circle_feature(top_ball_session, f"{target} top ball")
-    side_ball = selected_circle_feature(side_session, f"{target} side ball", required=False) if side_session else None
+    top_ball = selected_circle_feature(top_ball_session, f"{target} top ball", target=target, role_context="top_ball")
+    side_ball = (
+        selected_circle_feature(side_session, f"{target} side ball", required=False, target=target, role_context="side_ball")
+        if side_session
+        else None
+    )
     side_reference = resolve_side_reference(params_in, spec, side_capture_id) if side_capture_id else None
 
     reference_position = position_for_capture(reference_capture_id, capture_to_position, positions)
@@ -314,11 +318,17 @@ def solve_target_geometry(
         "machine_z_um": top_machine["machine_z_um"],
     }
 
-    focus_delta_um = camera_axis(top_ball_position, "y", top_ball_capture_id) - camera_axis(
-        reference_position,
-        "y",
-        reference_capture_id,
-    )
+    reference_camera = as_dict(as_dict(reference_position.get("machine_positions_um")).get("camera"))
+    top_ball_camera = as_dict(as_dict(top_ball_position.get("machine_positions_um")).get("camera"))
+    reference_camera_y_um = camera_axis(reference_position, "y", reference_capture_id)
+    top_ball_camera_y_um = camera_axis(top_ball_position, "y", top_ball_capture_id)
+    focus_delta_um = top_ball_camera_y_um - reference_camera_y_um
+    top_camera_lateral_delta_um = {
+        "x": camera_axis(top_ball_position, "x", top_ball_capture_id)
+        - camera_axis(reference_position, "x", reference_capture_id),
+        "z": camera_axis(top_ball_position, "z", top_ball_capture_id)
+        - camera_axis(reference_position, "z", reference_capture_id),
+    }
     feature_memory: JsonDict = {
         "reference_capture_id": reference_capture_id,
         "top_ball_capture_id": top_ball_capture_id,
@@ -345,6 +355,7 @@ def solve_target_geometry(
             "source": "assumed_trench_bottom_contact",
             "formula": "ball_radius_um - trench_depth_um",
             "machine_y_um": constants.assumed_ball_center_y_um,
+            "ball_top_y_um": constants.assumed_ball_center_y_um + constants.ball_radius_um,
         },
     }
     if top_ball.radius_px is not None and top_ball.radius_px > 0.0:
@@ -390,12 +401,36 @@ def solve_target_geometry(
         "focus_memory": {
             "reference_capture_id": reference_capture_id,
             "top_ball_capture_id": top_ball_capture_id,
-            "reference_camera_y_um": camera_axis(reference_position, "y", reference_capture_id),
-            "top_ball_camera_y_um": camera_axis(top_ball_position, "y", top_ball_capture_id),
+            "reference_camera_y_um": reference_camera_y_um,
+            "top_ball_camera_y_um": top_ball_camera_y_um,
             "camera_focus_delta_um": focus_delta_um,
             "abs_focus_delta_vs_ball_diameter_um": abs(abs(focus_delta_um) - constants.ball_diameter_um),
-            "reference_camera_position_um": as_dict(reference_position.get("machine_positions_um")).get("camera"),
-            "top_ball_camera_position_um": as_dict(top_ball_position.get("machine_positions_um")).get("camera"),
+            "top_camera_lateral_delta_um": top_camera_lateral_delta_um,
+            "same_top_view_lateral_camera": True,
+            "registration_method": "reference and ball-focus top captures share camera x/z; camera y is focus-only memory",
+            "same_height_focus_rule": "reuse a remembered camera y value for later captures of the same object height",
+            "remembered_focus_planes_um": {
+                "laser_rectangle_reference": {
+                    "capture_id": reference_capture_id,
+                    "camera_y_um": reference_camera_y_um,
+                    "feature": "laser_rectangle_center",
+                },
+                "ball_top_focus": {
+                    "capture_id": top_ball_capture_id,
+                    "camera_y_um": top_ball_camera_y_um,
+                    "focus_delta_from_reference_um": focus_delta_um,
+                    "feature": "ball_circle_edge",
+                },
+            },
+            "physical_height_model_um": {
+                "laser_rectangle_reference_y_um": 0.0,
+                "ball_radius_um": constants.ball_radius_um,
+                "trench_depth_um": constants.trench_depth_um,
+                "ball_center_y_um": constants.assumed_ball_center_y_um,
+                "ball_top_y_um": constants.assumed_ball_center_y_um + constants.ball_radius_um,
+            },
+            "reference_camera_position_um": reference_camera,
+            "top_ball_camera_position_um": top_ball_camera,
         },
     }
 
@@ -408,7 +443,17 @@ def selected_rectangle_feature(session: JsonDict, short_edge_length_um: float) -
     ]
     if not rectangles:
         raise ValueError("reference session must contain a selected rectangle")
-    shape = as_dict(rectangles[0].get("shape"))
+    item = preferred_feature_item(
+        rectangles,
+        {
+            "laser_reference",
+            "laser_rectangle",
+            "machine_reference",
+            "chip_reference",
+            "reference_rectangle",
+        },
+    )
+    shape = as_dict(item.get("shape"))
     corners = rectangle_corners(shape)
     lengths = []
     for index, start in enumerate(corners):
@@ -431,7 +476,14 @@ def selected_rectangle_feature(session: JsonDict, short_edge_length_um: float) -
     )
 
 
-def selected_circle_feature(session: JsonDict, label: str, *, required: bool = True) -> CircleFeature | None:
+def selected_circle_feature(
+    session: JsonDict,
+    label: str,
+    *,
+    required: bool = True,
+    target: str = "",
+    role_context: str = "ball",
+) -> CircleFeature | None:
     circles = [
         item
         for item in selected_recognition_items(session)
@@ -442,7 +494,7 @@ def selected_circle_feature(session: JsonDict, label: str, *, required: bool = T
         if required:
             raise ValueError(f"{label} session must contain a selected circle")
         return None
-    item = circles[0]
+    item = preferred_feature_item(circles, ball_feature_roles(target, role_context))
     shape = as_dict(item.get("shape"))
     if "x" in shape and "y" in shape:
         radius = shape.get("radius")
@@ -498,11 +550,17 @@ def selected_side_reference_feature(session: JsonDict) -> SideReferenceFeature |
     raw_reference = session.get("side_reference_line")
     if isinstance(raw_reference, dict):
         return side_reference_from_payload(raw_reference, "side_reference_line")
+    line_items = []
     for item in selected_recognition_items(session):
         shape_kind = str(item.get("shape_kind") or "").strip()
         source = str(item.get("source") or "").strip()
         if shape_kind != "line" and source != "side_reference_line":
             continue
+        line_items.append(item)
+    if not line_items:
+        return None
+    for item in sorted(line_items, key=lambda item: 0 if item_feature_role(item) == "side_reference" else 1):
+        source = str(item.get("source") or "").strip()
         shape = as_dict(item.get("shape"))
         if all(key in shape for key in ("x1", "y1", "x2", "y2")):
             y1 = finite_float(shape["y1"], "side_reference_line.y1")
@@ -554,11 +612,69 @@ def side_height_candidate(
 def selected_recognition_items(session: JsonDict) -> list[JsonDict]:
     selected = as_dict(session.get("selected_recognition"))
     items: list[JsonDict] = []
+    fallback_index = 0
     for roi_key in sorted(selected, key=roi_sort_key):
         raw_items = selected.get(roi_key)
         if isinstance(raw_items, list):
-            items.extend(as_dict(item) for item in raw_items)
-    return items
+            for raw_item in raw_items:
+                item = as_dict(raw_item)
+                item["_fallback_selection_index"] = fallback_index
+                fallback_index += 1
+                items.append(item)
+    return sorted(items, key=selected_item_sort_key)
+
+
+def selected_item_sort_key(item: JsonDict) -> tuple[int, float, int]:
+    value = item.get("selection_index")
+    try:
+        selection_index = float(value)
+    except (TypeError, ValueError):
+        selection_index = math.inf
+    fallback_index = int(item.get("_fallback_selection_index") or 0)
+    return (0 if math.isfinite(selection_index) else 1, selection_index, fallback_index)
+
+
+def item_feature_role(item: JsonDict) -> str:
+    for key in ("feature_role", "semantic_role", "role", "target_role"):
+        value = str(item.get(key) or "").strip()
+        if value:
+            return normalize_feature_role(value)
+    return ""
+
+
+def normalize_feature_role(value: str) -> str:
+    return str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def preferred_feature_item(items: Sequence[JsonDict], preferred_roles: set[str]) -> JsonDict:
+    normalized_roles = {normalize_feature_role(role) for role in preferred_roles}
+    for item in items:
+        if item_feature_role(item) in normalized_roles:
+            return item
+    return items[0]
+
+
+def ball_feature_roles(target: str, role_context: str) -> set[str]:
+    normalized_target = normalize_feature_role(target)
+    normalized_context = normalize_feature_role(role_context)
+    roles = {
+        "ball",
+        "ball_candidate",
+        "target_ball",
+        normalized_context,
+        f"{normalized_context}_circle",
+    }
+    if normalized_target:
+        roles.update(
+            {
+                normalized_target,
+                f"{normalized_target}_ball",
+                f"{normalized_target}_circle",
+                f"{normalized_target}_{normalized_context}",
+                f"{normalized_target}_{normalized_context}_circle",
+            }
+        )
+    return roles
 
 
 def rectangle_corners(shape: JsonDict) -> tuple[tuple[float, float], ...]:

@@ -177,6 +177,14 @@ def plan_one_gross_observation(
         candidate_session,
         f"gross_observations[{index}].candidate_session",
     )
+    baseline_radius_px = selected_ball_radius_px(
+        baseline_session,
+        f"gross_observations[{index}].baseline_session",
+    )
+    candidate_radius_px = selected_ball_radius_px(
+        candidate_session,
+        f"gross_observations[{index}].candidate_session",
+    )
     pixel_shift = {
         "x": candidate_center["x"] - baseline_center["x"],
         "y": candidate_center["y"] - baseline_center["y"],
@@ -187,6 +195,8 @@ def plan_one_gross_observation(
         baseline_session=baseline_session,
         candidate_session=candidate_session,
     )
+    bias_mapping = gross_mapping_payload(mapping)
+    bias_mapping_evidence = bias_mapping_evidence_payload(params_in, observation, target=target)
     raw_bias = map_pixel_shift_to_tower_bias(pixel_shift, um_per_pixel, mapping)
     largest_raw_bias = max((abs(value) for value in raw_bias.values()), default=0.0)
     if largest_raw_bias > fail_gross_offset_um:
@@ -204,6 +214,8 @@ def plan_one_gross_observation(
             standard_positions[position_id],
             target=target,
             applied_bias_um=applied_bias,
+            bias_mapping=bias_mapping,
+            bias_mapping_evidence=bias_mapping_evidence,
         )
         for position_id in close_position_ids
     ]
@@ -213,10 +225,14 @@ def plan_one_gross_observation(
         "gross_capture_id": gross_capture_id or expected_capture_id,
         "baseline_center_px": baseline_center,
         "candidate_center_px": candidate_center,
+        "baseline_radius_px": baseline_radius_px,
+        "candidate_radius_px": candidate_radius_px,
         "baseline_session_auto_detected": bool(baseline_session.get("auto_detected")),
         "candidate_session_auto_detected": bool(candidate_session.get("auto_detected")),
         "pixel_shift": pixel_shift,
         "um_per_pixel": um_per_pixel,
+        "bias_mapping": bias_mapping,
+        "bias_mapping_evidence": bias_mapping_evidence,
         "raw_bias_um": raw_bias,
         "applied_bias_um": applied_bias,
         "bias_clipped": bool(clipped_axes),
@@ -536,11 +552,49 @@ def map_pixel_shift_to_tower_bias(
     return result
 
 
+def gross_mapping_payload(mapping: GrossMapping) -> JsonDict:
+    return {
+        "image_x": {
+            "tower_axis": mapping.image_x.tower_axis,
+            "sign": mapping.image_x.sign,
+        },
+        "image_y": {
+            "tower_axis": mapping.image_y.tower_axis,
+            "sign": mapping.image_y.sign,
+        },
+    }
+
+
+def bias_mapping_evidence_payload(params_in: JsonDict, observation: JsonDict, *, target: str) -> JsonDict:
+    raw_evidence = (
+        observation.get("bias_mapping_evidence")
+        or as_dict(params_in.get("bias_mapping_evidence_by_target")).get(target)
+        or params_in.get("bias_mapping_evidence")
+        or as_dict(params_in.get("default_close_position_bias")).get("bias_mapping_evidence")
+    )
+    if isinstance(raw_evidence, dict) and raw_evidence:
+        evidence = copy.deepcopy(raw_evidence)
+        evidence.setdefault("source", "caller_supplied")
+        evidence.setdefault("use_for_motion", False)
+        evidence.setdefault("operator_review_required", not bool(evidence.get("use_for_motion")))
+        return evidence
+    return {
+        "source": "configured_gross_view_mapping",
+        "calibration_status": "not_motion_calibrated",
+        "use_for_motion": False,
+        "operator_review_required": True,
+        "basis": "500 um ball scale plus configured same-fixture image-axis mapping",
+        "reason": "No motion-approved gross-view calibration was supplied; use only as a bounded read-only close-position proposal.",
+    }
+
+
 def biased_position_payload(
     standard_position: JsonDict,
     *,
     target: str,
     applied_bias_um: dict[str, float],
+    bias_mapping: JsonDict,
+    bias_mapping_evidence: JsonDict,
 ) -> JsonDict:
     tower = TARGET_TOWER[target]
     planned = copy.deepcopy(standard_position)
@@ -549,6 +603,10 @@ def biased_position_payload(
         "target": target,
         "tower": tower,
         "applied_bias_um": applied_bias_um,
+        "bias_mapping": copy.deepcopy(bias_mapping),
+        "bias_mapping_evidence": copy.deepcopy(bias_mapping_evidence),
+        "use_for_motion": bool(bias_mapping_evidence.get("use_for_motion")),
+        "operator_review_required": bool(bias_mapping_evidence.get("operator_review_required", True)),
         "camera_positions_unchanged": True,
     }
     machine_positions = as_dict(planned.get("machine_positions_um"))

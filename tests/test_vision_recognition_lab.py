@@ -13,6 +13,8 @@ from vision_recognition_lab import (
     OFFICIAL_BASELINE_FOLDER_NAME,
     ROI_REQUIRED_MESSAGE,
     VISION_SCORE_FOLDER_NAME,
+    V5_SEQUENCE_MEMORY_FILE_NAME,
+    V5_SEQUENCE_MEMORY_FOLDER_NAME,
     VisionCircle,
     VisionCircleReference,
     VisionRectangle,
@@ -23,6 +25,7 @@ from vision_recognition_lab import (
     VisionSilhouette,
     VISION_RECOGNITION_LAB_TITLE,
     bright_rectangle_sensitivity_from_scale_x,
+    default_feature_role_for_selection,
     downsample_for_recognition,
     fit_subsample_factor,
     geometry_sensitivity_from_scale_x,
@@ -114,6 +117,18 @@ def test_standard_position_library_loads_v4_captured_images_list():
     ]
 
 
+def test_standard_position_library_attaches_machine_coordinates_to_v4_images():
+    library = load_standard_position_library(STANDARD_POSITION_IMAGE_ROOT)
+
+    image = library.images_for_position("2.4")[0]
+
+    assert image.standard_positions_path == STANDARD_POSITIONS
+    assert image.machine_positions_um["camera"]["x"] == -38997
+    assert image.machine_positions_um["camera"]["y"] == -45395
+    assert image.machine_positions_um["tower_1"]["z"] == 15198
+    assert image.camera_settings["zoom"]["value"] == 4500
+
+
 def test_standard_position_id_helpers_normalize_legacy_three_digit_inputs():
     assert normalize_standard_position_id(f"{3:03d}") == "3.0.0"
     assert sorted(["10.0.0", "2.0.0", "1.1.0"], key=standard_position_sort_key) == [
@@ -138,6 +153,13 @@ def test_shape_recognition_uses_full_resolution_image():
     assert analysis is image
     assert analysis.shape == image.shape
     assert scale == 1
+
+
+def test_default_feature_roles_match_v5_sequence_memory_contract():
+    assert default_feature_role_for_selection("rectangle", "rectangle") == "laser_reference"
+    assert default_feature_role_for_selection("circle", "circle") == "ball_candidate"
+    assert default_feature_role_for_selection("silhouette", "silhouette_circle") == "ball_candidate"
+    assert default_feature_role_for_selection("line", "line") == "side_reference"
 
 
 def test_shape_recognition_detects_lines_intersections_and_circles():
@@ -398,6 +420,7 @@ def test_relative_measurement_payload_uses_first_circle_as_um_origin():
         "circle_roi_index": 2,
         "circle_roi": vision_roi_to_dict(VisionROI("circle", 180, 0, 260, 90)),
         "circle_source": "circle",
+        "circle_feature_role": "ball_candidate",
         "short_edge": {
             "start": {"x": 100.0, "y": 20.0},
             "end": {"x": 100.0, "y": 60.0},
@@ -418,12 +441,14 @@ def test_relative_measurement_payload_uses_first_circle_as_um_origin():
     assert relative is not None
     assert relative["origin"] == "first_selected_circle_center"
     assert relative["origin_circle"]["roi_index"] == 2
+    assert relative["origin_circle"]["feature_role"] == "ball_candidate"
     assert relative["origin_circle"]["x_um"] == pytest.approx(0.0)
     assert relative["origin_circle"]["y_um"] == pytest.approx(0.0)
     assert relative["edge_midpoint_relative_um"]["x"] == pytest.approx(-1500.0)
     assert relative["edge_midpoint_relative_um"]["y"] == pytest.approx(0.0)
     assert relative["edge_midpoint_relative_um"]["distance"] == pytest.approx(1500.0)
     assert relative["circles"][1]["roi_index"] == 3
+    assert relative["circles"][1]["feature_role"] == "ball_candidate"
     assert relative["circles"][1]["x_um"] == pytest.approx(1312.5)
     assert relative["circles"][1]["y_um"] == pytest.approx(0.0)
 
@@ -1045,7 +1070,7 @@ def test_vision_recognition_lab_highlights_clicked_row_and_measures_multiple_cir
             lab._recognition_result = result  # pylint: disable=protected-access
             lab._populate_recognition_tree(result)  # pylint: disable=protected-access
 
-            assert tuple(lab.recognition_tree["columns"]) == ("use", "roi", "type", "target", "score")
+            assert tuple(lab.recognition_tree["columns"]) == ("use", "roi", "type", "role", "target", "score")
             rectangle_ids = [
                 item_id
                 for item_id, item in lab._recognition_tree_items.items()  # pylint: disable=protected-access
@@ -1129,12 +1154,99 @@ def test_vision_recognition_lab_highlights_clicked_row_and_measures_multiple_cir
             )
             assert set(payload["selected_recognition"]) == {"roi_1", "roi_2", "roi_3"}
             assert len(payload["selected_recognition"]["roi_2"]) == 1
+            rectangle_selection = payload["selected_recognition"]["roi_1"][0]
+            first_circle_selection = payload["selected_recognition"]["roi_2"][0]
+            second_circle_selection = payload["selected_recognition"]["roi_3"][0]
+            assert rectangle_selection["feature_role"] == "laser_reference"
+            assert first_circle_selection["feature_role"] == "ball_candidate"
+            assert second_circle_selection["feature_role"] == "ball_candidate"
+            assert rectangle_selection["selection_index"] == 1
+            assert first_circle_selection["selection_index"] == 2
+            assert second_circle_selection["selection_index"] == 3
             assert len(payload["measurements"]) == 2
+            assert payload["measurement"]["rectangle_feature_role"] == "laser_reference"
+            assert payload["measurement"]["circle_feature_role"] == "ball_candidate"
             assert payload["measurement"]["circle_source"] == "circle"
             assert payload["relative_measurement"]["origin_circle"]["roi_index"] == 2
+            assert payload["relative_measurement"]["origin_circle"]["feature_role"] == "ball_candidate"
             assert payload["relative_measurement"]["circles"][1]["x_um"] == pytest.approx(1312.5)
             assert payload["yase_display"] == yase_display
             assert payload["status"] == yase_display
+        finally:
+            lab.destroy()
+    finally:
+        root.destroy()
+
+
+def test_vision_recognition_lab_can_override_selected_feature_role():
+    root = _make_root()
+    try:
+        lab = VisionRecognitionLab(root, image_root=STANDARD_POSITION_IMAGE_ROOT)
+        try:
+            lab.update_idletasks()
+            lab.add_roi(VisionROI("rectangle", 0, 0, 140, 90))
+            lab.add_roi(VisionROI("circle", 180, 0, 260, 90))
+            result = VisionRecognitionResult(
+                algorithm_name="test",
+                display_name="test",
+                lines=(),
+                intersections=(),
+                circles=(
+                    VisionCircle(
+                        x=220,
+                        y=40,
+                        radius=18,
+                        score=0.95,
+                        label="circle",
+                    ),
+                ),
+                rectangles=(
+                    VisionRectangle(
+                        x1=10,
+                        y1=20,
+                        x2=110,
+                        y2=60,
+                        missing_side=None,
+                        score=0.9,
+                        label="rectangle",
+                    ),
+                ),
+                semicircles=(),
+                silhouettes=(),
+                message="test",
+            )
+            lab._recognition_result = result  # pylint: disable=protected-access
+            lab._populate_recognition_tree(result)  # pylint: disable=protected-access
+            rectangle_id = next(
+                item_id
+                for item_id, item in lab._recognition_tree_items.items()  # pylint: disable=protected-access
+                if item.shape_kind == "rectangle"
+            )
+            circle_id = next(
+                item_id
+                for item_id, item in lab._recognition_tree_items.items()  # pylint: disable=protected-access
+                if item.shape_kind == "circle"
+            )
+
+            lab.recognition_tree.selection_set(circle_id)
+            lab.recognition_tree.focus(circle_id)
+            lab.feature_role_var.set("ball_1_top_ball")
+            lab._set_selected_recognition_role()  # pylint: disable=protected-access
+            assert lab.recognition_tree.item(circle_id, "values")[3] == "ball_1_top_ball"
+
+            lab.recognition_tree.selection_set(rectangle_id, circle_id)
+            lab.recognition_tree.focus(rectangle_id)
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+
+            payload = lab.selected_recognition_payload()
+            measurement = lab.selected_measurement_payload()
+            relative = lab.selected_relative_measurement_payload()
+
+            assert payload["roi_2"][0]["feature_role"] == "ball_1_top_ball"
+            assert measurement is not None
+            assert measurement["circle_feature_role"] == "ball_1_top_ball"
+            assert relative is not None
+            assert relative["origin_circle"]["feature_role"] == "ball_1_top_ball"
         finally:
             lab.destroy()
     finally:
@@ -1271,6 +1383,98 @@ def test_vision_recognition_lab_has_save_official_button_and_writes_baseline_for
             assert score["passed"] is True
             assert score["metrics"]["max_shape_error_px"] == pytest.approx(0.0)
             assert score["metrics"]["max_abs_xy_error_um"] == pytest.approx(0.0)
+        finally:
+            lab.destroy()
+    finally:
+        root.destroy()
+
+
+def test_vision_recognition_lab_saves_reviewed_standard_session_to_v5_memory(tmp_path):
+    import cv2
+    import numpy as np
+
+    image_root = tmp_path / "Standard position images"
+    batch_dir = image_root / "v4"
+    image_dir = batch_dir / "newhead"
+    image_dir.mkdir(parents=True)
+    image_path = image_dir / "2.4.1.PNG"
+    image = np.zeros((120, 180), dtype=np.uint8)
+    image[10:50, 10:110] = 180
+    image[35:75, 135:175] = 255
+    assert cv2.imwrite(str(image_path), image)
+    (batch_dir / "standard_positions.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "positions": [
+                    {
+                        "id": "2.4",
+                        "label": "top_close_zoom_focus_plank",
+                        "captured_images": ["newhead/2.4.1.PNG"],
+                        "machine_positions_um": {
+                            "tower_1": {"x": 5331, "y": 12291, "z": 15198},
+                            "tower_2": {"x": None, "y": None, "z": None},
+                            "camera": {"x": -38997, "y": -45395, "z": -93995},
+                        },
+                        "camera_settings": {"zoom": {"value": 4500}},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    root = _make_root()
+    try:
+        lab = VisionRecognitionLab(root, image_root=image_root)
+        try:
+            lab.update_idletasks()
+            assert lab.save_v5_memory_button.cget("text") == "Save v5"
+            assert lab._selected_image is not None  # pylint: disable=protected-access
+            assert lab._selected_image.path == image_path  # pylint: disable=protected-access
+
+            lab.add_roi(VisionROI("rectangle", 0, 0, 130, 80))
+            lab.add_roi(VisionROI("circle", 120, 20, 180, 90))
+            result = VisionRecognitionResult(
+                algorithm_name="test",
+                display_name="test",
+                lines=(),
+                intersections=(),
+                circles=(VisionCircle(x=150, y=55, radius=18, score=0.9, label="circle"),),
+                rectangles=(
+                    VisionRectangle(
+                        x1=10,
+                        y1=10,
+                        x2=110,
+                        y2=50,
+                        missing_side=None,
+                        score=0.7,
+                        label="rectangle",
+                    ),
+                ),
+                semicircles=(),
+                silhouettes=(),
+                message="test",
+            )
+            lab._recognition_result = result  # pylint: disable=protected-access
+            lab._populate_recognition_tree(result)  # pylint: disable=protected-access
+            item_ids = tuple(lab._recognition_tree_items)  # pylint: disable=protected-access
+            lab.recognition_tree.selection_set(*item_ids)
+            lab.recognition_tree.focus(item_ids[0])
+            lab._use_selected_recognition_row()  # pylint: disable=protected-access
+
+            output_path = lab.save_v5_sequence_memory()
+
+            assert output_path == batch_dir / V5_SEQUENCE_MEMORY_FOLDER_NAME / V5_SEQUENCE_MEMORY_FILE_NAME
+            memory = json.loads(output_path.read_text(encoding="utf-8"))
+            record = memory["capture_records"]["2.4.1"]
+            assert record["position_id"] == "2.4"
+            assert record["review_status"] == "reviewed"
+            assert record["machine_positions_um"]["camera"]["y"] == -45395
+            assert record["machine_positions_um"]["tower_1"]["z"] == 15198
+            assert record["session"]["selected_recognition"]["roi_1"][0]["shape_kind"] == "rectangle"
+            assert record["session"]["selected_recognition"]["roi_2"][0]["shape_kind"] == "circle"
+            assert memory["standard_positions_path"] == str(batch_dir / "standard_positions.json")
         finally:
             lab.destroy()
     finally:

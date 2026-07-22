@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 import json
 import math
 import re
@@ -31,6 +32,8 @@ DEFAULT_STANDARD_POSITION_IMAGE_ROOT = Path(__file__).resolve().parents[1] / "St
 DEFAULT_STANDARD_BATCH_NAMES = ("v4",)
 OFFICIAL_BASELINE_FOLDER_NAME = "vision_baselines"
 VISION_SCORE_FOLDER_NAME = "vision_scores"
+V5_SEQUENCE_MEMORY_FOLDER_NAME = "v5_sequence_memory"
+V5_SEQUENCE_MEMORY_FILE_NAME = "v5_sequence_memory.json"
 IMAGE_EXTENSIONS = frozenset({".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff"})
 LEGACY_POSITION_ID_RE = re.compile(r"^\d{3}$")
 SEMANTIC_POSITION_ID_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -55,6 +58,19 @@ BRIGHT_RECTANGLE_OVERLAY_COLOR = "#ff4fd8"
 VISION_RECOGNITION_LAB_VERSION = "v3"
 VISION_RECOGNITION_LAB_TITLE = f"Vision Recognition Lab {VISION_RECOGNITION_LAB_VERSION}"
 FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM = 500.0
+FEATURE_ROLE_CHOICES = (
+    "laser_reference",
+    "ball_candidate",
+    "ball_1_top_ball",
+    "ball_1_side_ball",
+    "ball_2_top_ball",
+    "ball_2_side_ball",
+    "side_reference",
+    "chip_reference",
+    "fiducial_candidate",
+    "object_candidate",
+    "ignore",
+)
 
 
 @dataclass(frozen=True)
@@ -171,6 +187,7 @@ class VisionRectangleCircleMeasurement:
 
 @dataclass(frozen=True)
 class VisionRecognitionTreeItem:
+    item_id: str
     roi_index: int
     shape_kind: str
     shape: Any
@@ -366,6 +383,8 @@ class VisionPosition:
     id: str
     label: str
     batches: tuple[str, ...]
+    machine_positions_um: dict[str, Any] | None = None
+    camera_settings: dict[str, Any] | None = None
 
     @property
     def display_name(self) -> str:
@@ -380,6 +399,9 @@ class VisionPositionImage:
     position_label: str
     batch: str
     path: Path
+    machine_positions_um: dict[str, Any] | None = None
+    camera_settings: dict[str, Any] | None = None
+    standard_positions_path: Path | None = None
 
     @property
     def display_name(self) -> str:
@@ -426,17 +448,26 @@ def load_standard_position_library(
     root = Path(image_root)
     position_labels: dict[str, str] = {}
     position_batches: dict[str, set[str]] = {}
+    position_machine_positions: dict[str, dict[str, Any]] = {}
+    position_camera_settings: dict[str, dict[str, Any]] = {}
     images: list[VisionPositionImage] = []
     seen_images: set[tuple[str, Path]] = set()
 
     for batch_dir in _iter_batch_dirs(root, batch_names=batch_names):
         batch = batch_dir.name
+        metadata_path = batch_dir / "standard_positions.json"
         for raw_position in _read_batch_positions(batch_dir):
             position_id = normalize_standard_position_id(raw_position.get("id", ""))
             if not position_id:
                 continue
             label = str(raw_position.get("label") or "").strip()
             _record_position(position_id, label, batch, position_labels, position_batches)
+            machine_positions = _position_machine_positions(raw_position)
+            camera_settings = _position_camera_settings(raw_position)
+            if machine_positions is not None:
+                position_machine_positions[position_id] = machine_positions
+            if camera_settings is not None:
+                position_camera_settings[position_id] = camera_settings
 
             for captured_image in _position_captured_images(raw_position):
                 image_path = batch_dir / str(captured_image)
@@ -447,6 +478,9 @@ def load_standard_position_library(
                     image_path,
                     images,
                     seen_images,
+                    machine_positions_um=machine_positions,
+                    camera_settings=camera_settings,
+                    standard_positions_path=metadata_path,
                 )
 
         for image_path in _iter_image_files(batch_dir):
@@ -462,6 +496,9 @@ def load_standard_position_library(
                 image_path,
                 images,
                 seen_images,
+                machine_positions_um=position_machine_positions.get(position_id),
+                camera_settings=position_camera_settings.get(position_id),
+                standard_positions_path=metadata_path,
             )
 
     positions = tuple(
@@ -469,6 +506,8 @@ def load_standard_position_library(
             id=position_id,
             label=position_labels[position_id],
             batches=tuple(sorted(position_batches[position_id], key=_batch_sort_key)),
+            machine_positions_um=deepcopy(position_machine_positions.get(position_id)),
+            camera_settings=deepcopy(position_camera_settings.get(position_id)),
         )
         for position_id in sorted(position_labels, key=standard_position_sort_key)
     )
@@ -502,6 +541,10 @@ def _record_image(
     image_path: Path,
     images: list[VisionPositionImage],
     seen_images: set[tuple[str, Path]],
+    *,
+    machine_positions_um: dict[str, Any] | None = None,
+    camera_settings: dict[str, Any] | None = None,
+    standard_positions_path: Path | None = None,
 ) -> None:
     if image_path.suffix.lower() not in IMAGE_EXTENSIONS or not image_path.is_file():
         return
@@ -515,8 +558,23 @@ def _record_image(
             position_label=label,
             batch=batch,
             path=image_path,
+            machine_positions_um=deepcopy(machine_positions_um),
+            camera_settings=deepcopy(camera_settings),
+            standard_positions_path=(
+                standard_positions_path if standard_positions_path and standard_positions_path.is_file() else None
+            ),
         )
     )
+
+
+def _position_machine_positions(raw_position: dict[str, Any]) -> dict[str, Any] | None:
+    value = raw_position.get("machine_positions_um")
+    return deepcopy(value) if isinstance(value, dict) else None
+
+
+def _position_camera_settings(raw_position: dict[str, Any]) -> dict[str, Any] | None:
+    value = raw_position.get("camera_settings")
+    return deepcopy(value) if isinstance(value, dict) else None
 
 
 def _position_captured_images(raw_position: dict[str, Any]) -> tuple[str, ...]:
@@ -1013,6 +1071,7 @@ def relative_measurement_payload_from_measurements(
                 "selection_index": index,
                 "roi_index": measurement.get("circle_roi_index"),
                 "source": measurement.get("circle_source"),
+                "feature_role": measurement.get("circle_feature_role") or "ball_candidate",
                 "center_px": {
                     "x": circle_x,
                     "y": circle_y,
@@ -1061,6 +1120,7 @@ def relative_measurement_payload_from_measurements(
                 "selection_index": circle["selection_index"],
                 "roi_index": circle["roi_index"],
                 "source": circle["source"],
+                "feature_role": circle.get("feature_role"),
                 "x_um": circle["x_um"],
                 "y_um": circle["y_um"],
                 "dx": circle["relative_um"]["dx"],
@@ -1100,6 +1160,24 @@ def format_relative_measurement_for_yase(
         )
         parts.append(f"other circles vs origin: {circle_text}")
     return " | ".join(parts)
+
+
+def default_feature_role_for_selection(shape_kind: str, source: str) -> str:
+    """Return the v5 semantic role implied by a selected recognition item."""
+
+    normalized_kind = str(shape_kind or "").strip()
+    normalized_source = str(source or "").strip()
+    if normalized_kind == "rectangle":
+        return "laser_reference"
+    if normalized_kind == "line" or normalized_source == "side_reference_line":
+        return "side_reference"
+    if normalized_kind == "circle" or normalized_source == "silhouette_circle":
+        return "ball_candidate"
+    if normalized_kind == "silhouette":
+        return "object_candidate"
+    if normalized_kind == "intersection":
+        return "fiducial_candidate"
+    return "unknown"
 
 
 def circle_roi_mask(full_x: np.ndarray, full_y: np.ndarray, roi: VisionROI) -> np.ndarray:
@@ -3015,6 +3093,7 @@ class VisionRecognitionLab(tk.Toplevel):
         self._image_item_to_image: dict[str, VisionPositionImage] = {}
         self._current_images: tuple[VisionPositionImage, ...] = ()
         self._selected_image: VisionPositionImage | None = None
+        self._last_v5_sequence_memory_path: Path | None = None
         self._source_gray_image: np.ndarray | None = None
         self._source_photo_image: tk.PhotoImage | None = None
         self._photo_image: tk.PhotoImage | None = None
@@ -3038,6 +3117,7 @@ class VisionRecognitionLab(tk.Toplevel):
         }
         self._recognition_result: VisionRecognitionResult | None = None
         self._recognition_tree_items: dict[str, VisionRecognitionTreeItem] = {}
+        self._recognition_item_role_overrides: dict[str, str] = {}
         self._selected_recognition_item_ids: set[str] = set()
         self._selected_recognition_item_order: list[str] = []
         self._active_recognition_item_ids: set[str] = set()
@@ -3282,7 +3362,7 @@ class VisionRecognitionLab(tk.Toplevel):
         sidebar.rowconfigure(4, weight=1)
         self.recognition_tree = ttk.Treeview(
             result_frame,
-            columns=("use", "roi", "type", "target", "score"),
+            columns=("use", "roi", "type", "role", "target", "score"),
             show="headings",
             selectmode="extended",
             height=7,
@@ -3290,12 +3370,14 @@ class VisionRecognitionLab(tk.Toplevel):
         self.recognition_tree.heading("use", text="Use")
         self.recognition_tree.heading("roi", text="ROI")
         self.recognition_tree.heading("type", text="Type")
+        self.recognition_tree.heading("role", text="Role")
         self.recognition_tree.heading("target", text="Target")
         self.recognition_tree.heading("score", text="Score")
         self.recognition_tree.column("use", width=42, stretch=False)
         self.recognition_tree.column("roi", width=46, stretch=False)
         self.recognition_tree.column("type", width=70, stretch=False)
-        self.recognition_tree.column("target", width=150, stretch=True)
+        self.recognition_tree.column("role", width=116, stretch=False)
+        self.recognition_tree.column("target", width=130, stretch=True)
         self.recognition_tree.column("score", width=54, stretch=False)
         self.recognition_tree.grid(row=0, column=0, sticky="nsew")
         result_scroll = ttk.Scrollbar(result_frame, orient=tk.VERTICAL, command=self.recognition_tree.yview)
@@ -3311,7 +3393,8 @@ class VisionRecognitionLab(tk.Toplevel):
         recognition_actions.columnconfigure(1, weight=1)
         recognition_actions.columnconfigure(2, weight=1)
         recognition_actions.columnconfigure(3, weight=1)
-        recognition_actions.columnconfigure(4, weight=0)
+        recognition_actions.columnconfigure(4, weight=1)
+        recognition_actions.columnconfigure(5, weight=0)
         ttk.Button(recognition_actions, text="Use selected", command=self._use_selected_recognition_row).grid(
             row=0,
             column=0,
@@ -3346,6 +3429,17 @@ class VisionRecognitionLab(tk.Toplevel):
             sticky="ew",
             padx=(0, 4),
         )
+        self.save_v5_memory_button = ttk.Button(
+            recognition_actions,
+            text="Save v5",
+            command=self._save_v5_sequence_memory_from_ui,
+        )
+        self.save_v5_memory_button.grid(
+            row=0,
+            column=4,
+            sticky="ew",
+            padx=(0, 4),
+        )
         self.recognition_legend_toggle_button = ttk.Button(
             recognition_actions,
             text="Legend",
@@ -3354,8 +3448,31 @@ class VisionRecognitionLab(tk.Toplevel):
         )
         self.recognition_legend_toggle_button.grid(
             row=0,
-            column=4,
+            column=5,
             sticky="e",
+        )
+        ttk.Label(recognition_actions, text="Role").grid(row=1, column=0, sticky="w", pady=(4, 0))
+        self.feature_role_var = tk.StringVar(value="ball_candidate")
+        self.feature_role_combobox = ttk.Combobox(
+            recognition_actions,
+            textvariable=self.feature_role_var,
+            values=FEATURE_ROLE_CHOICES,
+            state="readonly",
+            width=18,
+        )
+        self.feature_role_combobox.grid(
+            row=1,
+            column=1,
+            columnspan=4,
+            sticky="ew",
+            pady=(4, 0),
+            padx=(0, 4),
+        )
+        ttk.Button(recognition_actions, text="Set role", command=self._set_selected_recognition_role).grid(
+            row=1,
+            column=5,
+            sticky="ew",
+            pady=(4, 0),
         )
 
         measurement = ttk.Frame(result_frame)
@@ -3577,19 +3694,17 @@ class VisionRecognitionLab(tk.Toplevel):
 
     def selected_recognition_payload(self) -> dict[str, Any]:
         payload: dict[str, Any] = {}
-        for item_id in sorted(
-            self._selected_recognition_item_ids,
-            key=lambda selected_id: (
-                self._recognition_tree_items[selected_id].roi_index
-                if selected_id in self._recognition_tree_items
-                else 0,
-                selected_id,
-            ),
-        ):
+        for selection_index, item_id in enumerate(self._ordered_selected_recognition_item_ids(), start=1):
             item = self._recognition_tree_items.get(item_id)
             if item is None:
                 continue
-            payload.setdefault(f"roi_{item.roi_index}", []).append(self._recognition_tree_item_to_dict(item))
+            payload.setdefault(f"roi_{item.roi_index}", []).append(
+                self._recognition_tree_item_to_dict(
+                    item,
+                    selection_index=selection_index,
+                    feature_role=self._feature_role_for_item_id(item_id),
+                )
+            )
         return payload
 
     def selected_measurement_payload(self) -> dict[str, Any] | None:
@@ -3633,6 +3748,70 @@ class VisionRecognitionLab(tk.Toplevel):
             raise ValueError("No image is loaded.")
         return self._official_score_dir(self._selected_image) / f"{self._selected_image.path.stem}_score.json"
 
+    def v5_sequence_memory_path(self) -> Path:
+        if self._selected_image is None:
+            raise ValueError("No image is loaded.")
+        image = self._selected_image
+        if image.batch and image.batch != "capture":
+            return self.image_root / image.batch / V5_SEQUENCE_MEMORY_FOLDER_NAME / V5_SEQUENCE_MEMORY_FILE_NAME
+        return image.path.parent / V5_SEQUENCE_MEMORY_FOLDER_NAME / V5_SEQUENCE_MEMORY_FILE_NAME
+
+    def save_v5_sequence_memory(
+        self,
+        *,
+        official_baseline: bool = False,
+        session_payload: dict[str, Any] | None = None,
+    ) -> Path:
+        if self._selected_image is None:
+            raise ValueError("No image is loaded.")
+        capture_id = self._selected_image.path.stem
+        session = deepcopy(
+            session_payload
+            if session_payload is not None
+            else self.current_session_payload(f"V5 sequence memory saved for {capture_id}")
+        )
+        if not isinstance(session.get("selected_recognition"), dict) or not session["selected_recognition"]:
+            raise ValueError("Select at least one detected shape with Use selected before saving v5 memory.")
+
+        initialize_sequence_memory, run_sequence_memory_workflow = _v5_sequence_memory_api()
+        memory_path = self.v5_sequence_memory_path()
+        if memory_path.is_file():
+            memory_source: dict[str, Any] = {"memory_path": str(memory_path)}
+        else:
+            init_payload: dict[str, Any] = {
+                "schema_version": 1,
+                "command": "init",
+                "auto_detect_gross_sessions": False,
+                "auto_detect_missing_sessions": False,
+                "auto_detect_side_references": False,
+            }
+            standard_positions_path = self._standard_positions_path_for_image(self._selected_image)
+            if standard_positions_path is not None:
+                init_payload["standard_positions_path"] = str(standard_positions_path)
+            memory_source = {"memory": initialize_sequence_memory(init_payload)}
+
+        record_payload: dict[str, Any] = {
+            "schema_version": 1,
+            "command": "record",
+            **memory_source,
+            "capture_id": capture_id,
+            "position_id": self._selected_image.position_id,
+            "label": self._selected_image.position_label,
+            "image_path": str(self._selected_image.path),
+            "review_status": "official_baseline" if official_baseline else "reviewed",
+            "session": session,
+            "official_baseline": bool(official_baseline),
+            "output_path": str(memory_path),
+        }
+        if self._selected_image.machine_positions_um is not None:
+            record_payload["machine_positions_um"] = deepcopy(self._selected_image.machine_positions_um)
+
+        result = run_sequence_memory_workflow(record_payload)
+        if result.get("ok") is not True:
+            raise ValueError(str(result.get("status") or "v5 sequence memory save failed"))
+        self._last_v5_sequence_memory_path = memory_path
+        return memory_path
+
     def save_official_baseline(self, *, confirm_replace: bool = False) -> Path | None:
         if self._selected_image is None:
             raise ValueError("No image is loaded.")
@@ -3673,8 +3852,33 @@ class VisionRecognitionLab(tk.Toplevel):
         if output_path is None:
             self.tool_status_var.set("Official save cancelled")
             return
-        self.tool_status_var.set(f"Official saved: {output_path}")
-        messagebox.showinfo("Official saved", f"Saved official measurement:\n{output_path}", parent=self)
+        v5_path: Path | None = None
+        try:
+            v5_path = self.save_v5_sequence_memory(official_baseline=True)
+        except (ImportError, OSError, ValueError, json.JSONDecodeError) as exc:
+            self.tool_status_var.set(f"Official saved; v5 memory sync failed: {exc}")
+            messagebox.showwarning(
+                "Official saved",
+                f"Saved official measurement:\n{output_path}\n\nV5 memory sync failed:\n{exc}",
+                parent=self,
+            )
+            return
+        self.tool_status_var.set(f"Official saved: {output_path} | v5 memory: {v5_path}")
+        messagebox.showinfo(
+            "Official saved",
+            f"Saved official measurement:\n{output_path}\n\nSaved v5 memory:\n{v5_path}",
+            parent=self,
+        )
+
+    def _save_v5_sequence_memory_from_ui(self) -> None:
+        try:
+            output_path = self.save_v5_sequence_memory()
+        except (ImportError, OSError, ValueError, json.JSONDecodeError) as exc:
+            self.tool_status_var.set(f"V5 memory save failed: {exc}")
+            messagebox.showerror("V5 memory save failed", str(exc), parent=self)
+            return
+        self.tool_status_var.set(f"V5 memory saved: {output_path}")
+        messagebox.showinfo("V5 memory saved", f"Saved v5 sequence memory:\n{output_path}", parent=self)
 
     def score_against_official_baseline(self) -> tuple[Path, dict[str, Any]]:
         if self._selected_image is None:
@@ -3725,6 +3929,15 @@ class VisionRecognitionLab(tk.Toplevel):
             return self.image_root / image.batch / VISION_SCORE_FOLDER_NAME
         return image.path.parent / VISION_SCORE_FOLDER_NAME
 
+    def _standard_positions_path_for_image(self, image: VisionPositionImage) -> Path | None:
+        if image.standard_positions_path is not None and image.standard_positions_path.is_file():
+            return image.standard_positions_path
+        if image.batch and image.batch != "capture":
+            metadata_path = self.image_root / image.batch / "standard_positions.json"
+            if metadata_path.is_file():
+                return metadata_path
+        return None
+
     def _format_official_score_message(self, score: dict[str, Any], output_path: Path) -> str:
         lines = [
             f"{'PASS' if score.get('passed') is True else 'FAIL'}: {score.get('status')}",
@@ -3758,14 +3971,18 @@ class VisionRecognitionLab(tk.Toplevel):
         measurement = selected.measurement
         rectangle_selection = selected.rectangle_selection
         circle_selection = selected.circle_selection
+        rectangle_feature_role = self._feature_role_for_item_id(rectangle_selection.item_id)
+        circle_feature_role = self._feature_role_for_item_id(circle_selection.item_id)
         return {
             "short_edge_length_um": measurement.short_edge_length_um,
             "um_per_pixel": measurement.um_per_pixel,
             "rectangle_roi_index": rectangle_selection.roi_index,
             "rectangle_roi": vision_roi_to_dict(self._rois[rectangle_selection.roi_index - 1]),
+            "rectangle_feature_role": rectangle_feature_role,
             "circle_roi_index": circle_selection.roi_index,
             "circle_roi": vision_roi_to_dict(self._rois[circle_selection.roi_index - 1]),
             "circle_source": measurement.circle.source,
+            "circle_feature_role": circle_feature_role,
             "short_edge": {
                 "start": {"x": measurement.short_edge.start[0], "y": measurement.short_edge.start[1]},
                 "end": {"x": measurement.short_edge.end[0], "y": measurement.short_edge.end[1]},
@@ -4608,7 +4825,13 @@ class VisionRecognitionLab(tk.Toplevel):
         if self._rois:
             self.image_canvas.tag_raise("roi_overlay")
 
-    def _recognition_tree_item_to_dict(self, item: VisionRecognitionTreeItem) -> dict[str, Any]:
+    def _recognition_tree_item_to_dict(
+        self,
+        item: VisionRecognitionTreeItem,
+        *,
+        selection_index: int | None = None,
+        feature_role: str | None = None,
+    ) -> dict[str, Any]:
         shape = item.shape
         if item.shape_kind == "line":
             shape_payload = vision_line_to_dict(shape)
@@ -4636,13 +4859,17 @@ class VisionRecognitionLab(tk.Toplevel):
             }
         else:
             shape_payload = {}
-        return {
+        payload = {
             "roi_index": item.roi_index,
             "roi": vision_roi_to_dict(self._rois[item.roi_index - 1]),
             "shape_kind": item.shape_kind,
             "source": item.source,
+            "feature_role": feature_role or self._feature_role_for_item_id(item.item_id),
             "shape": shape_payload,
         }
+        if selection_index is not None:
+            payload["selection_index"] = int(selection_index)
+        return payload
 
     def _shape_center(self, shape_kind: str, shape: Any) -> tuple[float, float]:
         if shape_kind == "line":
@@ -4693,16 +4920,18 @@ class VisionRecognitionLab(tk.Toplevel):
         for roi_index in self._roi_indexes_for_shape(shape_kind, shape):
             item_id = f"{shape_kind}_{row}"
             self._recognition_tree_items[item_id] = VisionRecognitionTreeItem(
+                item_id=item_id,
                 roi_index=roi_index,
                 shape_kind=shape_kind,
                 shape=shape,
                 source=source,
             )
+            role = self._feature_role_for_item_id(item_id)
             self.recognition_tree.insert(
                 "",
                 "end",
                 iid=item_id,
-                values=("", f"R{roi_index}", type_label, target, f"{score:.2f}"),
+                values=("", f"R{roi_index}", type_label, role, target, f"{score:.2f}"),
             )
             row += 1
         return row
@@ -4734,8 +4963,18 @@ class VisionRecognitionLab(tk.Toplevel):
         ]
         return tuple(ordered + missing)
 
+    def _default_feature_role_for_item_id(self, item_id: str) -> str:
+        item = self._recognition_tree_items[item_id]
+        return default_feature_role_for_selection(item.shape_kind, item.source)
+
+    def _feature_role_for_item_id(self, item_id: str) -> str:
+        return self._recognition_item_role_overrides.get(item_id) or self._default_feature_role_for_item_id(item_id)
+
     def _on_recognition_tree_selected(self, _event: tk.Event | None = None) -> None:
         self._active_recognition_item_ids = set(self._recognition_tree_selected_item_ids())
+        selected_ids = self._recognition_tree_selected_item_ids()
+        if selected_ids and hasattr(self, "feature_role_var"):
+            self.feature_role_var.set(self._feature_role_for_item_id(selected_ids[0]))
         self._render_current_image()
 
     def _use_selected_recognition_row(self, _event: tk.Event | None = None) -> str:
@@ -4751,6 +4990,27 @@ class VisionRecognitionLab(tk.Toplevel):
         self._update_selected_measurement()
         self._render_current_image()
         return "break"
+
+    def _set_selected_recognition_role(self) -> None:
+        role = self.feature_role_var.get().strip()
+        if role not in FEATURE_ROLE_CHOICES:
+            self.tool_status_var.set(f"Unknown role: {role}")
+            return
+        item_ids = self._recognition_tree_selected_item_ids()
+        if not item_ids:
+            self.tool_status_var.set("Select a detected shape before setting a role")
+            return
+        for item_id in item_ids:
+            if item_id in self._recognition_tree_items:
+                default_role = self._default_feature_role_for_item_id(item_id)
+                if role == default_role:
+                    self._recognition_item_role_overrides.pop(item_id, None)
+                else:
+                    self._recognition_item_role_overrides[item_id] = role
+        self._update_recognition_tree_selection_marks()
+        self._update_selected_measurement()
+        self._render_current_image()
+        self.tool_status_var.set(f"Role: {role}")
 
     def _clear_selected_recognition_roi(self) -> None:
         item_ids = set(self._recognition_tree_selected_item_ids())
@@ -4771,9 +5031,10 @@ class VisionRecognitionLab(tk.Toplevel):
     def _update_recognition_tree_selection_marks(self) -> None:
         for item_id in self.recognition_tree.get_children():
             values = list(self.recognition_tree.item(item_id, "values"))
-            if len(values) < 5:
+            if len(values) < 6:
                 continue
             values[0] = "Yes" if item_id in self._selected_recognition_item_ids else ""
+            values[3] = self._feature_role_for_item_id(item_id)
             self.recognition_tree.item(item_id, values=tuple(values))
 
     def _selected_measurement_items(
@@ -5004,6 +5265,7 @@ class VisionRecognitionLab(tk.Toplevel):
         for item_id in self.recognition_tree.get_children():
             self.recognition_tree.delete(item_id)
         self._recognition_tree_items.clear()
+        self._recognition_item_role_overrides.clear()
         self._selected_recognition_item_ids.clear()
         self._selected_recognition_item_order.clear()
         self._active_recognition_item_ids.clear()
@@ -5316,6 +5578,30 @@ def _write_json(path: str | Path, payload: dict[str, Any]) -> str:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     return str(output_path)
+
+
+def _v5_sequence_memory_api() -> tuple[Callable[[dict[str, Any]], dict[str, Any]], Callable[[dict[str, Any]], dict[str, Any]]]:
+    try:
+        from migrations.migration_v5.python_vision_geometry.sequence_memory_workflow import (
+            initialize_sequence_memory,
+            run_sequence_memory_workflow,
+        )
+    except ImportError as first_exc:
+        try:
+            from python_vision_geometry.sequence_memory_workflow import (
+                initialize_sequence_memory,
+                run_sequence_memory_workflow,
+            )
+        except ImportError as second_exc:
+            raise ImportError(
+                "Could not import the v5 sequence-memory workflow from the repo migrations package "
+                "or from python_vision_geometry."
+            ) from second_exc
+        except Exception:
+            raise
+    except Exception:
+        raise
+    return initialize_sequence_memory, run_sequence_memory_workflow
 
 
 def vision_session_payload(

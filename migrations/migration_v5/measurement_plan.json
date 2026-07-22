@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Migration v5 read-only vision geometry plan for measuring laser middle, ball lens 1, and ball lens 2 in one coordinate system.",
+  "description": "Migration v5 vision geometry plan for measuring laser middle, ball lens 1, and ball lens 2 in one coordinate system, with a guarded YASE final workflow wrapper.",
   "machine_coordinate_system": {
     "reference": "machine_reference",
     "reference_feature": "laser_rectangle_center",
@@ -51,8 +51,19 @@
     "module": "python_vision_geometry/sequence_memory_workflow.py",
     "purpose": "Durably record each capture's saved vision session, image path, and queried machine_positions_um before solving.",
     "required_capture_ids": ["2.1.1", "2.4.1", "2.5.1", "2.6.1", "4.1.1", "4.4.1", "4.5.1", "4.6.2"],
+    "read_only_yase_sequences": [
+      "SUB_vision_geometry/SUB_V5SequenceMemoryInit_ReadOnly.xseq",
+      "SUB_vision_geometry/SUB_V5SequenceMemoryNextAction_ReadOnly.xseq",
+      "SUB_vision_geometry/SUB_V5CaptureReviewRecord_ReadOnly.xseq",
+      "SUB_vision_geometry/SUB_V5MacroAlignmentSolve_ReadOnly.xseq"
+    ],
+    "guarded_motion_yase_sequence": "SUB_vision_geometry/SUB_V5MacroAlignmentFinalWorkflow_Guarded.xseq",
+    "next_action_command": "Return the next required capture, missing official baseline, or solve_ready status with machine_positions_um targets only.",
+    "next_motion_or_capture_command": "Return one flat YASE-friendly final workflow action from live machine positions: move_to_next_capture with stage1/target1_um, capture_review_record_required, or solve_ready.",
+    "focus_plane_memory": "Focused records remember camera.y by feature height. next_action reports same-height focus guidance and only applies it to machine_positions_um when apply_remembered_focus_planes is true.",
+    "standard_evidence_command": "python_vision_geometry/standard_capture_evidence.py reports detected v4 image features, focus planes, same-camera gross motion rank, gross-to-close machine deltas, and final machine_coordinates_um.",
     "position_override_rule": "If a capture record includes machine_positions_um, those live positions override the standard v4 position payload for that capture.",
-    "motion_policy": "Read-only. The memory workflow records data and returns solver JSON only."
+    "motion_policy": "Python records data and chooses the next flat action. The guarded final YASE wrapper may move only by calling SUB_ApplyDefaultPositionMove; image capture stays in SUB_V5CaptureReviewRecord_ReadOnly."
   },
   "view_mappings": {
     "top_xz": {
@@ -86,7 +97,8 @@
     "notes": [
       "Use 2.1 and 4.1 only to estimate a bounded correction before moving to close focus positions.",
       "The bias is applied only to the active ball tower; camera, zoom, exposure, and focus settings remain the reviewed standard close-position values.",
-      "Do not apply an unbounded vision-derived move."
+      "Do not apply an unbounded vision-derived move.",
+      "Bias plans are read-only/operator-review proposals unless bias_mapping_evidence.use_for_motion is explicitly true from a validated calibration."
     ]
   },
   "steps": [
@@ -111,7 +123,8 @@
       "view": "top_xz",
       "purpose": "Measure the laser/chip reference in the best top-focus plane.",
       "human_selection": ["laser_reference_rectangle_corners"],
-      "result_use": "reference_focus_registration"
+      "result_use": "reference_focus_registration",
+      "focus_plane_key": "top_laser_reference"
     },
     {
       "order": 3,
@@ -122,7 +135,8 @@
       "view": "top_xz",
       "purpose": "Measure ball 1 in-plane center relative to the laser/chip reference.",
       "human_selection": ["ball_1_circle", "laser_reference_rectangle_or_registered_reference"],
-      "result_use": "machine_x_and_machine_z"
+      "result_use": "machine_x_and_machine_z",
+      "focus_plane_key": "top_ball_focus"
     },
     {
       "order": 4,
@@ -133,7 +147,8 @@
       "view": "mirror_side_xy",
       "purpose": "Measure ball 1 height from the mirror side/profile view.",
       "human_selection": ["ball_1_circle", "side_laser_or_chip_reference_rectangle"],
-      "result_use": "machine_y_and_machine_x_consistency"
+      "result_use": "machine_y_and_machine_x_consistency",
+      "focus_plane_key": "side_ball_focus"
     },
     {
       "order": 5,
@@ -156,7 +171,8 @@
       "view": "top_xz",
       "purpose": "Measure the laser/chip reference in the best top-focus plane.",
       "human_selection": ["laser_reference_rectangle_corners"],
-      "result_use": "reference_focus_registration"
+      "result_use": "reference_focus_registration",
+      "focus_plane_key": "top_laser_reference"
     },
     {
       "order": 7,
@@ -167,7 +183,8 @@
       "view": "top_xz",
       "purpose": "Measure ball 2 in-plane center relative to the laser/chip reference.",
       "human_selection": ["ball_2_circle", "laser_reference_rectangle_or_registered_reference"],
-      "result_use": "machine_x_and_machine_z"
+      "result_use": "machine_x_and_machine_z",
+      "focus_plane_key": "top_ball_focus"
     },
     {
       "order": 8,
@@ -178,14 +195,15 @@
       "view": "mirror_side_xy",
       "purpose": "Measure ball 2 height from the mirror side/profile view using the brighter side-profile settings.",
       "human_selection": ["ball_2_circle", "side_laser_or_chip_reference_rectangle"],
-      "result_use": "machine_y_and_machine_x_consistency"
+      "result_use": "machine_y_and_machine_x_consistency",
+      "focus_plane_key": "side_ball_focus"
     }
   ],
   "fail_closed_requirements": [
     "Every precise top/side capture used for geometry must include relative_measurement.",
     "Every precise ball must have top_xz and mirror_side_xy observations.",
     "Repeated axis disagreement must be at or below max_axis_disagreement_um.",
-    "No motion may be issued from this plan without a later reviewed YASE validation/apply layer."
+    "No direct MoveStage may be issued from this plan; motion must go through the reviewed guarded YASE apply layer."
   ],
   "thresholds": {
     "max_axis_disagreement_um": 10.0

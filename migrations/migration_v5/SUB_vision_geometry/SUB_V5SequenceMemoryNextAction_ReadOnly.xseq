@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Sequence>
+   <Comment>SUB_V5SequenceMemoryNextAction_ReadOnly</Comment>
+   <Comment>Migration v5 read-only next-action query. Reads durable sequence memory and asks Python which capture/baseline/solve step is next.</Comment>
+   <Comment>No camera acquisition and no hardware motion are used in this sequence. Returned machine_positions_um are displayed/stored only.</Comment>
+   <Statement Label="L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Checkout status." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="V5 sequence memory read-only next_action: building TMPython JSON" />
+   </Statement>
+   <Statement Label="L_BuildPythonInput" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="JSON request for Python. Forward slashes avoid JSON backslash escaping in YASE." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;schema_version&quot;:1,&quot;command&quot;:&quot;next_action&quot;,&quot;memory_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v5_sequence_memory.json&quot;,&quot;output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v5_sequence_next_action.json&quot;}" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="JSON sent to TMPython." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonInputJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStringVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Only used when valid for is Path." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where string is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="PythonVisionGeometryV5" />
+      <Parameter Name="Name" Description="Parameter: Name of string to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="LastNextActionInputJson" />
+      <Parameter Name="VarStringIn" Description="Parameter: String to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="Diagnostic copy of the Python request." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\v5_sequence_next_action_input.json" />
+      <Parameter Name="Mode" Description="Create or replace the file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Request JSON." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="success" Description="True when the request was written." Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_V5SequenceNextActionInputWritten" />
+   </Statement>
+   <Statement Label="L_CallPython" Editable="FALSE" Name="TMPython_ExecuteScript" Library="">
+      <Parameter Name="Interpreter" Description="TMPython.ini section." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Python_310_PYTHON_AUTOMATION_INTERPRETER" />
+      <Parameter Name="Module" Description="Python package copied into python_env." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="python_vision_geometry.sequence_memory_workflow" />
+      <Parameter Name="Class" Description="TMPython statement class." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="VisionSequenceMemoryWorkflowStep" />
+      <Parameter Name="ParamIn" Description="JSON payload." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="ParamOut" Description="Returned JSON." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
+      <Parameter Name="Status text" Description="Display Python ParamOut JSON containing next capture and machine_positions_um." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStringVar" Library="VariableIO">
+      <Parameter Name="valid for" Description="Parameter: Select between Process, System or Path." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Process" />
+      <Parameter Name="Path" Description="Parameter: Absolute path to ini-file. Only used when valid for is Path." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Section" Description="Parameter: Section where string is going to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="PythonVisionGeometryV5" />
+      <Parameter Name="Name" Description="Parameter: Name of string to be stored." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="LastNextActionResultJson" />
+      <Parameter Name="VarStringIn" Description="Parameter: String to be stored." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
+      <Parameter Name="File Path" Description="Diagnostic copy of the Python result." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\v5_sequence_next_action_result.json" />
+      <Parameter Name="Mode" Description="Create or replace the file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Returned JSON." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+      <Parameter Name="success" Description="True when the result was written." Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_V5SequenceNextActionResultWritten" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   </Statement>
+   <SequenceProperties>
+   </SequenceProperties>
+   <SequenceTags>
+   </SequenceTags>
+   <History>
+      <Sequence-Description>Read-only v5 next-action query through TMPython.</Sequence-Description>
+      <Entry>2026-07-22 Created next-action bridge after checking TestMaster/TMPython documentation</Entry>
+   </History>
+</Sequence>
