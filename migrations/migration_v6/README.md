@@ -85,3 +85,27 @@ migration_v6\standard_positions_v4\
 
 These files are statically XML/test verified in the repo. They still need a
 machine-side checkout before being treated as an operator procedure.
+
+## Standard-Image Simulator
+
+To replay the V6 main workflow offline with the saved standard images and
+simulated review popups:
+
+```powershell
+.\.venv\Scripts\python.exe migrations\migration_v6\tools\simulate_v6_standard_workflow.py --target ball_1
+```
+
+Use `--target all`, `--target ball_1`, or `--target ball_2`. The image popup
+draws the standard reviewed feature in cyan and the simulated live detection in
+red. The simulator uses the stored standard baselines as the detection result;
+it does not run hardware, grab `CAM_12`, or move stages.
+
+For a headless trace with an injected gross/fine/side error:
+
+```powershell
+.\.venv\Scripts\python.exe migrations\migration_v6\tools\simulate_v6_standard_workflow.py --headless --target ball_1 --coarse-shift-x-px 10 --coarse-shift-y-px -10 --fine-shift-x-px 2 --fine-shift-y-px 4 --side-shift-y-px 10 --output tmp\v6_ball1_trace.json
+```
+
+The trace shows each simulated subsequence, recorded features, Python-planned
+move fields, applied in-memory machine positions, and whether the second review
+pass still has a remaining residual.
