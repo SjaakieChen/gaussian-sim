@@ -27,9 +27,12 @@ from migrations.migration_v6.python_vision_geometry.v6_offset_workflow import (
     validate_reviewed_capture_session,
 )
 from migrations.migration_v6.vision_recognition_lab import (
+    FEATURE_ROLE_CHOICES,
     VisionROI,
     VisionRecognitionLab,
     detect_side_trench_ruler_lines,
+    feature_role_display_label,
+    feature_role_options_for_capture,
     photo_image_from_grayscale,
     read_grayscale_image,
 )
@@ -538,13 +541,20 @@ def test_v6_review_ui_preloads_live_proposal_allows_override_and_tracks_cancel()
         selected = lab.selected_recognition_payload()
         assert len(lab.current_rois()) == 1
         assert selected["roi_1"][0]["feature_role"] == "ball_1_gross_ball"
+        assert tuple(lab.feature_role_combobox.cget("values")) == (
+            "Ball 1 circle (COARSE TOP view)",
+            "Ignore this detection",
+        )
+        assert lab.feature_role_context_var.get() == (
+            "Review target: BALL 1 - COARSE TOP CAMERA VIEW"
+        )
 
         selected_item_id = next(iter(lab._selected_recognition_item_ids))  # pylint: disable=protected-access
         lab.recognition_tree.selection_set(selected_item_id)
         lab.recognition_tree.focus(selected_item_id)
-        lab.feature_role_var.set("ball_candidate")
+        lab.feature_role_var.set("Ignore this detection")
         lab._set_selected_recognition_role()  # pylint: disable=protected-access
-        assert lab.selected_recognition_payload()["roi_1"][0]["feature_role"] == "ball_candidate"
+        assert lab.selected_recognition_payload()["roi_1"][0]["feature_role"] == "ignore"
 
         lab._cancel_session()  # pylint: disable=protected-access
         assert lab._session_cancelled is True  # pylint: disable=protected-access
@@ -553,6 +563,45 @@ def test_v6_review_ui_preloads_live_proposal_allows_override_and_tracks_cancel()
         if lab is not None:
             lab.destroy()
         root.destroy()
+
+
+def test_v6_capture_role_choices_are_filtered_and_name_the_camera_view():
+    expected_roles = {
+        "2.1.1": ("ball_1_gross_ball", "ignore"),
+        "2.4.1": ("laser_reference", "ignore"),
+        "2.5.1": ("ball_1_top_ball", "ignore"),
+        "2.6.1": (
+            "ball_1_side_ball",
+            "trench_top_surface",
+            "trench_bottom_floor",
+            "ignore",
+        ),
+        "4.1.1": ("ball_2_gross_ball", "ignore"),
+        "4.4.1": ("laser_reference", "ignore"),
+        "4.5.1": ("ball_2_top_ball", "ignore"),
+        "4.6.2": (
+            "ball_2_side_ball",
+            "trench_top_surface",
+            "trench_bottom_floor",
+            "ignore",
+        ),
+    }
+
+    for capture_id, expected in expected_roles.items():
+        options = feature_role_options_for_capture(capture_id)
+        roles = tuple(role for role, _label in options)
+        labels = tuple(label for _role, label in options if _role != "ignore")
+        assert roles == expected
+        assert all(role in FEATURE_ROLE_CHOICES for role in roles)
+        if capture_id in {"2.6.1", "4.6.2"}:
+            assert all("SIDE MIRROR view" in label for label in labels)
+            assert all("TOP view" not in label for label in labels)
+        else:
+            assert all("TOP view" in label for label in labels)
+            assert all("SIDE MIRROR view" not in label for label in labels)
+
+        for role in roles:
+            assert feature_role_display_label(role, capture_id) == dict(options)[role]
 
 
 def test_v6_side_review_ui_preloads_ball_two_ruler_lines_and_mirror_roi():
@@ -600,6 +649,13 @@ def test_v6_side_review_ui_preloads_ball_two_ruler_lines_and_mirror_roi():
                 assert "trench_top_surface" in roles
                 assert "trench_bottom_floor" in roles
                 assert lab.reviewed_mirror_roi_payload() is not None
+                displayed_roles = tuple(lab.feature_role_combobox.cget("values"))
+                assert all(
+                    "SIDE MIRROR view" in label
+                    for label in displayed_roles
+                    if label != "Ignore this detection"
+                )
+                assert all("TOP view" not in label for label in displayed_roles)
             finally:
                 lab.destroy()
     finally:

@@ -75,6 +75,82 @@ FEATURE_ROLE_CHOICES = (
     "ignore",
 )
 
+CAPTURE_REVIEW_CONTEXT_LABELS = {
+    "2.1.1": "BALL 1 - COARSE TOP CAMERA VIEW",
+    "2.4.1": "LASER RECTANGLE - FINE TOP CAMERA VIEW",
+    "2.5.1": "BALL 1 - FINE TOP CAMERA VIEW",
+    "2.6.1": "BALL 1 - SIDE MIRROR VIEW",
+    "4.1.1": "BALL 2 - COARSE TOP CAMERA VIEW",
+    "4.4.1": "LASER RECTANGLE - FINE TOP CAMERA VIEW",
+    "4.5.1": "BALL 2 - FINE TOP CAMERA VIEW",
+    "4.6.2": "BALL 2 - SIDE MIRROR VIEW",
+}
+
+CAPTURE_FEATURE_ROLE_OPTIONS = {
+    "2.1.1": (
+        ("ball_1_gross_ball", "Ball 1 circle (COARSE TOP view)"),
+        ("ignore", "Ignore this detection"),
+    ),
+    "2.4.1": (
+        ("laser_reference", "Laser rectangle (FINE TOP view)"),
+        ("ignore", "Ignore this detection"),
+    ),
+    "2.5.1": (
+        ("ball_1_top_ball", "Ball 1 circle (FINE TOP view)"),
+        ("ignore", "Ignore this detection"),
+    ),
+    "2.6.1": (
+        ("ball_1_side_ball", "Ball 1 circle (SIDE MIRROR view)"),
+        ("trench_top_surface", "Trench top line (SIDE MIRROR view)"),
+        ("trench_bottom_floor", "Trench floor line (SIDE MIRROR view)"),
+        ("ignore", "Ignore this detection"),
+    ),
+    "4.1.1": (
+        ("ball_2_gross_ball", "Ball 2 circle (COARSE TOP view)"),
+        ("ignore", "Ignore this detection"),
+    ),
+    "4.4.1": (
+        ("laser_reference", "Laser rectangle (FINE TOP view)"),
+        ("ignore", "Ignore this detection"),
+    ),
+    "4.5.1": (
+        ("ball_2_top_ball", "Ball 2 circle (FINE TOP view)"),
+        ("ignore", "Ignore this detection"),
+    ),
+    "4.6.2": (
+        ("ball_2_side_ball", "Ball 2 circle (SIDE MIRROR view)"),
+        ("trench_top_surface", "Trench top line (SIDE MIRROR view)"),
+        ("trench_bottom_floor", "Trench floor line (SIDE MIRROR view)"),
+        ("ignore", "Ignore this detection"),
+    ),
+}
+
+
+def feature_role_options_for_capture(capture_id: str | None) -> tuple[tuple[str, str], ...]:
+    """Return canonical role keys and operator-facing labels for one review capture."""
+
+    capture_key = str(capture_id or "").strip()
+    return CAPTURE_FEATURE_ROLE_OPTIONS.get(
+        capture_key,
+        tuple((role, role) for role in FEATURE_ROLE_CHOICES),
+    )
+
+
+def feature_role_display_label(role: str, capture_id: str | None = None) -> str:
+    role_key = str(role or "").strip()
+    for option_role, display_label in feature_role_options_for_capture(capture_id):
+        if option_role == role_key:
+            return display_label
+    return role_key
+
+
+def feature_role_from_display_label(label: str, capture_id: str | None = None) -> str | None:
+    value = str(label or "").strip()
+    for role, display_label in feature_role_options_for_capture(capture_id):
+        if value in {role, display_label}:
+            return role
+    return None
+
 
 @dataclass(frozen=True)
 class VisionLine:
@@ -1297,6 +1373,7 @@ def recognition_payload_center(item: dict[str, Any]) -> tuple[float, float] | No
 
 
 def expected_role_for_capture(capture_id: str, shape_kind: str) -> str:
+    capture_key = str(capture_id)
     roles = {
         "2.1.1": "ball_1_gross_ball",
         "2.4.1": "laser_reference",
@@ -1307,9 +1384,9 @@ def expected_role_for_capture(capture_id: str, shape_kind: str) -> str:
         "4.5.1": "ball_2_top_ball",
         "4.6.2": "ball_2_side_ball",
     }
-    if shape_kind == "line":
+    if capture_key in {"2.6.1", "4.6.2"} and shape_kind == "line":
         return "trench_top_surface"
-    return roles.get(str(capture_id), default_feature_role_for_selection(shape_kind, shape_kind))
+    return roles.get(capture_key, default_feature_role_for_selection(shape_kind, shape_kind))
 
 
 def circle_roi_mask(full_x: np.ndarray, full_y: np.ndarray, roi: VisionROI) -> np.ndarray:
@@ -3224,6 +3301,9 @@ class VisionRecognitionLab(tk.Toplevel):
         self._show_session_done_button = show_session_done_button
         self._initial_session = deepcopy(initial_session) if isinstance(initial_session, dict) else None
         self._capture_id = str(capture_id or "").strip()
+        self._feature_role_options = feature_role_options_for_capture(self._capture_id)
+        self._feature_role_keys = tuple(role for role, _label in self._feature_role_options)
+        self._feature_role_display_values = tuple(label for _role, label in self._feature_role_options)
         self._session_saved = False
         self._session_cancelled = False
         self.library = VisionPositionLibrary(positions=(), images=())
@@ -3263,7 +3343,12 @@ class VisionRecognitionLab(tk.Toplevel):
         self._selected_measurements: tuple[VisionSelectedMeasurement, ...] = ()
         self._recognition_legend_visible = False
 
-        self.title(VISION_RECOGNITION_LAB_TITLE)
+        review_context = CAPTURE_REVIEW_CONTEXT_LABELS.get(self._capture_id)
+        self.title(
+            f"{VISION_RECOGNITION_LAB_TITLE} - {self._capture_id} - {review_context}"
+            if review_context
+            else VISION_RECOGNITION_LAB_TITLE
+        )
         self.minsize(980, 620)
         self.geometry("1180x760")
         self._build_ui()
@@ -3601,17 +3686,48 @@ class VisionRecognitionLab(tk.Toplevel):
             column=5,
             sticky="e",
         )
-        ttk.Label(recognition_actions, text="Role").grid(row=1, column=0, sticky="w", pady=(4, 0))
-        self.feature_role_var = tk.StringVar(value="ball_candidate")
+        review_context = CAPTURE_REVIEW_CONTEXT_LABELS.get(self._capture_id)
+        role_row = 1
+        self.feature_role_context_var = tk.StringVar(
+            value=f"Review target: {review_context}" if review_context else ""
+        )
+        self.feature_role_context_label = ttk.Label(
+            recognition_actions,
+            textvariable=self.feature_role_context_var,
+            anchor="w",
+        )
+        if review_context:
+            self.feature_role_context_label.grid(
+                row=1,
+                column=0,
+                columnspan=6,
+                sticky="ew",
+                pady=(4, 0),
+            )
+            role_row = 2
+        ttk.Label(recognition_actions, text="Feature role").grid(
+            row=role_row,
+            column=0,
+            sticky="w",
+            pady=(4, 0),
+        )
+        initial_role = (
+            "ball_candidate"
+            if not self._capture_id and "ball_candidate" in self._feature_role_keys
+            else self._feature_role_keys[0]
+        )
+        self.feature_role_var = tk.StringVar(
+            value=feature_role_display_label(initial_role, self._capture_id)
+        )
         self.feature_role_combobox = ttk.Combobox(
             recognition_actions,
             textvariable=self.feature_role_var,
-            values=FEATURE_ROLE_CHOICES,
+            values=self._feature_role_display_values,
             state="readonly",
-            width=18,
+            width=34,
         )
         self.feature_role_combobox.grid(
-            row=1,
+            row=role_row,
             column=1,
             columnspan=4,
             sticky="ew",
@@ -3619,7 +3735,7 @@ class VisionRecognitionLab(tk.Toplevel):
             padx=(0, 4),
         )
         ttk.Button(recognition_actions, text="Set role", command=self._set_selected_recognition_role).grid(
-            row=1,
+            row=role_row,
             column=5,
             sticky="ew",
             pady=(4, 0),
@@ -3846,7 +3962,7 @@ class VisionRecognitionLab(tk.Toplevel):
             role = str(expected_item.get("feature_role") or "").strip()
             if not role:
                 role = expected_role_for_capture(self._capture_id, expected_kind)
-            if role in FEATURE_ROLE_CHOICES:
+            if role in self._feature_role_keys:
                 self._recognition_item_role_overrides[item_id] = role
         self._update_recognition_tree_selection_marks()
         self._update_selected_measurement()
@@ -5203,7 +5319,14 @@ class VisionRecognitionLab(tk.Toplevel):
                 "",
                 "end",
                 iid=item_id,
-                values=("", f"R{roi_index}", type_label, role, target, f"{score:.2f}"),
+                values=(
+                    "",
+                    f"R{roi_index}",
+                    type_label,
+                    feature_role_display_label(role, self._capture_id),
+                    target,
+                    f"{score:.2f}",
+                ),
             )
             row += 1
         return row
@@ -5237,6 +5360,11 @@ class VisionRecognitionLab(tk.Toplevel):
 
     def _default_feature_role_for_item_id(self, item_id: str) -> str:
         item = self._recognition_tree_items[item_id]
+        if self._capture_id in CAPTURE_FEATURE_ROLE_OPTIONS:
+            expected_role = expected_role_for_capture(self._capture_id, item.shape_kind)
+            if expected_role in self._feature_role_keys:
+                return expected_role
+            return self._feature_role_keys[0]
         return default_feature_role_for_selection(item.shape_kind, item.source)
 
     def _feature_role_for_item_id(self, item_id: str) -> str:
@@ -5246,7 +5374,12 @@ class VisionRecognitionLab(tk.Toplevel):
         self._active_recognition_item_ids = set(self._recognition_tree_selected_item_ids())
         selected_ids = self._recognition_tree_selected_item_ids()
         if selected_ids and hasattr(self, "feature_role_var"):
-            self.feature_role_var.set(self._feature_role_for_item_id(selected_ids[0]))
+            self.feature_role_var.set(
+                feature_role_display_label(
+                    self._feature_role_for_item_id(selected_ids[0]),
+                    self._capture_id,
+                )
+            )
         self._render_current_image()
 
     def _use_selected_recognition_row(self, _event: tk.Event | None = None) -> str:
@@ -5264,9 +5397,11 @@ class VisionRecognitionLab(tk.Toplevel):
         return "break"
 
     def _set_selected_recognition_role(self) -> None:
-        role = self.feature_role_var.get().strip()
-        if role not in FEATURE_ROLE_CHOICES:
-            self.tool_status_var.set(f"Unknown role: {role}")
+        selected_label = self.feature_role_var.get().strip()
+        role = feature_role_from_display_label(selected_label, self._capture_id)
+        if role is None or role not in self._feature_role_keys:
+            context = CAPTURE_REVIEW_CONTEXT_LABELS.get(self._capture_id, "this review")
+            self.tool_status_var.set(f"Role is not valid for {context}")
             return
         item_ids = self._recognition_tree_selected_item_ids()
         if not item_ids:
@@ -5282,7 +5417,9 @@ class VisionRecognitionLab(tk.Toplevel):
         self._update_recognition_tree_selection_marks()
         self._update_selected_measurement()
         self._render_current_image()
-        self.tool_status_var.set(f"Role: {role}")
+        self.tool_status_var.set(
+            f"Role: {feature_role_display_label(role, self._capture_id)}"
+        )
 
     def _clear_selected_recognition_roi(self) -> None:
         item_ids = set(self._recognition_tree_selected_item_ids())
@@ -5306,7 +5443,10 @@ class VisionRecognitionLab(tk.Toplevel):
             if len(values) < 6:
                 continue
             values[0] = "Yes" if item_id in self._selected_recognition_item_ids else ""
-            values[3] = self._feature_role_for_item_id(item_id)
+            values[3] = feature_role_display_label(
+                self._feature_role_for_item_id(item_id),
+                self._capture_id,
+            )
             self.recognition_tree.item(item_id, values=tuple(values))
 
     def _selected_measurement_items(

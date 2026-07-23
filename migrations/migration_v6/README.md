@@ -89,9 +89,15 @@ The review UI preloads the proposed ROIs and detections. The operator can:
 
 - replace a detection;
 - redraw an ROI;
-- assign the feature role;
+- assign a feature role from the capture-specific list;
 - save the reviewed result; or
 - cancel without changing memory.
+
+The role selector names the required view explicitly. Top captures show only
+their laser or ball-circle role plus `Ignore`; mirror captures show only the
+side-mirror ball circle, trench-top line, trench-floor line, and `Ignore`.
+These readable labels are converted back to the existing canonical role keys
+before the reviewed result is stored.
 
 The active capture record stores the exact post-grab pose, pre/post stability
 evidence, view, zoom, commanded camera settings, image dimensions, selected
