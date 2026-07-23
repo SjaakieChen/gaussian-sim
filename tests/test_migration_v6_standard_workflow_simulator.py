@@ -55,6 +55,36 @@ def test_v6_full_standard_image_simulator_converges_and_verifies_final_geometry(
         for move in step["applied_moves"]:
             assert move["velocity_class"] == "medium_transition"
 
+    standard_steps = [
+        step for step in result["trace"] if step["kind"] == "standard_position_move"
+    ]
+    assert standard_steps
+    for step in standard_steps:
+        stages = [move["stage"] for move in step["planned_moves"]]
+        tower_suffix = "1" if "Align_Y1" in stages else "2"
+        raise_index = stages.index(f"Align_Y{tower_suffix}")
+        assert raise_index == 0
+        assert raise_index < min(
+            index for index, stage in enumerate(stages) if stage.startswith("Camera_")
+        )
+        assert stages.index(f"Align_Z{tower_suffix}") < stages.index(
+            f"Align_X{tower_suffix}"
+        )
+        if stages.count(f"Align_Y{tower_suffix}") == 2:
+            assert stages[-1] == f"Align_Y{tower_suffix}"
+
+    ball_2_fine_steps = _offset_steps(result, "4.5.1")
+    moved_ball_2_steps = [
+        step
+        for step in ball_2_fine_steps
+        if step["result"]["action"] == "offset_correction_move"
+    ]
+    assert moved_ball_2_steps
+    for step in moved_ball_2_steps:
+        path = step["result"]["diagnostics"]["collision_path"]
+        assert path["status"] == "strict_projected_ball_clearance_valid"
+        assert path["selected_path"]["minimum_surface_gap_um"] > 0.0
+
     verification = [step for step in result["trace"] if step["kind"] == "final_verification"]
     assert len(verification) == 1
     verified = verification[0]["result"]
@@ -68,6 +98,14 @@ def test_v6_full_standard_image_simulator_converges_and_verifies_final_geometry(
         {"machine_x_um": 989.0, "machine_y_um": 0.0, "machine_z_um": 0.0}
     )
     assert verified["measured_center_spacing_um"] == pytest.approx(700.0)
+    assert verified["collision_clearance"]["strictly_clear"] is True
+    assert verified["collision_clearance"]["axial_surface_gaps_um"] == pytest.approx(
+        {
+            "source_to_ball_1_surface_gap_um": 39.0,
+            "ball_1_to_ball_2_surface_gap_um": 200.0,
+            "ball_2_to_taper_surface_gap_um": 39.0,
+        }
+    )
 
     memory = json.loads(memory_path.read_text(encoding="utf-8"))
     assert memory["schema_version"] == 2
@@ -98,9 +136,9 @@ def test_v6_standard_image_simulator_coarse_shift_uses_canonical_axes_and_fresh_
 
     assert first_result["action"] == "offset_correction_move"
     assert first_result["move_count"] == 2
-    assert first_result["stage1"] == "Align_X1"
+    assert first_result["stage1"] == "Align_Z1"
     assert first_result["delta1_um"] == pytest.approx(-10.0 * um_per_pixel)
-    assert first_result["stage2"] == "Align_Z1"
+    assert first_result["stage2"] == "Align_X1"
     assert first_result["delta2_um"] == pytest.approx(-10.0 * um_per_pixel)
     assert steps[0]["pixel_residuals_after"]["coarse_x_px"] == pytest.approx(0.0)
     assert steps[0]["pixel_residuals_after"]["coarse_y_px"] == pytest.approx(0.0)
@@ -151,6 +189,17 @@ def test_v6_simulator_defaults_to_vision_only_popups_and_all_is_explicit(tmp_pat
     default_config = parse_args(["--headless", "--output", str(tmp_path / "default.json")])
     assert default_config.popup_scope == "vision"
     assert default_config.baseline_replacements == {}
+
+    yase_config = parse_args(
+        [
+            "--headless",
+            "--output",
+            str(tmp_path / "yase.json"),
+            "--popup-scope",
+            "yase",
+        ]
+    )
+    assert yase_config.popup_scope == "yase"
 
     all_config = parse_args(
         [

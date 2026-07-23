@@ -62,6 +62,21 @@ require the matching capture revision to be converged. Running steps out of
 order either uses the active record for that capture ID or fails closed when a
 prerequisite is missing.
 
+The enforced order is:
+
+```text
+ball 1 coarse X/Z -> ball 1 fine X/Z -> ball 1 side Y
+ball 2 coarse X/Z -> ball 2 fine X/Z -> ball 2 side Y
+final read-only verification
+```
+
+Each fine step requires its recorded reference transitions. Each side step
+requires the active fine-top capture to be converged and the top-to-side
+transition to be complete. Ball 2 cannot start until ball 1 side alignment is
+converged. Once any ball 2 capture is active, V6 rejects backward re-entry into
+ball 1 correction or transition motion. To restart ball 1, physically reset the
+setup and initialize new memory.
+
 ## Capture Review And Memory
 
 Before every grab, the capture sequence reapplies the position's standard
@@ -84,7 +99,9 @@ features, scale source, revision, and timestamp. Exposure and illumination are
 recorded as the standard values reapplied before the operator gate; the
 repository has no verified analog-output readback statement. Re-recording the
 same capture ID moves the old active record into history and invalidates
-dependent correction, transition, and final-verification plans.
+all downstream correction plans, convergence states, transitions, and final
+verification. A changed fine-top reference therefore cannot leave a later
+side or second-ball convergence marker usable.
 
 Memory stays current when the operator changes a camera or tower position
 before the grab because the queried post-adjustment pose, not the hardcoded
@@ -157,6 +174,44 @@ and zoom. Missing or ambiguous mirror evidence produces no Y move.
 Both final side targets place the reviewed ball center at the physical trench
 top, represented as relative `machine_y_um = 0`.
 
+## Collision-Aware Move Order
+
+Every hardcoded position first raises every tower that has an X/Z target.
+Camera and zoom motion follows, then tower `machine_z_um`, then tower
+`machine_x_um`. A tower is lowered to its final `machine_y_um` only after all
+lateral targets have been reached. Standard and transition moves use medium
+speed; image-derived corrections use slow speed. The standalone hardcoded
+position files do not read V6 memory, so their operator gate must not be
+accepted unless the chip, trench, both balls, towers, and camera are clear of
+the complete move.
+
+Top-view lateral corrections are rejected when the active tower is below the
+reviewed Y boundary for that view. Before ball 2 moves in X/Z, Python projects
+both possible bounded axis orders into the final rectangle-relative X/Z frame.
+It selects the order with the larger minimum ball-to-ball clearance and fails
+closed if neither order keeps a strictly positive 500 um sphere separation.
+The check deliberately ignores the real raised Y separation, making it
+conservative.
+
+Before either top-to-side transition starts lowering a tower, Python validates
+the reviewed top geometry against the strict source, ball, taper, and
+trench-floor model. The side correction repeats that gate after the transition
+before proposing any additional `machine_y_um` move.
+
+The final geometry verifier also requires these nominal surface clearances:
+
+```text
+source to ball 1 = 39 um
+ball 1 to ball 2 = 200 um
+ball 2 to taper = 39 um
+each ball to trench floor = 50 um
+```
+
+This proves the reviewed ball-center layout, not the entire physical swept
+volume. Raw stage-to-object transforms and the collision volumes of grippers,
+the trench, chip, camera, and mirror are not calibrated in this repository and
+must be commissioned on the machine.
+
 ## Convergence And Final Proof
 
 All image-derived moves are bounded and use slow alignment velocities. After
@@ -197,8 +252,15 @@ The simulator is offline and changes only an in-memory pose:
 ```
 
 By default it opens only the editable vision-review UI. Add
-`--popup-scope all` to also show diagnostic movement popups. A headless
-geometry replay is:
+`--popup-scope yase` to preview the YASE operator gates around the same
+standard-image review UI. Add `--popup-scope all` to include non-operational
+diagnostics as well:
+
+```powershell
+.\.venv\Scripts\python.exe migrations\migration_v6\tools\simulate_v6_standard_workflow.py --target all --popup-scope yase
+```
+
+A headless geometry replay is:
 
 ```powershell
 .\.venv\Scripts\python.exe migrations\migration_v6\tools\simulate_v6_standard_workflow.py --headless --target all --output tmp\v6_all_trace.json
@@ -231,11 +293,24 @@ Copy `python_vision_geometry\`, `vision_recognition_lab.py`,
 `requirements.txt`, and `standard_positions_v4\` into the configured
 `python_env` locations documented in `MACHINE_CONFIGURATION.md`.
 
+Before running the workflow in the cleanroom, run this from
+`D:\TestMasterData\Process\Python_Automation\python_env`:
+
+```powershell
+.\.venv\Scripts\python.exe -m python_vision_geometry.cleanroom_runtime_check --require-tmpython --json-output log\v6_cleanroom_runtime_check.json
+```
+
+This is read-only. It verifies that the copied Python environment can import
+the V6 TMPython entrypoints, the real `vision_recognition_lab.py`, the OpenCV
+and scikit-image recognizers, the side trench ruler algorithm, Tkinter, and
+all required reviewed baseline JSON files. A failed check means do not start
+`SUB_V6MainWorkflow_Guarded.xseq`.
+
 ## Commissioning Boundary
 
 Repository validation covers Python tests, simulator behavior, XML parsing,
 Goto/static audits, configured settings, and velocity selection. It is not
 physical machine validation. Actual correction signs, soft limits, collision
-clearance, wait timing, camera stability tolerance, and mirror Y behavior must
-be commissioned with guarded small moves on the target machine before
-operational use.
+clearance Y, gripper/trench/camera swept volumes, wait timing, camera stability
+tolerance, and mirror Y behavior must be commissioned with guarded small moves
+on the target machine before operational use.

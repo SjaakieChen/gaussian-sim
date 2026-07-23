@@ -32,6 +32,7 @@ from migrations.migration_v6.python_vision_geometry.v6_offset_workflow import ( 
     OFFSET_SPECS,
     SCHEMA_VERSION,
     STAGE_FOR_AXIS,
+    V6VisionReviewRecordStep,
     run_v6_vision_workflow,
     validate_reviewed_capture_session,
 )
@@ -243,17 +244,23 @@ class V6StandardWorkflowSimulator:
         position = self.positions[position_id]
         moves = standard_position_moves(position, self.clearance_y_by_tower)
         applied: list[JsonDict] = []
+        preview_positions = deepcopy_json(self.machine_positions_um)
         for move in moves:
-            current = stage_value(self.machine_positions_um, move["stage"])
+            current = stage_value(preview_positions, move["stage"])
             applied_move = {
                 **move,
                 "delta_um": move["target_um"] - current,
                 "move_mode": "Absolute",
                 "velocity_class": "medium_approach",
             }
-            self.apply_stage_target(move["stage"], move["target_um"])
+            set_stage_target(preview_positions, move["stage"], move["target_um"])
             applied.append(applied_move)
 
+        if self.viewer is not None:
+            self.viewer.confirm_standard_position(position, applied)
+
+        for move in applied:
+            self.apply_stage_target(move["stage"], move["target_um"])
         self.apply_camera_settings(position)
         self.add_step(
             {
@@ -273,28 +280,41 @@ class V6StandardWorkflowSimulator:
         target = str(CAPTURE_SPECS[capture_id]["target"])
         live_session = shifted_live_session(capture_id, baseline, self.residuals[target])
         image_path = resolve_standard_image_path(baseline)
+        position = self.positions[str(CAPTURE_SPECS[capture_id]["position_id"])]
+        self.apply_camera_settings(position)
         if self.viewer is not None:
-            reviewed = self.viewer.review_capture(capture_id, image_path, live_session)
-            if reviewed is not None:
-                live_session = reviewed
-        result = run_v6_vision_workflow(
-            {
-                "schema_version": SCHEMA_VERSION,
-                "command": "record_capture",
-                "capture_id": capture_id,
-                "image_path": str(image_path),
-                "memory_path": str(self.config.memory_path),
-                "memory_output_path": str(self.config.memory_path),
-                "standard_positions_path": str(STANDARD_POSITIONS_PATH),
-                "standard_baseline_dir": str(self.config.baseline_dir),
-                "machine_positions_before_grab_um": deepcopy_json(self.machine_positions_um),
-                "machine_positions_after_grab_um": deepcopy_json(self.machine_positions_um),
-                "camera_settings": deepcopy_json(self.camera_settings),
-                "review_session": live_session,
-            }
-        )
+            self.viewer.confirm_capture_gate(
+                capture_id,
+                image_path,
+                camera_settings=self.camera_settings,
+                machine_positions_um=self.machine_positions_um,
+            )
+        capture_params = {
+            "schema_version": SCHEMA_VERSION,
+            "command": "record_capture",
+            "capture_id": capture_id,
+            "image_path": str(image_path),
+            "memory_path": str(self.config.memory_path),
+            "memory_output_path": str(self.config.memory_path),
+            "standard_positions_path": str(STANDARD_POSITIONS_PATH),
+            "standard_baseline_dir": str(self.config.baseline_dir),
+            "machine_positions_before_grab_um": deepcopy_json(self.machine_positions_um),
+            "machine_positions_after_grab_um": deepcopy_json(self.machine_positions_um),
+            "camera_settings": deepcopy_json(self.camera_settings),
+        }
+        if self.config.headless:
+            capture_params["review_session"] = live_session
+            result = run_v6_vision_workflow(capture_params)
+        else:
+            capture_params["initial_review_session"] = live_session
+            result = V6VisionReviewRecordStep().run(capture_params)
         if result.get("ok") is not True:
             raise RuntimeError(str(result.get("status") or f"capture {capture_id} failed"))
+        recorded_session = as_dict(
+            as_dict(as_dict(self.load_memory()).get("capture_records")).get(capture_id)
+        ).get("session")
+        if isinstance(recorded_session, dict):
+            live_session = recorded_session
 
         self.add_step(
             {
@@ -333,6 +353,13 @@ class V6StandardWorkflowSimulator:
         applied = []
         if result.get("ok") is True and result.get("action") == "offset_correction_move":
             for move in result.get("planned_moves", []):
+                if self.viewer is not None:
+                    self.viewer.confirm_guarded_move(
+                        f"SUB_V6OffsetCorrection_{capture_id}_Guarded",
+                        move,
+                        result,
+                        velocity_class="slow_offset_correction",
+                    )
                 applied.append(self.apply_planned_move(move, velocity_class="slow_offset_correction"))
             self.update_pixel_residuals_from_offset(capture_id, result)
         self.add_step(
@@ -402,6 +429,13 @@ class V6StandardWorkflowSimulator:
             applied = []
             if result.get("ok") is True and result.get("action") == "transition_move":
                 for move in result.get("planned_moves", []):
+                    if self.viewer is not None:
+                        self.viewer.confirm_guarded_move(
+                            f"SUB_V6TransitionMove_{transition_id}_Guarded",
+                            move,
+                            result,
+                            velocity_class="medium_transition",
+                        )
                     applied.append(self.apply_planned_move(move, velocity_class="medium_transition"))
             self.add_step(
                 {
@@ -469,10 +503,7 @@ class V6StandardWorkflowSimulator:
                 residual.side_full_y_px += delta_um / um_per_pixel
 
     def apply_stage_target(self, stage: str, target_um: float) -> None:
-        stage_name, axis = AXIS_FOR_STAGE[stage]
-        axes = as_dict(self.machine_positions_um.setdefault(stage_name, {}))
-        axes[axis] = target_um
-        self.machine_positions_um[stage_name] = axes
+        set_stage_target(self.machine_positions_um, stage, target_um)
 
     def apply_camera_settings(self, position: JsonDict) -> None:
         settings = as_dict(position.get("camera_settings"))
@@ -517,6 +548,82 @@ class WorkflowPopupViewer:
             self.tk = None
             self.root = None
 
+    def should_show_yase_gates(self) -> bool:
+        return self.popup_scope in {"yase", "all"}
+
+    def confirm_standard_position(self, position: JsonDict, moves: list[JsonDict]) -> None:
+        if not self.should_show_yase_gates():
+            return
+        move_lines = [
+            f"{move['stage']} -> {float(move['target_um']):.6g} um "
+            f"(delta {float(move['delta_um']):.6g} um)"
+            for move in moves
+        ]
+        self._show_operator_dialog(
+            title=standard_position_subsequence_name(position),
+            message=standard_position_gate_text(position),
+            proceed_text="Move",
+            details=[
+                "YASE sequence: " + standard_position_subsequence_name(position),
+                "Simulated statements after confirmation:",
+                *move_lines,
+                "Set cam_12_ExpTime plus Illu_Coax, Illu_1, and Illu_2.",
+            ],
+        )
+
+    def confirm_capture_gate(
+        self,
+        capture_id: str,
+        image_path: Path,
+        *,
+        camera_settings: JsonDict,
+        machine_positions_um: JsonDict,
+    ) -> None:
+        if not self.should_show_yase_gates():
+            return
+        self._show_operator_dialog(
+            title=f"SUB_V6CaptureReviewRecord_{capture_id}_ReadOnly",
+            message=capture_gate_text(capture_id),
+            proceed_text="Capture",
+            details=[
+                "The machine sequence reapplies standard exposure/lights before this gate.",
+                "The simulator uses this standard image as the captured CAM_12 frame:",
+                str(image_path),
+                "Camera settings: " + json.dumps(camera_settings, sort_keys=True),
+                "Simulated queried pose: " + json.dumps(machine_positions_um, sort_keys=True),
+            ],
+            image_path=image_path,
+        )
+
+    def confirm_guarded_move(
+        self,
+        subsequence: str,
+        move: JsonDict,
+        result: JsonDict,
+        *,
+        velocity_class: str,
+    ) -> None:
+        if not self.should_show_yase_gates():
+            return
+        confirm_text = str(move.get("confirm_text") or result.get("confirm_text1") or "Confirm v6 move.")
+        apply_sequence = (
+            "SUB_V6ApplyApproachMove_Guarded"
+            if velocity_class == "medium_transition"
+            else "SUB_V6ApplyOffsetCorrectionMove_Guarded"
+        )
+        self._show_operator_dialog(
+            title=apply_sequence,
+            message=confirm_text,
+            proceed_text="Move",
+            details=[
+                "Calling sequence: " + subsequence,
+                f"Stage: {move.get('stage')}",
+                f"Absolute target: {float(move.get('target_um', 0.0)):.6g} um",
+                f"Delta from current simulated pose: {float(move.get('delta_um', 0.0)):.6g} um",
+                "Velocity class in simulator: " + velocity_class,
+            ],
+        )
+
     def review_capture(self, capture_id: str, image_path: Path, initial_session: JsonDict) -> JsonDict | None:
         from migrations.migration_v6.vision_recognition_lab import run_vision_recognition_lab_session
 
@@ -530,7 +637,14 @@ class WorkflowPopupViewer:
         return result
 
     def show_step(self, step: JsonDict) -> None:
-        if self.popup_scope != "all" or step.get("kind") == "capture_review_record":
+        if self.popup_scope != "all":
+            return
+        if step.get("kind") in {
+            "capture_review_record",
+            "offset_correction",
+            "standard_position_move",
+            "transition_move",
+        }:
             return
         if self.tk is None or self.root is None:
             return
@@ -553,6 +667,88 @@ class WorkflowPopupViewer:
             top.after(self.auto_advance_ms, top.destroy)
         top.wait_window()
 
+    def _show_operator_dialog(
+        self,
+        *,
+        title: str,
+        message: str,
+        proceed_text: str,
+        details: list[str],
+        image_path: Path | None = None,
+    ) -> None:
+        if self.tk is None or self.root is None:
+            return
+        tk = self.tk
+        top = tk.Toplevel(self.root)
+        top.title(title)
+        top.geometry("+80+80")
+        top.columnconfigure(0, weight=1)
+        accepted = {"value": False}
+
+        label = tk.Label(
+            top,
+            text=message,
+            justify="left",
+            anchor="w",
+            wraplength=900,
+            padx=12,
+            pady=10,
+        )
+        label.grid(row=0, column=0, sticky="ew")
+        if details:
+            detail = tk.Text(top, width=120, height=min(max(len(details), 5), 12), wrap="word")
+            detail.insert("1.0", "\n".join(details))
+            detail.configure(state="disabled")
+            detail.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 8))
+        if image_path is not None:
+            self.add_image_preview(top, image_path, row=2)
+
+        buttons = tk.Frame(top)
+        buttons.grid(row=3, column=0, sticky="e", padx=12, pady=(0, 12))
+
+        def abort() -> None:
+            top.destroy()
+
+        def proceed() -> None:
+            accepted["value"] = True
+            top.destroy()
+
+        tk.Button(buttons, text="Abort", command=abort).pack(side="left", padx=(0, 8))
+        tk.Button(buttons, text=proceed_text, command=proceed).pack(side="left")
+        top.protocol("WM_DELETE_WINDOW", abort)
+        if self.auto_advance_ms > 0:
+            top.after(self.auto_advance_ms, proceed)
+        top.wait_window()
+        if not accepted["value"]:
+            raise RuntimeError(f"operator aborted simulator preview at {title}")
+
+    def add_image_preview(self, top: Any, image_path: Path, *, row: int) -> None:
+        tk = self.tk
+        if tk is None:
+            return
+        if not image_path.is_file():
+            tk.Label(top, text=f"Image not found: {image_path}", padx=12, pady=8).grid(
+                row=row,
+                column=0,
+                sticky="ew",
+            )
+            return
+        try:
+            image = tk.PhotoImage(master=top, file=str(image_path))
+        except Exception as exc:
+            tk.Label(top, text=f"Could not load image: {exc}", padx=12, pady=8).grid(
+                row=row,
+                column=0,
+                sticky="ew",
+            )
+            return
+        subsample = max(1, math.ceil(image.width() / 900), math.ceil(image.height() / 520))
+        shown = image.subsample(subsample, subsample) if subsample > 1 else image
+        canvas = tk.Canvas(top, width=shown.width(), height=shown.height(), background="#111111")
+        canvas.grid(row=row, column=0, padx=12, pady=(0, 8), sticky="n")
+        canvas.create_image(0, 0, image=shown, anchor="nw")
+        top._sim_preview_images = (image, shown)
+
     def add_image_canvas(self, top: Any, step: JsonDict) -> None:
         tk = self.tk
         if tk is None:
@@ -562,7 +758,7 @@ class WorkflowPopupViewer:
             tk.Label(top, text=f"Image not found: {image_path}", padx=12, pady=8).pack(fill="x")
             return
         try:
-            image = tk.PhotoImage(file=str(image_path))
+            image = tk.PhotoImage(master=top, file=str(image_path))
         except Exception as exc:
             tk.Label(top, text=f"Could not load image: {exc}", padx=12, pady=8).pack(fill="x")
             return
@@ -667,18 +863,13 @@ def transition_target(transition_id: str) -> str:
 
 
 def standard_position_moves(position: JsonDict, clearance_y_by_tower: JsonDict) -> list[JsonDict]:
-    moves: list[JsonDict] = []
+    raises: list[JsonDict] = []
+    camera_moves: list[JsonDict] = []
+    lateral_moves: list[JsonDict] = []
+    lowers: list[JsonDict] = []
     machine_positions = as_dict(position.get("machine_positions_um"))
-    camera = as_dict(machine_positions.get("camera"))
-    for axis, stage in (("x", "Camera_X"), ("z", "Camera_Z"), ("y", "Camera_Y")):
-        if camera.get(axis) is not None:
-            moves.append({"stage": stage, "target_um": float(camera[axis]), "phase": "v6_standard_position_approach"})
 
-    zoom = setting_value(as_dict(position.get("camera_settings")), "zoom")
-    if zoom is not None:
-        moves.append({"stage": "Zoom", "target_um": float(zoom), "phase": "v6_standard_position_approach"})
-    moves = sorted(moves, key=lambda item: STAGE_ORDER.index(item["stage"]))
-
+    tower_targets = []
     for tower, stage_map in (
         ("tower_1", {"x": "Align_X1", "y": "Align_Y1", "z": "Align_Z1"}),
         ("tower_2", {"x": "Align_X2", "y": "Align_Y2", "z": "Align_Z2"}),
@@ -688,23 +879,73 @@ def standard_position_moves(position: JsonDict, clearance_y_by_tower: JsonDict) 
         target_y = values.get("y")
         target_z = values.get("z")
         has_lateral_target = target_x is not None or target_z is not None
-        if has_lateral_target and target_y is not None:
+        if has_lateral_target and target_y is None:
+            raise ValueError(
+                f"position {position.get('id')} has a lateral target for {tower} "
+                "without a machine Y clearance target"
+            )
+        clearance = None
+        if has_lateral_target:
             clearance = max(float(clearance_y_by_tower[tower]), float(target_y))
-            moves.append({"stage": stage_map["y"], "target_um": clearance, "phase": "v6_raise_tower_y_clearance"})
-            if target_z is not None:
-                moves.append({"stage": stage_map["z"], "target_um": float(target_z), "phase": "v6_standard_position_approach"})
-            if target_x is not None:
-                moves.append({"stage": stage_map["x"], "target_um": float(target_x), "phase": "v6_standard_position_approach"})
-            if float(target_y) != clearance:
-                moves.append({"stage": stage_map["y"], "target_um": float(target_y), "phase": "v6_lower_tower_y_to_standard"})
-            continue
+            raises.append(
+                {
+                    "stage": stage_map["y"],
+                    "target_um": clearance,
+                    "phase": "v6_raise_tower_y_clearance",
+                }
+            )
+        tower_targets.append(
+            (stage_map, target_x, target_y, target_z, has_lateral_target, clearance)
+        )
+
+    camera = as_dict(machine_positions.get("camera"))
+    for axis, stage in (("x", "Camera_X"), ("z", "Camera_Z"), ("y", "Camera_Y")):
+        if camera.get(axis) is not None:
+            camera_moves.append(
+                {
+                    "stage": stage,
+                    "target_um": float(camera[axis]),
+                    "phase": "v6_standard_position_approach",
+                }
+            )
+
+    zoom = setting_value(as_dict(position.get("camera_settings")), "zoom")
+    if zoom is not None:
+        camera_moves.append(
+            {
+                "stage": "Zoom",
+                "target_um": float(zoom),
+                "phase": "v6_standard_position_approach",
+            }
+        )
+    camera_moves.sort(key=lambda item: STAGE_ORDER.index(item["stage"]))
+
+    for stage_map, target_x, target_y, target_z, has_lateral_target, clearance in tower_targets:
         if target_z is not None:
-            moves.append({"stage": stage_map["z"], "target_um": float(target_z), "phase": "v6_standard_position_approach"})
+            lateral_moves.append(
+                {
+                    "stage": stage_map["z"],
+                    "target_um": float(target_z),
+                    "phase": "v6_standard_position_approach",
+                }
+            )
         if target_x is not None:
-            moves.append({"stage": stage_map["x"], "target_um": float(target_x), "phase": "v6_standard_position_approach"})
-        if target_y is not None:
-            moves.append({"stage": stage_map["y"], "target_um": float(target_y), "phase": "v6_standard_position_approach"})
-    return moves
+            lateral_moves.append(
+                {
+                    "stage": stage_map["x"],
+                    "target_um": float(target_x),
+                    "phase": "v6_standard_position_approach",
+                }
+            )
+        if target_y is not None and (not has_lateral_target or float(target_y) != clearance):
+            lowers.append(
+                {
+                    "stage": stage_map["y"],
+                    "target_um": float(target_y),
+                    "phase": "v6_lower_tower_y_to_standard",
+                }
+            )
+    return raises + camera_moves + lateral_moves + lowers
 
 
 def tower_clearance_y_by_tower(positions: Iterable[JsonDict]) -> JsonDict:
@@ -944,6 +1185,25 @@ def standard_position_subsequence_name(position: JsonDict) -> str:
     return f"SUB_V6MoveToPosition_{position['id']}_{slug(str(position['label']))}"
 
 
+def standard_position_gate_text(position: JsonDict) -> str:
+    return (
+        f"V6 standard position {position['id']} ({position['label']}). "
+        "Move to hardcoded machine targets and set exposure/lights. "
+        "All moving towers raise before camera or tower X/Z motion; "
+        "tower Z precedes X, then towers lower to final Y. "
+        "Uses medium speeds for approach. Confirm chip, trench, both balls, tower, "
+        "and camera clearance."
+    )
+
+
+def capture_gate_text(capture_id: str) -> str:
+    return (
+        f"V6 capture {capture_id}: adjust focus and framing with camera/tower pose controls now. "
+        "Standard exposure and lights are already applied; do not change them or zoom. "
+        "Press Capture only when the image is ready and all motion has stopped."
+    )
+
+
 def slug(value: str) -> str:
     return "".join(character if character.isalnum() or character == "_" else "_" for character in value).strip("_")
 
@@ -951,6 +1211,13 @@ def slug(value: str) -> str:
 def stage_value(machine_positions: JsonDict, stage: str) -> float:
     stage_name, axis = AXIS_FOR_STAGE[stage]
     return float(as_dict(machine_positions.get(stage_name)).get(axis, 0.0))
+
+
+def set_stage_target(machine_positions: JsonDict, stage: str, target_um: float) -> None:
+    stage_name, axis = AXIS_FOR_STAGE[stage]
+    axes = as_dict(machine_positions.setdefault(stage_name, {}))
+    axes[axis] = target_um
+    machine_positions[stage_name] = axes
 
 
 def setting_value(settings: JsonDict, name: str) -> float | None:
@@ -984,9 +1251,12 @@ def parse_args(argv: list[str] | None = None) -> SimulatorConfig:
     parser.add_argument("--auto-advance-ms", type=int, default=0, help="Auto-close each popup after this many milliseconds.")
     parser.add_argument(
         "--popup-scope",
-        choices=["vision", "all"],
+        choices=["vision", "yase", "all"],
         default="vision",
-        help="Default opens editable vision review only; all also opens movement diagnostics.",
+        help=(
+            "Default opens editable vision review only; yase adds YASE-style operator gates; "
+            "all also shows non-operational diagnostics."
+        ),
     )
     parser.add_argument(
         "--replace-baseline",

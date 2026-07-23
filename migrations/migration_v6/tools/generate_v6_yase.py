@@ -96,8 +96,10 @@ def generate_standard_position_sequence(position: dict[str, Any], clearance_y_by
     confirm = (
         f"V6 standard position {position['id']} ({position['label']}). "
         f"Move to hardcoded machine targets and set exposure/lights. "
-        f"Towers raise to clearance before X/Z motion, then lower to final Y. "
-        f"Uses medium speeds for approach. Confirm chip/tower/camera clearance."
+        f"All moving towers raise before camera or tower X/Z motion; tower Z precedes X, "
+        f"then towers lower to final Y. "
+        f"Uses medium speeds for approach. Confirm chip, trench, both balls, tower, "
+        f"and camera clearance."
     )
     statements = common_sequence_start(sequence_name)
     if not moves and not analogs:
@@ -883,16 +885,12 @@ def simple_error_label(label: str, error_type: str, message: str) -> list[str]:
 
 def position_moves(position: dict[str, Any], clearance_y_by_tower: dict[str, float]) -> list[tuple[str, str]]:
     machine = position.get("machine_positions_um") or {}
-    moves: list[tuple[str, str]] = []
-    camera = machine.get("camera") or {}
-    for axis, stage in (("x", "Camera_X"), ("z", "Camera_Z"), ("y", "Camera_Y")):
-        if camera.get(axis) is not None:
-            moves.append((stage, float_string(camera[axis])))
-    zoom = setting_value(position, "zoom")
-    if zoom is not None:
-        moves.append(("Zoom", float_string(zoom)))
-    moves = sorted(moves, key=lambda item: STAGE_ORDER.index(item[0]))
+    raises: list[tuple[str, str]] = []
+    camera_moves: list[tuple[str, str]] = []
+    lateral_moves: list[tuple[str, str]] = []
+    lowers: list[tuple[str, str]] = []
 
+    tower_targets = []
     for tower, stage_map in (
         ("tower_1", {"x": "Align_X1", "y": "Align_Y1", "z": "Align_Z1"}),
         ("tower_2", {"x": "Align_X2", "y": "Align_Y2", "z": "Align_Z2"}),
@@ -902,23 +900,37 @@ def position_moves(position: dict[str, Any], clearance_y_by_tower: dict[str, flo
         target_y = values.get("y")
         target_z = values.get("z")
         has_lateral_target = target_x is not None or target_z is not None
-        if has_lateral_target and target_y is not None:
+        if has_lateral_target and target_y is None:
+            raise ValueError(
+                f"position {position.get('id')} has a lateral target for {tower} "
+                "without a machine Y clearance target"
+            )
+        clearance = None
+        if has_lateral_target:
             clearance = max(float(clearance_y_by_tower[tower]), float(target_y))
-            moves.append((stage_map["y"], float_string(clearance)))
-            if target_z is not None:
-                moves.append((stage_map["z"], float_string(target_z)))
-            if target_x is not None:
-                moves.append((stage_map["x"], float_string(target_x)))
-            if float(target_y) != clearance:
-                moves.append((stage_map["y"], float_string(target_y)))
-            continue
+            raises.append((stage_map["y"], float_string(clearance)))
+        tower_targets.append(
+            (stage_map, target_x, target_y, target_z, has_lateral_target, clearance)
+        )
+
+    camera = machine.get("camera") or {}
+    for axis, stage in (("x", "Camera_X"), ("z", "Camera_Z"), ("y", "Camera_Y")):
+        if camera.get(axis) is not None:
+            camera_moves.append((stage, float_string(camera[axis])))
+    zoom = setting_value(position, "zoom")
+    if zoom is not None:
+        camera_moves.append(("Zoom", float_string(zoom)))
+    camera_moves.sort(key=lambda item: STAGE_ORDER.index(item[0]))
+
+    for stage_map, target_x, target_y, target_z, has_lateral_target, clearance in tower_targets:
         if target_z is not None:
-            moves.append((stage_map["z"], float_string(target_z)))
+            lateral_moves.append((stage_map["z"], float_string(target_z)))
         if target_x is not None:
-            moves.append((stage_map["x"], float_string(target_x)))
-        if target_y is not None:
-            moves.append((stage_map["y"], float_string(target_y)))
-    return moves
+            lateral_moves.append((stage_map["x"], float_string(target_x)))
+        if target_y is not None and (not has_lateral_target or float(target_y) != clearance):
+            lowers.append((stage_map["y"], float_string(target_y)))
+
+    return raises + camera_moves + lateral_moves + lowers
 
 
 def tower_clearance_y_by_tower(positions: list[dict[str, Any]]) -> dict[str, float]:

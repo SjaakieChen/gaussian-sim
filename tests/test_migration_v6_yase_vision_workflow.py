@@ -1,18 +1,25 @@
 import copy
 import json
 import re
+import tkinter as tk
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import numpy as np
 import pytest
 
+from migrations.migration_v6.python_vision_geometry import v6_offset_workflow as v6_module
 from migrations.migration_v6.python_vision_geometry.v6_offset_workflow import (
     CAPTURE_SPECS,
+    CORRECTION_PREREQUISITES,
     DEFAULT_STANDARD_BASELINE_DIR,
     DEFAULT_STANDARD_POSITIONS_PATH,
     FINAL_CENTER_SPACING_UM,
     FINAL_TARGETS_UM,
+    OFFSET_SPECS,
     SCHEMA_VERSION,
+    TRANSITION_SPECS,
+    final_layout_clearance,
     initialize_v6_memory,
     mirror_ball_reference_delta_px,
     reviewed_trench_geometry,
@@ -23,6 +30,7 @@ from migrations.migration_v6.vision_recognition_lab import (
     VisionROI,
     VisionRecognitionLab,
     detect_side_trench_ruler_lines,
+    photo_image_from_grayscale,
     read_grayscale_image,
 )
 
@@ -132,38 +140,45 @@ def _tower_clearance_y_by_tower():
 
 
 def _expected_moves(position):
-    moves = []
+    raises = []
+    camera_moves = []
+    lateral_moves = []
+    lowers = []
     machine_positions = position.get("machine_positions_um") or {}
-    camera = machine_positions.get("camera") or {}
-    for axis, stage in (("x", "Camera_X"), ("z", "Camera_Z"), ("y", "Camera_Y")):
-        if camera.get(axis) is not None:
-            moves.append((stage, _float_string(camera[axis])))
-    zoom = _setting_value(position, "zoom")
-    if zoom is not None:
-        moves.append(("Zoom", _float_string(zoom)))
-    moves = sorted(moves, key=lambda item: STAGE_ORDER.index(item[0]))
-
     clearances = _tower_clearance_y_by_tower()
+    tower_targets = []
     for tower, stages in (
         ("tower_1", {"x": "Align_X1", "y": "Align_Y1", "z": "Align_Z1"}),
         ("tower_2", {"x": "Align_X2", "y": "Align_Y2", "z": "Align_Z2"}),
     ):
         values = machine_positions.get(tower) or {}
         target_x, target_y, target_z = values.get("x"), values.get("y"), values.get("z")
-        if (target_x is not None or target_z is not None) and target_y is not None:
+        has_lateral_target = target_x is not None or target_z is not None
+        clearance = None
+        if has_lateral_target:
             clearance = max(clearances[tower], float(target_y))
-            moves.append((stages["y"], _float_string(clearance)))
-            if target_z is not None:
-                moves.append((stages["z"], _float_string(target_z)))
-            if target_x is not None:
-                moves.append((stages["x"], _float_string(target_x)))
-            if float(target_y) != clearance:
-                moves.append((stages["y"], _float_string(target_y)))
-        else:
-            for axis, target in (("z", target_z), ("x", target_x), ("y", target_y)):
-                if target is not None:
-                    moves.append((stages[axis], _float_string(target)))
-    return moves
+            raises.append((stages["y"], _float_string(clearance)))
+        tower_targets.append(
+            (stages, target_x, target_y, target_z, has_lateral_target, clearance)
+        )
+
+    camera = machine_positions.get("camera") or {}
+    for axis, stage in (("x", "Camera_X"), ("z", "Camera_Z"), ("y", "Camera_Y")):
+        if camera.get(axis) is not None:
+            camera_moves.append((stage, _float_string(camera[axis])))
+    zoom = _setting_value(position, "zoom")
+    if zoom is not None:
+        camera_moves.append(("Zoom", _float_string(zoom)))
+    camera_moves.sort(key=lambda item: STAGE_ORDER.index(item[0]))
+
+    for stages, target_x, target_y, target_z, has_lateral_target, clearance in tower_targets:
+        if target_z is not None:
+            lateral_moves.append((stages["z"], _float_string(target_z)))
+        if target_x is not None:
+            lateral_moves.append((stages["x"], _float_string(target_x)))
+        if target_y is not None and (not has_lateral_target or float(target_y) != clearance):
+            lowers.append((stages["y"], _float_string(target_y)))
+    return raises + camera_moves + lateral_moves + lowers
 
 
 def _move_targets(path):
@@ -196,8 +211,8 @@ def _pose(*, camera_x=-38000.0, camera_y=-45000.0, camera_z=-93000.0, zoom=4500.
             "machine_y_um": camera_y,
             "machine_z_um": camera_z,
         },
-        "tower_1": {"machine_x_um": 1000.0, "machine_y_um": 1000.0, "machine_z_um": 2000.0},
-        "tower_2": {"machine_x_um": 3000.0, "machine_y_um": 4000.0, "machine_z_um": 5000.0},
+        "tower_1": {"machine_x_um": 1000.0, "machine_y_um": 17000.0, "machine_z_um": 2000.0},
+        "tower_2": {"machine_x_um": 3000.0, "machine_y_um": 13000.0, "machine_z_um": 5000.0},
         "zoom": {"zoom_um": zoom},
     }
 
@@ -206,10 +221,43 @@ def _legacy_pose():
     pose = _pose()
     return {
         "camera": {"x": pose["camera"]["machine_x_um"], "y": pose["camera"]["machine_y_um"], "z": pose["camera"]["machine_z_um"]},
-        "tower_1": {"x": 1000.0, "y": 1000.0, "z": 2000.0},
-        "tower_2": {"x": 3000.0, "y": 4000.0, "z": 5000.0},
+        "tower_1": {
+            "x": pose["tower_1"]["machine_x_um"],
+            "y": pose["tower_1"]["machine_y_um"],
+            "z": pose["tower_1"]["machine_z_um"],
+        },
+        "tower_2": {
+            "x": pose["tower_2"]["machine_x_um"],
+            "y": pose["tower_2"]["machine_y_um"],
+            "z": pose["tower_2"]["machine_z_um"],
+        },
         "zoom": {"value": 4500.0},
     }
+
+
+def test_photo_image_from_grayscale_uses_explicit_tk_master():
+    first_root = None
+    second_root = None
+    try:
+        first_root = tk.Tk()
+        first_root.withdraw()
+        second_root = tk.Tk()
+        second_root.withdraw()
+    except tk.TclError as exc:
+        if second_root is not None:
+            second_root.destroy()
+        if first_root is not None:
+            first_root.destroy()
+        pytest.skip(f"Tk unavailable: {exc}")
+    try:
+        image = photo_image_from_grayscale(np.zeros((4, 4), dtype=float), master=second_root)
+        canvas = tk.Canvas(second_root, width=4, height=4)
+        canvas.create_image(0, 0, image=image, anchor="nw")
+    finally:
+        if second_root is not None:
+            second_root.destroy()
+        if first_root is not None:
+            first_root.destroy()
 
 
 def _circle_session(x, y, *, radius=50.0, role="ball_candidate"):
@@ -297,6 +345,107 @@ def _memory_with_records(*, standard_baselines=None, records):
     return memory
 
 
+def _valid_workflow_records():
+    top_scale_px_per_um = 1.0 / 5.0
+    return {
+        "2.1.1": _record(
+            "2.1.1",
+            _circle_session(100.0, 100.0, role="ball_1_gross_ball"),
+        ),
+        "2.4.1": _record("2.4.1", _rectangle_session()),
+        "2.5.1": _record(
+            "2.5.1",
+            _circle_session(
+                100.0 + 289.0 * top_scale_px_per_um,
+                50.0,
+                role="ball_1_top_ball",
+            ),
+        ),
+        "2.6.1": _record("2.6.1", _side_session(900.0)),
+        "4.1.1": _record(
+            "4.1.1",
+            _circle_session(100.0, 100.0, role="ball_2_gross_ball"),
+        ),
+        "4.4.1": _record("4.4.1", _rectangle_session()),
+        "4.5.1": _record(
+            "4.5.1",
+            _circle_session(
+                100.0 + 989.0 * top_scale_px_per_um,
+                50.0,
+                role="ball_2_top_ball",
+            ),
+        ),
+        "4.6.2": _record(
+            "4.6.2",
+            _side_session(900.0, target="ball_2"),
+        ),
+    }
+
+
+def _mark_converged(memory, capture_id):
+    record = memory["capture_records"][capture_id]
+    memory["convergence"][capture_id] = {
+        "capture_id": capture_id,
+        "capture_revision": record["revision"],
+        "status": "converged",
+    }
+
+
+def _satisfy_correction_prerequisites(memory, capture_id):
+    required_capture_ids = CAPTURE_IDS[: CAPTURE_IDS.index(capture_id) + 1]
+    for default_capture_id, record in _valid_workflow_records().items():
+        if default_capture_id not in required_capture_ids:
+            continue
+        memory["capture_records"].setdefault(default_capture_id, record)
+    prerequisite = CORRECTION_PREREQUISITES[capture_id]
+    for required_capture_id in prerequisite.get("converged", ()):
+        _mark_converged(memory, required_capture_id)
+    for transition_id in prerequisite.get("transitions", ()):
+        memory["transition_records"][transition_id] = {
+            "transition_id": transition_id,
+            "status": "complete",
+        }
+    return memory
+
+
+def _complete_workflow_state(memory):
+    for default_capture_id, record in _valid_workflow_records().items():
+        memory["capture_records"].setdefault(default_capture_id, record)
+    for capture_id in OFFSET_SPECS:
+        _mark_converged(memory, capture_id)
+    for transition_id in TRANSITION_SPECS:
+        memory["transition_records"][transition_id] = {
+            "transition_id": transition_id,
+            "status": "complete",
+        }
+    return memory
+
+
+def _ball_2_fine_memory(*, measured_machine_x_um, measured_machine_z_um):
+    ball_pose = _pose(camera_z=-93000.0)
+    reference_pose = _pose(camera_z=-93000.0 - measured_machine_z_um)
+    memory = _memory_with_records(
+        records={
+            "4.4.1": _record(
+                "4.4.1",
+                _rectangle_session(),
+                pose=reference_pose,
+            ),
+            "4.5.1": _record(
+                "4.5.1",
+                _circle_session(
+                    100.0 + measured_machine_x_um / 5.0,
+                    50.0,
+                    role="ball_2_top_ball",
+                ),
+                pose=ball_pose,
+            ),
+        }
+    )
+    _satisfy_correction_prerequisites(memory, "4.5.1")
+    return memory, ball_pose
+
+
 def test_v6_standard_positions_are_exact_v4_copies():
     source = json.loads(V4_STANDARD_POSITIONS.read_text(encoding="utf-8"))
     assert json.loads(V6_STANDARD_POSITIONS.read_text(encoding="utf-8")) == source
@@ -334,13 +483,26 @@ def test_v6_measurement_plan_and_operator_docs_use_schema_2_canonical_contract()
     assert plan["final_targets_um"]["ball_2"]["machine_x_um"] == 989.0
     assert plan["final_targets_um"]["ball_center_spacing_machine_x_um"] == 700.0
     assert plan["physical_constants_um"]["trench_top_to_floor_um"] == 300.0
+    assert plan["final_clearance_model_um"] == {
+        "strict_positive_gap_required": True,
+        "source_to_ball_1_surface_gap_um": 39.0,
+        "ball_1_to_ball_2_surface_gap_um": 200.0,
+        "ball_2_to_taper_surface_gap_um": 39.0,
+        "ball_surface_to_trench_floor_gap_um": 50.0,
+        "coordinate_frame": "reviewed final rectangle-relative machine X/Y/Z frame",
+    }
     assert plan["convergence"]["max_correction_attempts"] == 8
     assert plan["convergence"]["max_reviewed_captures_including_final_check"] == 9
+    assert plan["motion_policy"]["standard_position_order"][0].startswith(
+        "raise every tower"
+    )
+    assert "2.5.1 converged" in plan["workflow_prerequisites"]["2.6.1"]
 
     readme = (V6 / "README.md").read_text(encoding="utf-8")
     assert "Do not rerun the memory initializer between normal steps" in readme
     assert "mirror_flipped_y_px = mirror_roi_bottom_y_px - full_image_y_px" in readme
     assert "--popup-scope all" in readme
+    assert "ball 1 to ball 2 = 200 um" in readme
     assert "It is not physical machine validation" in readme.replace("\n", " ")
 
     mistakes = (ROOT / "COMMON_MISTAKES.md").read_text(encoding="utf-8")
@@ -529,13 +691,23 @@ def test_v6_standard_position_towers_raise_before_lateral_motion_then_lower():
             lateral_indices = [
                 index for index, move in enumerate(moves) if move[0] in {stage_z, stage_x}
             ]
+            camera_indices = [
+                index for index, move in enumerate(moves) if move[0].startswith("Camera_")
+            ]
             clearance = max(clearances[tower], float(target["y"]))
 
             assert lateral_indices
             assert first_y_index < min(lateral_indices)
+            assert first_y_index < min(camera_indices)
             assert moves[first_y_index] == (stage_y, _float_string(clearance))
+            if target.get("z") is not None and target.get("x") is not None:
+                assert next(
+                    index for index, move in enumerate(moves) if move[0] == stage_z
+                ) < next(
+                    index for index, move in enumerate(moves) if move[0] == stage_x
+                )
             if float(target["y"]) < clearance:
-                assert moves[max(lateral_indices) + 1] == (
+                assert moves[-1] == (
                     stage_y,
                     _float_string(target["y"]),
                 )
@@ -585,6 +757,46 @@ def test_v6_capture_queries_all_stages_immediately_before_and_after_grab():
         assert tmpython["Interpreter"]["StringValue"] == "Python_310_PYTHON_AUTOMATION_INTERPRETER"
         assert tmpython["Module"]["StringValue"] == "python_vision_geometry.v6_offset_workflow"
         assert tmpython["Class"]["StringValue"] == "V6VisionReviewRecordStep"
+
+
+def test_v6_record_capture_preloads_simulator_initial_session(monkeypatch, tmp_path):
+    initial_session = _circle_session(123.0, 456.0, role="ball_1_gross_ball")
+    seen = {}
+
+    def fake_open_review_ui(
+        image_path,
+        *,
+        capture_id,
+        initial_session,
+        roi_output_path=None,
+        result_output_path=None,
+    ):
+        seen["image_path"] = image_path
+        seen["capture_id"] = capture_id
+        seen["initial_session"] = copy.deepcopy(initial_session)
+        return copy.deepcopy(initial_session)
+
+    monkeypatch.setattr(v6_module, "open_v6_vision_review_ui", fake_open_review_ui)
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "record_capture",
+            "capture_id": "2.1.1",
+            "image_path": "standard-example.png",
+            "memory_path": str(tmp_path / "memory.json"),
+            "machine_positions_before_grab_um": _pose(),
+            "machine_positions_after_grab_um": _pose(),
+            "initial_review_session": initial_session,
+        }
+    )
+
+    assert result["ok"] is True
+    assert seen == {
+        "image_path": "standard-example.png",
+        "capture_id": "2.1.1",
+        "initial_session": initial_session,
+    }
 
 
 def test_v6_convergence_wrappers_are_independent_and_main_calls_them_once():
@@ -649,13 +861,67 @@ def test_v6_coarse_top_maps_image_right_to_machine_x_and_image_up_to_machine_z()
     )
     assert result["ok"] is True
     assert result["schema_version"] == 2
-    assert result["stage1"] == "Align_X1"
+    assert result["stage1"] == "Align_Z1"
     assert result["delta1_um"] == pytest.approx(-50.0)
-    assert result["stage2"] == "Align_Z1"
+    assert result["stage2"] == "Align_X1"
     assert result["delta2_um"] == pytest.approx(-50.0)
     mapping = result["diagnostics"]["correction"]["view_mapping"]
     assert mapping["image_right"] == {"machine_axis": "machine_x_um", "sign": 1.0}
     assert mapping["image_up"] == {"machine_axis": "machine_z_um", "sign": 1.0}
+
+
+def test_v6_lateral_correction_fails_closed_below_reviewed_clearance_height():
+    low_pose = _pose()
+    low_pose["tower_1"]["machine_y_um"] = 12000.0
+    standard = _circle_session(100.0, 200.0, role="ball_1_gross_ball")
+    live = _circle_session(110.0, 200.0, role="ball_1_gross_ball")
+    memory = _memory_with_records(
+        standard_baselines={"2.1.1": standard},
+        records={"2.1.1": _record("2.1.1", live, pose=low_pose)},
+    )
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "next_offset_correction",
+            "capture_id": "2.1.1",
+            "memory": memory,
+            "machine_positions_um": low_pose,
+        }
+    )
+
+    assert result["ok"] is False
+    assert result["move_count"] == 0
+    assert "below its reviewed safe-height boundary" in result["status"]
+
+
+def test_v6_ball_1_motion_fails_closed_when_ball_2_records_are_still_active():
+    standard = _circle_session(100.0, 200.0, role="ball_1_gross_ball")
+    live = _circle_session(110.0, 200.0, role="ball_1_gross_ball")
+    memory = _memory_with_records(
+        standard_baselines={"2.1.1": standard},
+        records={
+            "2.1.1": _record("2.1.1", live),
+            "4.6.2": _record(
+                "4.6.2",
+                _side_session(900.0, target="ball_2"),
+            ),
+        },
+    )
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "next_offset_correction",
+            "capture_id": "2.1.1",
+            "memory": memory,
+            "machine_positions_um": _pose(),
+        }
+    )
+
+    assert result["ok"] is False
+    assert result["move_count"] == 0
+    assert "cannot re-enter ball_1 motion" in result["status"]
 
 
 def test_v6_fine_top_targets_289_and_compensates_recorded_camera_xz_change():
@@ -671,6 +937,7 @@ def test_v6_fine_top_targets_289_and_compensates_recorded_camera_xz_change():
             ),
         }
     )
+    _satisfy_correction_prerequisites(memory, "2.5.1")
     result = run_v6_vision_workflow(
         {
             "schema_version": SCHEMA_VERSION,
@@ -688,10 +955,56 @@ def test_v6_fine_top_targets_289_and_compensates_recorded_camera_xz_change():
     assert correction["measured_machine_x_um"] == pytest.approx(70.0)
     assert correction["measured_machine_z_um"] == pytest.approx(50.0)
     assert correction["target_coordinates_um"] == {"machine_x_um": 289.0, "machine_z_um": 0.0}
-    assert result["stage1"] == "Align_X1"
-    assert result["delta1_um"] == pytest.approx(150.0)
-    assert result["stage2"] == "Align_Z1"
-    assert result["delta2_um"] == pytest.approx(-50.0)
+    assert result["stage1"] == "Align_Z1"
+    assert result["delta1_um"] == pytest.approx(-50.0)
+    assert result["stage2"] == "Align_X1"
+    assert result["delta2_um"] == pytest.approx(150.0)
+
+
+def test_v6_ball_2_fine_correction_selects_axis_order_with_more_ball_clearance():
+    memory, ball_pose = _ball_2_fine_memory(
+        measured_machine_x_um=289.0,
+        measured_machine_z_um=800.0,
+    )
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "next_offset_correction",
+            "capture_id": "4.5.1",
+            "memory": memory,
+            "machine_positions_um": ball_pose,
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["stage1"] == "Align_X2"
+    assert result["stage2"] == "Align_Z2"
+    path = result["diagnostics"]["collision_path"]
+    assert path["required"] is True
+    assert path["selected_move_order"] == ["Align_X2", "Align_Z2"]
+    assert path["selected_path"]["minimum_surface_gap_um"] > 0.0
+
+
+def test_v6_ball_2_fine_correction_rejects_a_path_starting_in_ball_overlap():
+    memory, ball_pose = _ball_2_fine_memory(
+        measured_machine_x_um=289.0,
+        measured_machine_z_um=400.0,
+    )
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "next_offset_correction",
+            "capture_id": "4.5.1",
+            "memory": memory,
+            "machine_positions_um": ball_pose,
+        }
+    )
+
+    assert result["ok"] is False
+    assert result["move_count"] == 0
+    assert "no strict ball-to-ball-safe axis order" in result["status"]
 
 
 def test_v6_fine_top_fails_closed_when_zoom_context_differs():
@@ -703,6 +1016,7 @@ def test_v6_fine_top_fails_closed_when_zoom_context_differs():
             "2.5.1": _record("2.5.1", _circle_session(100.0, 50.0, role="ball_1_top_ball"), pose=ball_pose),
         }
     )
+    _satisfy_correction_prerequisites(memory, "2.5.1")
     result = run_v6_vision_workflow(
         {
             "schema_version": SCHEMA_VERSION,
@@ -722,6 +1036,7 @@ def test_v6_fine_top_fails_closed_when_image_dimensions_are_unknown():
     ball = _record("2.5.1", _circle_session(100.0, 50.0, role="ball_1_top_ball"))
     reference["image_dimensions_px"] = {}
     memory = _memory_with_records(records={"2.4.1": reference, "2.5.1": ball})
+    _satisfy_correction_prerequisites(memory, "2.5.1")
 
     result = run_v6_vision_workflow(
         {
@@ -746,6 +1061,7 @@ def test_v6_side_uses_two_line_300_um_scale_and_bottom_mirror_inversion():
     assert geometry["trench_top_transform"]["mirror_flipped"]["image_y_px"] == pytest.approx(100.0)
 
     memory = _memory_with_records(records={"2.6.1": _record("2.6.1", session)})
+    _satisfy_correction_prerequisites(memory, "2.6.1")
     result = run_v6_vision_workflow(
         {
             "schema_version": SCHEMA_VERSION,
@@ -760,6 +1076,26 @@ def test_v6_side_uses_two_line_300_um_scale_and_bottom_mirror_inversion():
     assert correction["measured_machine_y_um"] == pytest.approx(12.0)
     assert result["stage1"] == "Align_Y1"
     assert result["delta1_um"] == pytest.approx(-12.0)
+
+
+def test_v6_side_insertion_fails_closed_before_top_alignment_and_transition():
+    memory = _memory_with_records(
+        records={"2.6.1": _record("2.6.1", _side_session(910.0))}
+    )
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "next_offset_correction",
+            "capture_id": "2.6.1",
+            "memory": memory,
+            "machine_positions_um": _pose(),
+        }
+    )
+
+    assert result["ok"] is False
+    assert result["move_count"] == 0
+    assert "reviewed capture record for 2.5.1" in result["status"]
 
 
 def test_v6_side_mirror_transform_uses_roi_local_coordinates_before_flip():
@@ -797,6 +1133,7 @@ def test_v6_side_missing_or_ambiguous_features_fail_closed(mutator, expected):
     session = _side_session(910.0)
     mutator(session)
     memory = _memory_with_records(records={"2.6.1": _record("2.6.1", session)})
+    _satisfy_correction_prerequisites(memory, "2.6.1")
     result = run_v6_vision_workflow(
         {
             "schema_version": SCHEMA_VERSION,
@@ -992,6 +1329,103 @@ def test_v6_rerecord_retains_history_and_invalidates_dependent_plans(tmp_path):
     assert "2.1_to_2.4" not in memory["transition_records"]
 
 
+def test_v6_rerecording_reference_invalidates_all_downstream_convergence_and_transitions(
+    tmp_path,
+):
+    memory_path = tmp_path / "memory.json"
+    memory = _memory_with_records(records=_valid_workflow_records())
+    _complete_workflow_state(memory)
+    memory["transition_records"]["2.1_to_2.4"]["from_position_id"] = "2.1"
+    memory_path.write_text(json.dumps(memory), encoding="utf-8")
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "record_capture",
+            "capture_id": "2.4.1",
+            "image_path": "supplied-review.bmp",
+            "memory_path": str(memory_path),
+            "machine_positions_before_grab_um": _pose(),
+            "machine_positions_after_grab_um": _pose(),
+            "review_session": _rectangle_session(center_x=101.0),
+        }
+    )
+
+    assert result["ok"] is True
+    persisted = json.loads(memory_path.read_text(encoding="utf-8"))
+    assert persisted["convergence"]["2.1.1"]["status"] == "converged"
+    for capture_id in ("2.5.1", "2.6.1", "4.1.1", "4.5.1", "4.6.2"):
+        state = persisted["convergence"][capture_id]
+        assert state["status"] == "invalidated"
+        assert state["invalidated_by_capture_id"] == "2.4.1"
+    assert set(persisted["transition_records"]) == {"2.1_to_2.4"}
+    assert {
+        "transition:2.4_to_2.5",
+        "transition:2.5_to_2.6",
+        "transition:4.1_to_4.4",
+        "transition:4.4_to_4.5",
+        "transition:4.5_to_4.6.2",
+    }.issubset(set(result["invalidated_plan_ids"]))
+
+
+def test_v6_fresh_capture_preserves_current_move_state_for_divergence_check(tmp_path):
+    memory_path = tmp_path / "memory.json"
+    standard = _circle_session(100.0, 100.0, role="ball_1_gross_ball")
+    memory = _memory_with_records(
+        standard_baselines={"2.1.1": standard},
+        records={
+            "2.1.1": _record(
+                "2.1.1",
+                _circle_session(110.0, 100.0, role="ball_1_gross_ball"),
+            )
+        },
+    )
+    memory_path.write_text(json.dumps(memory), encoding="utf-8")
+    first = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "next_offset_correction",
+            "capture_id": "2.1.1",
+            "memory_path": str(memory_path),
+            "machine_positions_um": _pose(),
+        }
+    )
+    assert first["ok"] is True
+
+    rerecorded = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "record_capture",
+            "capture_id": "2.1.1",
+            "image_path": "supplied-review.bmp",
+            "memory_path": str(memory_path),
+            "machine_positions_before_grab_um": _pose(),
+            "machine_positions_after_grab_um": _pose(),
+            "review_session": _circle_session(
+                120.0,
+                100.0,
+                role="ball_1_gross_ball",
+            ),
+        }
+    )
+    assert rerecorded["ok"] is True
+    persisted = json.loads(memory_path.read_text(encoding="utf-8"))
+    assert persisted["convergence"]["2.1.1"]["status"] == "move_planned"
+    assert persisted["convergence"]["2.1.1"]["capture_revision"] == 1
+
+    second = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "next_offset_correction",
+            "capture_id": "2.1.1",
+            "memory_path": str(memory_path),
+            "machine_positions_um": _pose(),
+        }
+    )
+    assert second["ok"] is False
+    assert "residual increased" in second["status"]
+
+
 def test_v6_convergence_aborts_when_residual_increases_after_move(tmp_path):
     memory_path = tmp_path / "memory.json"
     standard = _circle_session(100.0, 100.0, role="ball_1_gross_ball")
@@ -1161,6 +1595,33 @@ def test_v6_transition_rebases_standard_delta_and_outputs_canonical_axes():
     assert result["target1_um"] == pytest.approx(17000.0)
 
 
+def test_v6_top_to_side_transition_rejects_nonpositive_insertion_clearance():
+    memory = _memory_with_records(
+        records={
+            "2.4.1": _record("2.4.1", _rectangle_session()),
+            "2.5.1": _record(
+                "2.5.1",
+                _circle_session(100.0, 50.0, role="ball_1_top_ball"),
+            ),
+        }
+    )
+    _mark_converged(memory, "2.5.1")
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "next_transition_move",
+            "transition_id": "2.5_to_2.6",
+            "memory": memory,
+            "machine_positions_um": _pose(),
+        }
+    )
+
+    assert result["ok"] is False
+    assert result["move_count"] == 0
+    assert "side insertion does not preserve strict" in result["status"]
+
+
 def test_v6_yase_transition_requires_current_converged_source_capture(tmp_path):
     memory_path = tmp_path / "memory.json"
     run_v6_vision_workflow(
@@ -1269,11 +1730,13 @@ def test_v6_final_read_only_verification_proves_289_989_and_700():
         ),
         "4.6.2": _record("4.6.2", _side_session(900.0, target="ball_2")),
     }
+    memory = _memory_with_records(records=records)
+    _complete_workflow_state(memory)
     result = run_v6_vision_workflow(
         {
             "schema_version": SCHEMA_VERSION,
             "command": "verify_final_geometry",
-            "memory": _memory_with_records(records=records),
+            "memory": memory,
         }
     )
     assert result["ok"] is True
@@ -1284,3 +1747,50 @@ def test_v6_final_read_only_verification_proves_289_989_and_700():
     assert result["measured_coordinates_um"]["ball_1"] == pytest.approx(FINAL_TARGETS_UM["ball_1"])
     assert result["measured_coordinates_um"]["ball_2"] == pytest.approx(FINAL_TARGETS_UM["ball_2"])
     assert result["measured_center_spacing_um"] == pytest.approx(FINAL_CENTER_SPACING_UM)
+    assert result["collision_clearance"]["axial_surface_gaps_um"] == pytest.approx(
+        {
+            "source_to_ball_1_surface_gap_um": 39.0,
+            "ball_1_to_ball_2_surface_gap_um": 200.0,
+            "ball_2_to_taper_surface_gap_um": 39.0,
+        }
+    )
+    assert result["collision_clearance"]["trench_floor_surface_gaps_um"] == pytest.approx(
+        {"ball_1": 50.0, "ball_2": 50.0}
+    )
+
+
+def test_v6_final_layout_requires_strict_positive_surface_gaps():
+    clearance = final_layout_clearance(
+        {
+            "ball_1": {
+                "machine_x_um": 289.0,
+                "machine_y_um": 0.0,
+                "machine_z_um": 0.0,
+            },
+            "ball_2": {
+                "machine_x_um": 789.0,
+                "machine_y_um": 0.0,
+                "machine_z_um": 0.0,
+            },
+        }
+    )
+
+    assert clearance["strictly_clear"] is False
+    assert clearance["axial_surface_gaps_um"]["ball_1_to_ball_2_surface_gap_um"] == 0.0
+    assert clearance["minimum_checked_surface_gap_um"] == 0.0
+
+
+def test_v6_final_verification_fails_closed_without_completed_workflow_state():
+    memory = _memory_with_records(records=_valid_workflow_records())
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "verify_final_geometry",
+            "memory": memory,
+        }
+    )
+
+    assert result["ok"] is False
+    assert result["move_count"] == 0
+    assert "to be converged before continuing" in result["status"]

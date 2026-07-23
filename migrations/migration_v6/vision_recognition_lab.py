@@ -754,7 +754,7 @@ def detect_side_trench_ruler_lines(
     return floor, top
 
 
-def photo_image_from_grayscale(gray_image: np.ndarray) -> tk.PhotoImage:
+def photo_image_from_grayscale(gray_image: np.ndarray, *, master: tk.Misc | None = None) -> tk.PhotoImage:
     """Build a Tk image from a normalized grayscale array without Pillow."""
 
     if gray_image.ndim != 2:
@@ -764,18 +764,23 @@ def photo_image_from_grayscale(gray_image: np.ndarray) -> tk.PhotoImage:
         raise ValueError("cannot display an empty image")
     gray_u8 = np.clip(np.rint(gray_image * 255.0), 0, 255).astype(np.uint8, copy=False)
     header = f"P5\n{width} {height}\n255\n".encode("ascii")
-    return tk.PhotoImage(data=header + gray_u8.tobytes())
+    return tk.PhotoImage(master=master, data=header + gray_u8.tobytes())
 
 
-def load_display_photo_image(path: str | Path, gray_image: np.ndarray | None = None) -> tk.PhotoImage:
+def load_display_photo_image(
+    path: str | Path,
+    gray_image: np.ndarray | None = None,
+    *,
+    master: tk.Misc | None = None,
+) -> tk.PhotoImage:
     """Load an image for Tk display, falling back to grayscale PGM for BMP captures."""
 
     try:
-        return tk.PhotoImage(file=str(path))
+        return tk.PhotoImage(master=master, file=str(path))
     except tk.TclError:
         if gray_image is None:
             gray_image = read_grayscale_image(path)
-        return photo_image_from_grayscale(gray_image)
+        return photo_image_from_grayscale(gray_image, master=master)
 
 
 def recognize_shapes(
@@ -4390,7 +4395,7 @@ class VisionRecognitionLab(tk.Toplevel):
             gray_image = None
             recognition_error = f"Recognition unavailable: {exc}"
         try:
-            photo = load_display_photo_image(image.path, gray_image)
+            photo = load_display_photo_image(image.path, gray_image, master=self)
         except (OSError, ValueError, tk.TclError) as exc:
             self._clear_image(f"Could not load {image.path.name}: {exc}")
             return

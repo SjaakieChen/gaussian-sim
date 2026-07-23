@@ -70,11 +70,11 @@ The safer pattern appears in two independent sources:
 V6 follows that pattern:
 
 ```text
+all towers with lateral targets -> clearance Y
 camera X/Z/zoom/Y approach
-active tower Y -> clearance
-active tower Z
-active tower X
-active tower Y -> final target
+active tower machine Z
+active tower machine X
+active tower machine Y -> final target
 settings/exposure/lights
 ```
 
@@ -92,10 +92,34 @@ For v6 transition files, Python creates one anchored transition target in
 important because the transition sequence loops through one move at a time; it
 must not rebase the target from the updated current position after each move.
 
+Image-derived lateral correction is allowed only while the active tower is at
+or above the reviewed standard-position Y for that view. Smaller machine Y is
+treated as downward. A side Y correction is not planned until the top-view
+correction for that ball has converged and the top-to-side transition is
+recorded complete.
+
+For ball 2, Python projects each bounded X/Z segment into the common final
+rectangle-relative frame. It evaluates both Z-then-X and X-then-Z, rejects any
+path whose minimum ball-to-ball surface gap is not strictly positive, and uses
+the valid order with the larger minimum gap. This check ignores the real
+vertical separation while the second ball is raised, so it is conservative.
+
+The final read-only layout check uses a 500 um ball diameter and requires
+strictly positive source-to-ball, ball-to-ball, ball-to-taper, and
+ball-to-trench-floor gaps. At the requested `(289, 0, 0)` and `(989, 0, 0)`
+centers, those nominal surface gaps are `39`, `200`, `39`, and `50` um.
+
+These are reviewed common-frame geometry checks. The repository does not have
+a calibrated transform for every raw stage coordinate, gripper body, trench
+edge, or camera assembly, so it cannot prove the complete physical swept
+volume from code alone.
+
 ## Remaining Machine-Side Checks
 
 - Confirm real per-axis soft limits and collision volumes.
 - Confirm the derived clearance Y values are physically safe on the machine.
+- Commission the raw stage-to-ball, gripper, trench, and camera collision
+  envelopes; the common-frame sphere checks do not replace them.
 - Confirm motion wait timeouts are compatible with the medium/slow velocities
   and worst-case deltas.
 - Confirm image-right/`Align_X*` and image-up/`Align_Z*` correction signs with

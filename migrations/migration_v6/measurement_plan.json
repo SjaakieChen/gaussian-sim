@@ -52,7 +52,18 @@
   "physical_constants_um": {
     "laser_rectangle_short_edge_um": 500.0,
     "ball_diameter_um": 500.0,
-    "trench_top_to_floor_um": 300.0
+    "ball_radius_um": 250.0,
+    "trench_top_to_floor_um": 300.0,
+    "layout_source_machine_x_um": 0.0,
+    "layout_taper_machine_x_um": 1278.0
+  },
+  "final_clearance_model_um": {
+    "strict_positive_gap_required": true,
+    "source_to_ball_1_surface_gap_um": 39.0,
+    "ball_1_to_ball_2_surface_gap_um": 200.0,
+    "ball_2_to_taper_surface_gap_um": 39.0,
+    "ball_surface_to_trench_floor_gap_um": 50.0,
+    "coordinate_frame": "reviewed final rectangle-relative machine X/Y/Z frame"
   },
   "calibration_contexts": {
     "gross_top_xz": {
@@ -102,7 +113,7 @@
       "revision",
       "recorded_at_utc"
     ],
-    "replacement_rule": "A re-recorded capture replaces its active record, archives the prior revision, and invalidates dependent correction, transition, and verification plans.",
+    "replacement_rule": "A re-recorded capture replaces its active record, archives the prior revision, and invalidates all downstream correction plans, convergence states, transitions, and final verification.",
     "cancel_rule": "Review cancellation does not update memory.",
     "stability_rule": "All camera, zoom, and tower axes are queried before and after the grab; excessive motion rejects the capture.",
     "settings_rule": "Standard exposure and three light outputs are reapplied before the operator focus/framing gate and stored as commanded values; the operator must not change them because analog readback is not claimed."
@@ -121,7 +132,23 @@
     "transition_velocity": "medium",
     "vision_correction_velocity": "slow",
     "fast_close_to_chip_allowed": false,
-    "real_image_derived_move_requires_operator_confirmation": true
+    "real_image_derived_move_requires_operator_confirmation": true,
+    "standard_position_order": [
+      "raise every tower with an X/Z target to its reviewed clearance Y",
+      "move camera and zoom",
+      "move tower machine Z before machine X",
+      "lower each tower to final machine Y only after lateral motion"
+    ],
+    "second_ball_correction_order": "Evaluate both bounded machine X/Z axis orders in the final common frame and select the strict-clearance path with the largest projected ball-to-ball surface gap.",
+    "side_insertion_order": "Validate strict common-frame insertion clearance before starting the top-to-side transition, then require that completed transition before any image-derived machine Y correction."
+  },
+  "workflow_prerequisites": {
+    "2.5.1": ["2.1.1 converged", "2.1_to_2.4 complete", "2.4_to_2.5 complete"],
+    "2.6.1": ["2.5.1 converged", "2.5_to_2.6 complete"],
+    "4.1.1": ["2.6.1 converged"],
+    "4.5.1": ["2.6.1 converged", "4.1.1 converged", "4.1_to_4.4 complete", "4.4_to_4.5 complete"],
+    "4.6.2": ["2.6.1 converged", "4.5.1 converged", "4.5_to_4.6.2 complete"],
+    "final_verification": ["all six correction captures converged at their active revisions", "all six transitions complete"]
   },
   "steps": [
     {
@@ -214,8 +241,14 @@
     "No correction outside the configured total residual or per-step bound.",
     "No repeated correction from the same capture revision.",
     "No continued convergence when the residual increases.",
+    "No lateral tower correction below the reviewed standard-position machine Y boundary.",
+    "No side insertion before the active top-view capture is converged and its top-to-side transition is complete.",
+    "No top-to-side lowering transition unless the reviewed top geometry preserves strict source, ball, taper, and trench-floor clearance.",
+    "No second-ball X/Z correction when neither bounded axis order preserves a strictly positive projected ball-to-ball surface gap.",
+    "No backward re-entry into ball 1 correction or transition motion while active ball 2 records remain in memory.",
+    "No final pass unless source, ball-to-ball, taper, and trench-floor surface gaps are strictly positive.",
     "No YASE transition anchor without a current reviewed source capture and a matching converged revision when that source has an offset correction.",
     "No direct hardware motion from Python."
   ],
-  "commissioning_boundary": "Repository tests and static audits are not physical machine validation. Signs, soft limits, collision clearance, waits, and mirror behavior require guarded machine commissioning."
+  "commissioning_boundary": "Repository tests and static audits validate ordering and reviewed common-frame geometry, not the raw stage-to-object collision envelope. Signs, soft limits, gripper and trench volumes, clearance Y coordinates, waits, and mirror behavior require guarded machine commissioning."
 }

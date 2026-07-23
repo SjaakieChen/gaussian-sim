@@ -52,6 +52,9 @@ DEFAULT_MIN_TRENCH_LINE_SEPARATION_PX = 10.0
 DEFAULT_MAX_TRENCH_LINE_SEPARATION_PX = 1000.0
 DEFAULT_MIN_SIDE_SCALE_UM_PER_PX = 0.05
 DEFAULT_MAX_SIDE_SCALE_UM_PER_PX = 20.0
+DEFAULT_COLLISION_EPSILON_UM = 1.0e-6
+DEFAULT_LAYOUT_SOURCE_MACHINE_X_UM = 0.0
+DEFAULT_LAYOUT_TAPER_MACHINE_X_UM = 1278.0
 TRANSITION_STATUSES = {"in_progress", "complete"}
 
 MACHINE_AXES = ("machine_x_um", "machine_y_um", "machine_z_um")
@@ -197,6 +200,33 @@ TRANSITION_SPECS: dict[str, JsonDict] = {
     "4.5_to_4.6.2": {"from_position_id": "4.5", "to_position_id": "4.6.2", "target": "ball_2"},
 }
 
+WORKFLOW_CAPTURE_IDS = tuple(CAPTURE_SPECS)
+FINE_TOP_CAPTURE_BY_TARGET = {"ball_1": "2.5.1", "ball_2": "4.5.1"}
+CORRECTION_PREREQUISITES: dict[str, JsonDict] = {
+    "2.1.1": {},
+    "2.5.1": {
+        "records": ("2.4.1",),
+        "converged": ("2.1.1",),
+        "transitions": ("2.1_to_2.4", "2.4_to_2.5"),
+    },
+    "2.6.1": {
+        "converged": ("2.5.1",),
+        "transitions": ("2.5_to_2.6",),
+    },
+    "4.1.1": {
+        "converged": ("2.6.1",),
+    },
+    "4.5.1": {
+        "records": ("4.4.1",),
+        "converged": ("2.6.1", "4.1.1"),
+        "transitions": ("4.1_to_4.4", "4.4_to_4.5"),
+    },
+    "4.6.2": {
+        "converged": ("2.6.1", "4.5.1"),
+        "transitions": ("4.5_to_4.6.2",),
+    },
+}
+
 
 @dataclass(frozen=True)
 class PlannedMove:
@@ -317,7 +347,9 @@ def review_and_record_capture(params_in: JsonDict) -> JsonDict:
 
     review_session = as_dict(params_in.get("review_session"))
     if not review_session:
-        baseline = standard_session_for_capture(capture_id, memory, params_in)
+        baseline = as_dict(params_in.get("initial_review_session"))
+        if not baseline:
+            baseline = standard_session_for_capture(capture_id, memory, params_in)
         review_session = open_v6_vision_review_ui(
             image_path,
             capture_id=capture_id,
@@ -418,6 +450,13 @@ def next_offset_correction(params_in: JsonDict) -> JsonDict:
             "capture_pose_tolerance_um",
         ),
     )
+    motion_safety = validate_offset_correction_prerequisites(
+        memory,
+        capture_id=capture_id,
+        spec=spec,
+        current_positions=current_positions,
+        params_in=params_in,
+    )
 
     max_step_um = positive_float(
         params_in.get("max_step_um", params_in.get("max_correction_um", spec["max_step_um"])),
@@ -460,6 +499,14 @@ def next_offset_correction(params_in: JsonDict) -> JsonDict:
             tolerance_um=tolerance_um,
             phase=f"v6_{spec['kind']}_offset_correction",
         )
+        planned_moves, collision_path = collision_ordered_offset_moves(
+            memory,
+            capture_id=capture_id,
+            spec=spec,
+            correction=correction,
+            planned_moves=planned_moves,
+            params_in=params_in,
+        )
     except Exception:
         convergence["status"] = "bounds_rejected"
         convergence["updated_at_utc"] = utc_now_text()
@@ -475,6 +522,8 @@ def next_offset_correction(params_in: JsonDict) -> JsonDict:
         max_step_um=max_step_um,
         max_total_residual_um=max_total_residual_um,
         convergence=convergence,
+        motion_safety=motion_safety,
+        collision_path=collision_path,
     )
     save_correction_plan(memory, capture_id, record, response)
     persist_memory(memory, params_in)
@@ -510,6 +559,12 @@ def coarse_top_correction(capture_id: str, spec: JsonDict, memory: JsonDict, par
         "machine_x_um": -image_shift["image_x_px"] * um_per_pixel,
         "machine_z_um": image_shift["image_y_px"] * um_per_pixel,
     }
+    estimated_current_common_xz_um = coarse_common_xz_estimate(
+        capture_id=capture_id,
+        spec=spec,
+        residuals_um=residuals,
+        params_in=params_in,
+    )
     return {
         "source": "standard_gross_ball_pixels_minus_live_gross_ball_pixels",
         "standard_ball_center_px": image_point(standard_ball.center_px),
@@ -526,8 +581,50 @@ def coarse_top_correction(capture_id: str, spec: JsonDict, memory: JsonDict, par
             "image_up": {"machine_axis": "machine_z_um", "sign": 1.0},
             "image_y_down": {"machine_axis": "machine_z_um", "sign": -1.0},
         },
+        "estimated_current_common_xz_um": estimated_current_common_xz_um,
         "axis_residuals_um": residuals,
         "axis_corrections_um": deepcopy_json(residuals),
+    }
+
+
+def coarse_common_xz_estimate(
+    *,
+    capture_id: str,
+    spec: JsonDict,
+    residuals_um: JsonDict,
+    params_in: JsonDict,
+) -> JsonDict:
+    """Estimate the coarse ball center in the final common X/Z frame."""
+
+    target = str(spec["target"])
+    tower = str(spec["tower"])
+    fine_capture_id = FINE_TOP_CAPTURE_BY_TARGET[target]
+    standard_positions = load_standard_positions(params_in)
+    coarse_position_id = str(CAPTURE_SPECS[capture_id]["position_id"])
+    fine_position_id = str(CAPTURE_SPECS[fine_capture_id]["position_id"])
+    coarse_position = as_dict(standard_positions.get(coarse_position_id))
+    fine_position = as_dict(standard_positions.get(fine_position_id))
+    if not coarse_position or not fine_position:
+        raise ValueError(
+            f"coarse collision estimate requires standard positions "
+            f"{coarse_position_id} and {fine_position_id}"
+        )
+    coarse_axes = as_dict(position_target_axes(coarse_position).get(tower))
+    fine_axes = as_dict(position_target_axes(fine_position).get(tower))
+    nominal = {
+        axis: FINAL_TARGETS_UM[target][axis]
+        + finite_float(coarse_axes.get(axis), f"{coarse_position_id}.{tower}.{axis}")
+        - finite_float(fine_axes.get(axis), f"{fine_position_id}.{tower}.{axis}")
+        for axis in ("machine_x_um", "machine_z_um")
+    }
+    return {
+        "machine_x_um": nominal["machine_x_um"]
+        - finite_float(residuals_um.get("machine_x_um"), "coarse machine_x_um residual"),
+        "machine_z_um": nominal["machine_z_um"]
+        - finite_float(residuals_um.get("machine_z_um"), "coarse machine_z_um residual"),
+        "nominal_machine_x_um": nominal["machine_x_um"],
+        "nominal_machine_z_um": nominal["machine_z_um"],
+        "source": "final_target_plus_standard_coarse_minus_fine_tower_delta",
     }
 
 
@@ -882,6 +979,7 @@ def verify_final_geometry(params_in: JsonDict) -> JsonDict:
 
     require_schema(params_in)
     memory = load_memory_from_params(params_in)
+    workflow_order = validate_final_workflow_prerequisites(memory)
     ball_1_top = top_ball_measurement(
         memory,
         reference_capture_id="2.4.1",
@@ -924,11 +1022,12 @@ def verify_final_geometry(params_in: JsonDict) -> JsonDict:
         params_in.get("spacing_tolerance_um", tolerance),
         "spacing_tolerance_um",
     )
+    collision_clearance = final_layout_clearance(measured, params_in=params_in)
     within = all(
         abs(residuals[target][axis]) <= tolerance
         for target in ("ball_1", "ball_2")
         for axis in MACHINE_AXES
-    ) and abs(spacing_residual) <= spacing_tolerance
+    ) and abs(spacing_residual) <= spacing_tolerance and collision_clearance["strictly_clear"]
     return {
         "schema_version": SCHEMA_VERSION,
         "ok": True,
@@ -952,12 +1051,115 @@ def verify_final_geometry(params_in: JsonDict) -> JsonDict:
         "spacing_residual_um": spacing_residual,
         "tolerance_um": tolerance,
         "spacing_tolerance_um": spacing_tolerance,
+        "collision_clearance": collision_clearance,
+        "workflow_order": workflow_order,
         "diagnostics": {
             "ball_1_top": ball_1_top,
             "ball_2_top": ball_2_top,
             "ball_1_side": ball_1_y,
             "ball_2_side": ball_2_y,
         },
+    }
+
+
+def validate_final_workflow_prerequisites(memory: JsonDict) -> JsonDict:
+    converged_capture_ids = []
+    for capture_id in OFFSET_SPECS:
+        require_converged_capture(memory, capture_id)
+        converged_capture_ids.append(capture_id)
+    completed_transition_ids = []
+    for transition_id in TRANSITION_SPECS:
+        require_completed_transition(memory, transition_id)
+        completed_transition_ids.append(transition_id)
+    return {
+        "valid": True,
+        "converged_capture_ids": converged_capture_ids,
+        "completed_transition_ids": completed_transition_ids,
+    }
+
+
+def final_layout_clearance(
+    measured: JsonDict,
+    *,
+    params_in: JsonDict | None = None,
+) -> JsonDict:
+    """Evaluate strict sphere and trench clearances in the common final frame."""
+
+    params_in = params_in or {}
+    diameter_um = positive_float(
+        params_in.get("ball_diameter_um", DEFAULT_BALL_DIAMETER_UM),
+        "ball_diameter_um",
+    )
+    radius_um = 0.5 * diameter_um
+    source_x_um = finite_float(
+        params_in.get("layout_source_machine_x_um", DEFAULT_LAYOUT_SOURCE_MACHINE_X_UM),
+        "layout_source_machine_x_um",
+    )
+    taper_x_um = finite_float(
+        params_in.get("layout_taper_machine_x_um", DEFAULT_LAYOUT_TAPER_MACHINE_X_UM),
+        "layout_taper_machine_x_um",
+    )
+    trench_height_um = positive_float(
+        params_in.get("trench_height_um", DEFAULT_TRENCH_HEIGHT_UM),
+        "trench_height_um",
+    )
+    epsilon_um = positive_float(
+        params_in.get("collision_epsilon_um", DEFAULT_COLLISION_EPSILON_UM),
+        "collision_epsilon_um",
+    )
+    coordinates = {
+        target: {
+            axis: finite_float(
+                as_dict(measured.get(target)).get(axis),
+                f"{target}.{axis}",
+            )
+            for axis in MACHINE_AXES
+        }
+        for target in ("ball_1", "ball_2")
+    }
+    ball_1_x = coordinates["ball_1"]["machine_x_um"]
+    ball_2_x = coordinates["ball_2"]["machine_x_um"]
+    axial_gaps = {
+        "source_to_ball_1_surface_gap_um": ball_1_x - radius_um - source_x_um,
+        "ball_1_to_ball_2_surface_gap_um": ball_2_x - ball_1_x - diameter_um,
+        "ball_2_to_taper_surface_gap_um": taper_x_um - ball_2_x - radius_um,
+    }
+    trench_floor_y_um = -trench_height_um
+    trench_floor_gaps = {
+        target: coordinates[target]["machine_y_um"] - radius_um - trench_floor_y_um
+        for target in ("ball_1", "ball_2")
+    }
+    center_distance_um = math.sqrt(
+        sum(
+            (
+                coordinates["ball_2"][axis]
+                - coordinates["ball_1"][axis]
+            )
+            ** 2
+            for axis in MACHINE_AXES
+        )
+    )
+    sphere_surface_gap_um = center_distance_um - diameter_um
+    checked_gaps = [
+        *axial_gaps.values(),
+        *trench_floor_gaps.values(),
+        sphere_surface_gap_um,
+    ]
+    return {
+        "strictly_clear": all(gap > epsilon_um for gap in checked_gaps),
+        "ball_diameter_um": diameter_um,
+        "ball_radius_um": radius_um,
+        "source_machine_x_um": source_x_um,
+        "taper_machine_x_um": taper_x_um,
+        "trench_top_machine_y_um": 0.0,
+        "trench_floor_machine_y_um": trench_floor_y_um,
+        "collision_epsilon_um": epsilon_um,
+        "axial_surface_gaps_um": axial_gaps,
+        "trench_floor_surface_gaps_um": trench_floor_gaps,
+        "ball_center_distance_3d_um": center_distance_um,
+        "ball_to_ball_surface_gap_3d_um": sphere_surface_gap_um,
+        "minimum_checked_surface_gap_um": min(checked_gaps),
+        "coordinates_um": coordinates,
     }
 
 
@@ -1101,6 +1303,408 @@ def evaluate_convergence(
     return state
 
 
+def validate_offset_correction_prerequisites(
+    memory: JsonDict,
+    *,
+    capture_id: str,
+    spec: JsonDict,
+    current_positions: JsonDict,
+    params_in: JsonDict,
+) -> JsonDict:
+    """Enforce the reviewed workflow order before any collision-relevant move."""
+
+    validate_no_ball_1_reentry_after_ball_2(
+        memory,
+        target=str(spec["target"]),
+        context=f"correction {capture_id}",
+    )
+    prerequisite = as_dict(CORRECTION_PREREQUISITES.get(capture_id))
+    checked_records = []
+    for required_capture_id in prerequisite.get("records") or ():
+        recorded_capture(memory, str(required_capture_id))
+        checked_records.append(str(required_capture_id))
+    checked_convergence = []
+    for required_capture_id in prerequisite.get("converged") or ():
+        require_converged_capture(memory, str(required_capture_id))
+        checked_convergence.append(str(required_capture_id))
+    checked_transitions = []
+    for transition_id in prerequisite.get("transitions") or ():
+        require_completed_transition(memory, str(transition_id))
+        checked_transitions.append(str(transition_id))
+
+    lateral_height: JsonDict = {"required": False}
+    if str(spec["kind"]) in {"coarse_top", "top_fine"}:
+        standard_positions = load_standard_positions(params_in)
+        position_id = str(CAPTURE_SPECS[capture_id]["position_id"])
+        position = as_dict(standard_positions.get(position_id))
+        tower = str(spec["tower"])
+        standard_y = as_dict(position_target_axes(position).get(tower)).get("machine_y_um")
+        if standard_y is None:
+            raise ValueError(
+                f"{capture_id} has no reviewed standard machine_y_um for collision-safe lateral motion"
+            )
+        minimum_machine_y_um = finite_float(
+            standard_y,
+            f"{position_id}.{tower}.machine_y_um",
+        )
+        current_machine_y_um = axis_value(current_positions, tower, "machine_y_um")
+        tolerance_um = non_negative_float(
+            params_in.get("lateral_height_tolerance_um", DEFAULT_CAPTURE_POSE_TOLERANCE_UM),
+            "lateral_height_tolerance_um",
+        )
+        if current_machine_y_um + tolerance_um < minimum_machine_y_um:
+            raise ValueError(
+                f"{capture_id} lateral correction is below its reviewed safe-height boundary: "
+                f"{tower}.machine_y_um={current_machine_y_um:.6g}, required at least "
+                f"{minimum_machine_y_um:.6g} um; raise, reframe, and take a fresh reviewed capture"
+            )
+        lateral_height = {
+            "required": True,
+            "tower": tower,
+            "current_machine_y_um": current_machine_y_um,
+            "minimum_reviewed_machine_y_um": minimum_machine_y_um,
+            "tolerance_um": tolerance_um,
+            "smaller_machine_y_is_down": True,
+            "status": "at_or_above_reviewed_lateral_height",
+        }
+
+    insertion_clearance: JsonDict = {"required": False}
+    if str(spec["kind"]) == "side_mirror_y":
+        insertion_clearance = validate_side_insertion_clearance(
+            memory,
+            target=str(spec["target"]),
+            params_in=params_in,
+        )
+
+    return {
+        "workflow_order_valid": True,
+        "checked_record_capture_ids": checked_records,
+        "checked_converged_capture_ids": checked_convergence,
+        "checked_completed_transition_ids": checked_transitions,
+        "lateral_height": lateral_height,
+        "side_insertion_clearance": insertion_clearance,
+    }
+
+
+def require_converged_capture(memory: JsonDict, capture_id: str) -> JsonDict:
+    record = recorded_capture(memory, capture_id)
+    convergence = as_dict(as_dict(memory.get("convergence")).get(capture_id))
+    revision = int(record.get("revision") or 0)
+    if (
+        str(convergence.get("status") or "") != "converged"
+        or int(convergence.get("capture_revision") or 0) != revision
+    ):
+        raise ValueError(
+            f"collision-safe workflow requires capture {capture_id} revision {revision} "
+            "to be converged before continuing"
+        )
+    return convergence
+
+
+def require_completed_transition(memory: JsonDict, transition_id: str) -> JsonDict:
+    transition = as_dict(as_dict(memory.get("transition_records")).get(transition_id))
+    if str(transition.get("status") or "") != "complete":
+        raise ValueError(
+            f"collision-safe workflow requires transition {transition_id} to be complete"
+        )
+    return transition
+
+
+def validate_no_ball_1_reentry_after_ball_2(
+    memory: JsonDict,
+    *,
+    target: str,
+    context: str,
+) -> None:
+    if target != "ball_1":
+        return
+    records = as_dict(memory.get("capture_records"))
+    ball_2_capture_ids = sorted(
+        capture_id
+        for capture_id in records
+        if str(as_dict(CAPTURE_SPECS.get(capture_id)).get("target") or "") == "ball_2"
+    )
+    if ball_2_capture_ids:
+        raise ValueError(
+            f"{context} cannot re-enter ball_1 motion while active ball_2 records exist "
+            f"({', '.join(ball_2_capture_ids)}); physically reset the setup and initialize "
+            "a new V6 memory before restarting ball_1"
+        )
+
+
+def validate_side_insertion_clearance(
+    memory: JsonDict,
+    *,
+    target: str,
+    params_in: JsonDict,
+) -> JsonDict:
+    ball_1 = top_ball_measurement(
+        memory,
+        reference_capture_id="2.4.1",
+        ball_capture_id="2.5.1",
+        target="ball_1",
+        params_in=params_in,
+    )
+    ball_1_x = finite_float(ball_1["measured_machine_x_um"], "ball_1.machine_x_um")
+    ball_1_z = finite_float(ball_1["measured_machine_z_um"], "ball_1.machine_z_um")
+    diameter_um = positive_float(
+        params_in.get("ball_diameter_um", DEFAULT_BALL_DIAMETER_UM),
+        "ball_diameter_um",
+    )
+    radius_um = 0.5 * diameter_um
+    source_x_um = finite_float(
+        params_in.get("layout_source_machine_x_um", DEFAULT_LAYOUT_SOURCE_MACHINE_X_UM),
+        "layout_source_machine_x_um",
+    )
+    taper_x_um = finite_float(
+        params_in.get("layout_taper_machine_x_um", DEFAULT_LAYOUT_TAPER_MACHINE_X_UM),
+        "layout_taper_machine_x_um",
+    )
+    trench_height_um = positive_float(
+        params_in.get("trench_height_um", DEFAULT_TRENCH_HEIGHT_UM),
+        "trench_height_um",
+    )
+    epsilon_um = positive_float(
+        params_in.get("collision_epsilon_um", DEFAULT_COLLISION_EPSILON_UM),
+        "collision_epsilon_um",
+    )
+    ball_1_clearances = {
+        "source_surface_gap_um": ball_1_x - radius_um - source_x_um,
+        "taper_surface_gap_um": taper_x_um - ball_1_x - radius_um,
+        "trench_floor_surface_gap_um": trench_height_um - radius_um,
+    }
+    if any(gap <= epsilon_um for gap in ball_1_clearances.values()):
+        raise ValueError(
+            "ball_1 side insertion does not preserve strict source, taper, and trench-floor "
+            "surface gaps; no Y move was planned"
+        )
+    result: JsonDict = {
+        "required": True,
+        "target": target,
+        "ball_diameter_um": diameter_um,
+        "ball_radius_um": radius_um,
+        "ball_1_common_xz_um": {
+            "machine_x_um": ball_1_x,
+            "machine_z_um": ball_1_z,
+        },
+        "ball_1_clearances_um": ball_1_clearances,
+        "collision_epsilon_um": epsilon_um,
+    }
+    if target == "ball_1":
+        result["status"] = "ball_1_axial_insertion_clearance_valid"
+        return result
+
+    ball_2 = top_ball_measurement(
+        memory,
+        reference_capture_id="4.4.1",
+        ball_capture_id="4.5.1",
+        target="ball_2",
+        params_in=params_in,
+    )
+    measured = {
+        "ball_1": {
+            "machine_x_um": ball_1_x,
+            "machine_y_um": 0.0,
+            "machine_z_um": ball_1_z,
+        },
+        "ball_2": {
+            "machine_x_um": finite_float(
+                ball_2["measured_machine_x_um"],
+                "ball_2.machine_x_um",
+            ),
+            "machine_y_um": 0.0,
+            "machine_z_um": finite_float(
+                ball_2["measured_machine_z_um"],
+                "ball_2.machine_z_um",
+            ),
+        },
+    }
+    clearance = final_layout_clearance(measured, params_in=params_in)
+    if not clearance["strictly_clear"]:
+        raise ValueError(
+            "ball_2 side insertion would violate the source/ball/ball/taper or trench-floor "
+            "clearance model; no Y move was planned"
+        )
+    result.update({"status": "two_ball_axial_insertion_clearance_valid", "layout": clearance})
+    return result
+
+
+def collision_ordered_offset_moves(
+    memory: JsonDict,
+    *,
+    capture_id: str,
+    spec: JsonDict,
+    correction: JsonDict,
+    planned_moves: list[PlannedMove],
+    params_in: JsonDict,
+) -> tuple[list[PlannedMove], JsonDict]:
+    """Choose the axis order with the largest strict ball-to-ball path gap."""
+
+    preferred = sorted(planned_moves, key=offset_move_sort_key)
+    xz_moves = [
+        move
+        for move in preferred
+        if AXIS_FOR_STAGE[move.stage][1] in {"machine_x_um", "machine_z_um"}
+    ]
+    if str(spec["target"]) != "ball_2" or not xz_moves:
+        return preferred, {
+            "required": False,
+            "status": "no_second_ball_xz_path_to_check",
+            "move_order": [move.stage for move in preferred],
+        }
+
+    ball_1 = top_ball_measurement(
+        memory,
+        reference_capture_id="2.4.1",
+        ball_capture_id="2.5.1",
+        target="ball_1",
+        params_in=params_in,
+    )
+    obstacle = {
+        "machine_x_um": finite_float(ball_1["measured_machine_x_um"], "ball_1.machine_x_um"),
+        "machine_z_um": finite_float(ball_1["measured_machine_z_um"], "ball_1.machine_z_um"),
+    }
+    if str(spec["kind"]) == "coarse_top":
+        start = as_dict(correction.get("estimated_current_common_xz_um"))
+    else:
+        start = {
+            "machine_x_um": finite_float(
+                correction.get("measured_machine_x_um"),
+                "ball_2.measured_machine_x_um",
+            ),
+            "machine_z_um": finite_float(
+                correction.get("measured_machine_z_um"),
+                "ball_2.measured_machine_z_um",
+            ),
+        }
+    start_point = {
+        "machine_x_um": finite_float(start.get("machine_x_um"), "ball_2 start machine_x_um"),
+        "machine_z_um": finite_float(start.get("machine_z_um"), "ball_2 start machine_z_um"),
+    }
+    epsilon_um = positive_float(
+        params_in.get("collision_epsilon_um", DEFAULT_COLLISION_EPSILON_UM),
+        "collision_epsilon_um",
+    )
+    ball_diameter_um = positive_float(
+        params_in.get("ball_diameter_um", DEFAULT_BALL_DIAMETER_UM),
+        "ball_diameter_um",
+    )
+    orders = [preferred]
+    if len(xz_moves) == 2:
+        reversed_xz = list(reversed(xz_moves))
+        non_xz = [move for move in preferred if move not in xz_moves]
+        alternate = reversed_xz + non_xz
+        if [move.stage for move in alternate] != [move.stage for move in preferred]:
+            orders.append(alternate)
+
+    candidates = [
+        offset_path_clearance(
+            order,
+            start=start_point,
+            obstacle=obstacle,
+            ball_diameter_um=ball_diameter_um,
+        )
+        for order in orders
+    ]
+    valid = [
+        (order, candidate)
+        for order, candidate in zip(orders, candidates)
+        if candidate["minimum_surface_gap_um"] > epsilon_um
+    ]
+    if not valid:
+        best = max(candidates, key=lambda item: item["minimum_surface_gap_um"])
+        raise ValueError(
+            f"{capture_id} has no strict ball-to-ball-safe axis order; best projected "
+            f"surface gap is {best['minimum_surface_gap_um']:.6g} um"
+        )
+    order, best = max(
+        valid,
+        key=lambda item: (
+            item[1]["minimum_surface_gap_um"],
+            [move.stage for move in item[0]] == [move.stage for move in preferred],
+        ),
+    )
+    return order, {
+        "required": True,
+        "status": "strict_projected_ball_clearance_valid",
+        "moving_target": "ball_2",
+        "stationary_target": "ball_1",
+        "ball_diameter_um": ball_diameter_um,
+        "collision_epsilon_um": epsilon_um,
+        "selected_move_order": [move.stage for move in order],
+        "candidate_paths": candidates,
+        "selected_path": best,
+    }
+
+
+def offset_path_clearance(
+    moves: list[PlannedMove],
+    *,
+    start: JsonDict,
+    obstacle: JsonDict,
+    ball_diameter_um: float,
+) -> JsonDict:
+    current = (
+        finite_float(start["machine_x_um"], "path start machine_x_um"),
+        finite_float(start["machine_z_um"], "path start machine_z_um"),
+    )
+    obstacle_point = (
+        finite_float(obstacle["machine_x_um"], "obstacle machine_x_um"),
+        finite_float(obstacle["machine_z_um"], "obstacle machine_z_um"),
+    )
+    minimum_center_distance_um = math.dist(current, obstacle_point)
+    waypoints = [
+        {"machine_x_um": current[0], "machine_z_um": current[1]}
+    ]
+    for move in moves:
+        _stage_name, axis = AXIS_FOR_STAGE[move.stage]
+        next_point = current
+        if axis == "machine_x_um":
+            next_point = (current[0] + move.delta_um, current[1])
+        elif axis == "machine_z_um":
+            next_point = (current[0], current[1] + move.delta_um)
+        minimum_center_distance_um = min(
+            minimum_center_distance_um,
+            point_to_segment_distance(obstacle_point, current, next_point),
+        )
+        current = next_point
+        waypoints.append(
+            {"machine_x_um": current[0], "machine_z_um": current[1]}
+        )
+    return {
+        "move_order": [move.stage for move in moves],
+        "stationary_ball_common_xz_um": {
+            "machine_x_um": obstacle_point[0],
+            "machine_z_um": obstacle_point[1],
+        },
+        "waypoints_common_xz_um": waypoints,
+        "minimum_center_distance_um": minimum_center_distance_um,
+        "minimum_surface_gap_um": minimum_center_distance_um - ball_diameter_um,
+    }
+
+
+def point_to_segment_distance(
+    point: tuple[float, float],
+    start: tuple[float, float],
+    end: tuple[float, float],
+) -> float:
+    segment_x = end[0] - start[0]
+    segment_y = end[1] - start[1]
+    length_squared = segment_x * segment_x + segment_y * segment_y
+    if length_squared == 0.0:
+        return math.dist(point, start)
+    projection = (
+        (point[0] - start[0]) * segment_x
+        + (point[1] - start[1]) * segment_y
+    ) / length_squared
+    projection = min(1.0, max(0.0, projection))
+    closest = (
+        start[0] + projection * segment_x,
+        start[1] + projection * segment_y,
+    )
+    return math.dist(point, closest)
+
+
 def moves_from_axis_corrections(
     current_positions: JsonDict,
     *,
@@ -1145,6 +1749,8 @@ def correction_response(
     max_step_um: float,
     max_total_residual_um: float,
     convergence: JsonDict,
+    motion_safety: JsonDict,
+    collision_path: JsonDict,
 ) -> JsonDict:
     diagnostics = {
         "capture_id": capture_id,
@@ -1156,6 +1762,8 @@ def correction_response(
         "max_total_residual_um": max_total_residual_um,
         "correction": correction,
         "convergence": convergence,
+        "motion_safety": motion_safety,
+        "collision_path": collision_path,
         "motion_policy": "operator_confirmed_yase_movestage_only",
     }
     if not planned_moves:
@@ -1214,10 +1822,11 @@ def next_transition_move(params_in: JsonDict) -> JsonDict:
     memory = load_transition_memory_if_available(params_in)
     if bool(params_in.get("reset_transition_plan")):
         clear_transition_record(memory, transition_id)
-    validate_transition_source_prerequisite(
+    transition_safety = validate_transition_source_prerequisite(
         memory,
         spec=spec,
         current_positions=current_positions,
+        params_in=params_in,
         tolerance_um=non_negative_float(
             params_in.get("capture_pose_tolerance_um", DEFAULT_CAPTURE_POSE_TOLERANCE_UM),
             "capture_pose_tolerance_um",
@@ -1256,6 +1865,7 @@ def next_transition_move(params_in: JsonDict) -> JsonDict:
         "target_positions_um": target_positions,
         "transition_anchor_positions_um": deepcopy_json(transition_record["anchor_positions_um"]),
         "tower_clearance_y_um": clearance_y_by_tower,
+        "transition_safety": transition_safety,
     }
     if not move:
         transition_record["status"] = "complete"
@@ -1483,15 +2093,31 @@ def validate_transition_source_prerequisite(
     *,
     spec: JsonDict,
     current_positions: JsonDict,
+    params_in: JsonDict,
     tolerance_um: float,
-) -> None:
+) -> JsonDict:
     """Require a current reviewed source pose before anchoring a YASE transition."""
 
     if memory is None:
-        return
+        return {
+            "memory_checked": False,
+            "status": "no_memory_payload_for_read_only_transition_planning",
+        }
+    validate_no_ball_1_reentry_after_ball_2(
+        memory,
+        target=str(spec["target"]),
+        context=(
+            f"transition {required_text(spec, 'from_position_id')}_to_"
+            f"{required_text(spec, 'to_position_id')}"
+        ),
+    )
     transition_id = f"{required_text(spec, 'from_position_id')}_to_{required_text(spec, 'to_position_id')}"
     if existing_transition_record(memory, transition_id, spec) is not None:
-        return
+        return {
+            "memory_checked": True,
+            "status": "existing_anchored_transition_plan",
+            "transition_id": transition_id,
+        }
 
     from_position_id = required_text(spec, "from_position_id")
     matching_capture_ids = [
@@ -1511,8 +2137,15 @@ def validate_transition_source_prerequisite(
         tolerance_um=tolerance_um,
         context=f"transition {transition_id}",
     )
+    result: JsonDict = {
+        "memory_checked": True,
+        "status": "current_reviewed_source_capture_valid",
+        "transition_id": transition_id,
+        "source_capture_id": capture_id,
+        "source_capture_revision": int(record.get("revision") or 0),
+    }
     if capture_id not in OFFSET_SPECS:
-        return
+        return result
 
     convergence = as_dict(as_dict(memory.get("convergence")).get(capture_id))
     if (
@@ -1523,6 +2156,14 @@ def validate_transition_source_prerequisite(
             f"transition {transition_id} requires capture {capture_id} revision "
             f"{int(record.get('revision') or 0)} to be converged"
         )
+    result["status"] = "current_reviewed_source_capture_and_convergence_valid"
+    if transition_id in {"2.5_to_2.6", "4.5_to_4.6.2"}:
+        result["side_insertion_clearance"] = validate_side_insertion_clearance(
+            memory,
+            target=str(spec["target"]),
+            params_in=params_in,
+        )
+    return result
 
 
 def standard_transition_delta_positions(from_position: JsonDict, to_position: JsonDict) -> JsonDict:
@@ -1608,11 +2249,13 @@ def offset_move_sort_key(move: PlannedMove) -> tuple[int, str]:
     stage_name, axis = AXIS_FOR_STAGE[move.stage]
     if axis == "machine_y_um" and move.delta_um > 0.0:
         return (0, move.stage)
-    if axis in {"machine_x_um", "machine_z_um"}:
+    if axis == "machine_z_um":
         return (1, move.stage)
-    if axis == "machine_y_um":
+    if axis == "machine_x_um":
         return (2, move.stage)
-    return (3, f"{stage_name}.{move.stage}")
+    if axis == "machine_y_um":
+        return (3, move.stage)
+    return (4, f"{stage_name}.{move.stage}")
 
 
 def transition_move_sort_key(move: PlannedMove) -> tuple[int, str]:
@@ -1625,8 +2268,10 @@ def transition_move_sort_key(move: PlannedMove) -> tuple[int, str]:
         return (20, move.stage)
     if stage_name == "camera" and axis == "machine_y_um":
         return (30, move.stage)
-    if stage_name.startswith("tower") and axis in {"machine_x_um", "machine_z_um"}:
+    if stage_name.startswith("tower") and axis == "machine_z_um":
         return (40, move.stage)
+    if stage_name.startswith("tower") and axis == "machine_x_um":
+        return (41, move.stage)
     if stage_name.startswith("tower") and axis == "machine_y_um":
         return (50, move.stage)
     return (99, move.stage)
@@ -1764,10 +2409,12 @@ def assert_matching_top_calibration_context(
 
 
 def invalidate_dependent_plans(memory: JsonDict, capture_id: str, revision: int) -> list[str]:
-    dependent_capture_ids = {capture_id}
-    for candidate_id, spec in OFFSET_SPECS.items():
-        if spec.get("reference_capture_id") == capture_id:
-            dependent_capture_ids.add(candidate_id)
+    capture_index = WORKFLOW_CAPTURE_IDS.index(capture_id)
+    dependent_capture_ids = {
+        candidate_id
+        for candidate_id in WORKFLOW_CAPTURE_IDS[capture_index:]
+        if candidate_id in OFFSET_SPECS
+    }
     invalidated: list[str] = []
     plans = as_dict(memory.get("correction_plans"))
     for plan_id, raw_plan in plans.items():
@@ -1780,8 +2427,27 @@ def invalidate_dependent_plans(memory: JsonDict, capture_id: str, revision: int)
             plans[plan_id] = plan
             invalidated.append(plan_id)
     memory["correction_plans"] = plans
-    position_id = str(CAPTURE_SPECS[capture_id]["position_id"])
-    invalidated.extend(clear_transition_records_from_position(memory, position_id))
+
+    convergence_by_capture = as_dict(memory.get("convergence"))
+    downstream_convergence_ids = dependent_capture_ids - {capture_id}
+    for candidate_id in downstream_convergence_ids:
+        state = as_dict(convergence_by_capture.get(candidate_id))
+        if not state:
+            continue
+        state["status"] = "invalidated"
+        state["invalidated_by_capture_id"] = capture_id
+        state["invalidated_by_revision"] = revision
+        state["invalidated_at_utc"] = utc_now_text()
+        convergence_by_capture[candidate_id] = state
+        invalidated.append(f"convergence:{candidate_id}")
+    memory["convergence"] = convergence_by_capture
+
+    invalidated.extend(
+        clear_downstream_transition_records(
+            memory,
+            capture_index=capture_index,
+        )
+    )
     if memory.pop("final_verification", None) is not None:
         invalidated.append("final_verification")
     if invalidated:
@@ -1800,12 +2466,28 @@ def invalidate_dependent_plans(memory: JsonDict, capture_id: str, revision: int)
     return sorted(set(invalidated))
 
 
-def clear_transition_records_from_position(memory: JsonDict, position_id: str) -> list[str]:
+def clear_downstream_transition_records(
+    memory: JsonDict,
+    *,
+    capture_index: int,
+) -> list[str]:
     records = as_dict(memory.get("transition_records"))
+    position_capture_indices = {
+        str(spec["position_id"]): index
+        for index, spec in enumerate(CAPTURE_SPECS.values())
+    }
     removed = [
         transition_id
         for transition_id, record in records.items()
-        if str(as_dict(record).get("from_position_id") or "") == position_id
+        if position_capture_indices.get(
+            str(
+                as_dict(record).get("from_position_id")
+                or as_dict(TRANSITION_SPECS.get(transition_id)).get("from_position_id")
+                or ""
+            ),
+            len(WORKFLOW_CAPTURE_IDS),
+        )
+        >= capture_index
     ]
     for transition_id in removed:
         records.pop(transition_id, None)
