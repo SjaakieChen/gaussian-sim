@@ -12,9 +12,11 @@ import argparse
 import copy
 import json
 import math
+import os
+import shutil
 import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -30,8 +32,8 @@ from migrations.migration_v6.python_vision_geometry.v6_offset_workflow import ( 
     OFFSET_SPECS,
     SCHEMA_VERSION,
     STAGE_FOR_AXIS,
-    clear_transition_records_from_position,
     run_v6_vision_workflow,
+    validate_reviewed_capture_session,
 )
 
 
@@ -61,41 +63,24 @@ FULL_MAIN_SEQUENCE: list[tuple[str, str]] = [
     ("move", "1.0"),
     ("move", "1.1"),
     ("move", "2.1"),
-    ("capture", "2.1.1"),
-    ("offset", "2.1.1"),
-    ("capture", "2.1.1"),
-    ("offset", "2.1.1"),
+    ("converge", "2.1.1"),
     ("transition", "2.1_to_2.4"),
     ("capture", "2.4.1"),
     ("transition", "2.4_to_2.5"),
-    ("capture", "2.5.1"),
-    ("offset", "2.5.1"),
-    ("capture", "2.5.1"),
-    ("offset", "2.5.1"),
+    ("converge", "2.5.1"),
     ("transition", "2.5_to_2.6"),
-    ("capture", "2.6.1"),
-    ("offset", "2.6.1"),
-    ("capture", "2.6.1"),
-    ("offset", "2.6.1"),
+    ("converge", "2.6.1"),
     ("move", "3.0"),
     ("move", "3.1"),
     ("move", "4.1"),
-    ("capture", "4.1.1"),
-    ("offset", "4.1.1"),
-    ("capture", "4.1.1"),
-    ("offset", "4.1.1"),
+    ("converge", "4.1.1"),
     ("transition", "4.1_to_4.4"),
     ("capture", "4.4.1"),
     ("transition", "4.4_to_4.5"),
-    ("capture", "4.5.1"),
-    ("offset", "4.5.1"),
-    ("capture", "4.5.1"),
-    ("offset", "4.5.1"),
+    ("converge", "4.5.1"),
     ("transition", "4.5_to_4.6.2"),
-    ("capture", "4.6.2"),
-    ("offset", "4.6.2"),
-    ("capture", "4.6.2"),
-    ("offset", "4.6.2"),
+    ("converge", "4.6.2"),
+    ("verify", ""),
 ]
 
 BALL_1_IDS = {"1.0", "1.1", "2.1", "2.4", "2.5", "2.6"}
@@ -114,6 +99,10 @@ class SimulatorConfig:
     fine_shift_y_px: float = 0.0
     side_shift_y_px: float = 0.0
     auto_advance_ms: int = 0
+    popup_scope: str = "vision"
+    baseline_dir: Path = STANDARD_BASELINE_DIR
+    baseline_replacements: dict[str, Path] = field(default_factory=dict)
+    baseline_backup_root: Path = ROOT / "tmp" / "v6_baseline_backups"
 
 
 @dataclass
@@ -142,16 +131,17 @@ class V6StandardWorkflowSimulator:
         self.clearance_y_by_tower = tower_clearance_y_by_tower(self.positions.values())
         self.trace: list[JsonDict] = []
         self.machine_positions_um: JsonDict = {
-            "camera": {"x": 0.0, "y": 0.0, "z": 0.0},
-            "tower_1": {"x": 0.0, "y": 0.0, "z": 0.0},
-            "tower_2": {"x": 0.0, "y": 0.0, "z": 0.0},
-            "zoom": {"value": 0.0},
+            "camera": {"machine_x_um": 0.0, "machine_y_um": 0.0, "machine_z_um": 0.0},
+            "tower_1": {"machine_x_um": 0.0, "machine_y_um": 0.0, "machine_z_um": 0.0},
+            "tower_2": {"machine_x_um": 0.0, "machine_y_um": 0.0, "machine_z_um": 0.0},
+            "zoom": {"zoom_um": 0.0},
         }
         self.camera_settings: JsonDict = {
             "exposure": None,
             "Illu_Coax": 0.0,
             "Illu_1": 0.0,
             "Illu_2": 0.0,
+            "source": "reapplied_standard_position_before_operator_gate",
         }
         self.residuals = {
             "ball_1": TargetPixelResidual(
@@ -169,9 +159,29 @@ class V6StandardWorkflowSimulator:
                 side_full_y_px=config.side_shift_y_px,
             ),
         }
-        self.viewer = None if config.headless else WorkflowPopupViewer(config.auto_advance_ms)
+        self.viewer = (
+            None
+            if config.headless
+            else WorkflowPopupViewer(config.auto_advance_ms, popup_scope=config.popup_scope)
+        )
 
     def run(self) -> JsonDict:
+        for capture_id, replacement_path in self.config.baseline_replacements.items():
+            backup_path = replace_simulator_baseline(
+                capture_id,
+                replacement_path,
+                baseline_dir=self.config.baseline_dir,
+                backup_root=self.config.baseline_backup_root,
+            )
+            self.add_step(
+                {
+                    "kind": "baseline_replacement",
+                    "capture_id": capture_id,
+                    "replacement_path": str(replacement_path),
+                    "backup_path": str(backup_path),
+                    "explanation": "Explicit baseline replacement with the previous file backed up first.",
+                }
+            )
         for kind, value in filtered_sequence(self.config.workflow_target):
             if kind == "init":
                 self.initialize_memory()
@@ -181,8 +191,12 @@ class V6StandardWorkflowSimulator:
                 self.capture_review_record(value)
             elif kind == "offset":
                 self.offset_correction(value)
+            elif kind == "converge":
+                self.convergence_loop(value)
             elif kind == "transition":
                 self.transition_move_loop(value)
+            elif kind == "verify":
+                self.final_verification()
             else:
                 raise ValueError(f"unsupported simulator sequence step {kind!r}")
 
@@ -192,7 +206,7 @@ class V6StandardWorkflowSimulator:
             "action": "v6_standard_workflow_simulation",
             "workflow_target": self.config.workflow_target,
             "standard_positions_path": str(STANDARD_POSITIONS_PATH),
-            "standard_baseline_dir": str(STANDARD_BASELINE_DIR),
+            "standard_baseline_dir": str(self.config.baseline_dir),
             "memory_path": str(self.config.memory_path),
             "final_machine_positions_um": deepcopy_json(self.machine_positions_um),
             "final_pixel_residuals": self.pixel_residuals_snapshot(),
@@ -212,7 +226,7 @@ class V6StandardWorkflowSimulator:
                 "command": "init",
                 "memory_path": str(self.config.memory_path),
                 "standard_positions_path": str(STANDARD_POSITIONS_PATH),
-                "standard_baseline_dir": str(STANDARD_BASELINE_DIR),
+                "standard_baseline_dir": str(self.config.baseline_dir),
                 "output_path": str(self.config.memory_path),
             }
         )
@@ -255,45 +269,50 @@ class V6StandardWorkflowSimulator:
         )
 
     def capture_review_record(self, capture_id: str) -> None:
-        baseline = load_baseline(capture_id)
+        baseline = load_baseline(capture_id, self.config.baseline_dir)
         target = str(CAPTURE_SPECS[capture_id]["target"])
         live_session = shifted_live_session(capture_id, baseline, self.residuals[target])
         image_path = resolve_standard_image_path(baseline)
-        memory = self.load_memory()
-        record = deepcopy_json(CAPTURE_SPECS[capture_id])
-        record.update(
+        if self.viewer is not None:
+            reviewed = self.viewer.review_capture(capture_id, image_path, live_session)
+            if reviewed is not None:
+                live_session = reviewed
+        result = run_v6_vision_workflow(
             {
+                "schema_version": SCHEMA_VERSION,
+                "command": "record_capture",
                 "capture_id": capture_id,
-                "review_status": "simulated_reviewed_standard_image",
                 "image_path": str(image_path),
-                "session": live_session,
-                "machine_positions_um": deepcopy_json(self.machine_positions_um),
-                "reviewed_at_utc": utc_now_text(),
+                "memory_path": str(self.config.memory_path),
+                "memory_output_path": str(self.config.memory_path),
+                "standard_positions_path": str(STANDARD_POSITIONS_PATH),
+                "standard_baseline_dir": str(self.config.baseline_dir),
+                "machine_positions_before_grab_um": deepcopy_json(self.machine_positions_um),
+                "machine_positions_after_grab_um": deepcopy_json(self.machine_positions_um),
+                "camera_settings": deepcopy_json(self.camera_settings),
+                "review_session": live_session,
             }
         )
-        records = as_dict(memory.setdefault("capture_records", {}))
-        records[capture_id] = record
-        memory["capture_records"] = records
-        clear_transition_records_from_position(memory, str(record["position_id"]))
-        memory["updated_at_utc"] = utc_now_text()
-        self.write_memory(memory)
+        if result.get("ok") is not True:
+            raise RuntimeError(str(result.get("status") or f"capture {capture_id} failed"))
 
         self.add_step(
             {
                 "kind": "capture_review_record",
                 "subsequence": f"SUB_V6CaptureReviewRecord_{capture_id}_ReadOnly",
                 "capture_id": capture_id,
-                "position_id": record["position_id"],
+                "position_id": result["position_id"],
                 "target": target,
-                "view": record["view"],
+                "view": result["view"],
                 "image_path": str(image_path),
                 "standard_feature_summary": summarize_session_features(baseline),
                 "simulated_live_feature_summary": summarize_session_features(live_session),
                 "pixel_residuals_before_capture": self.residuals[target].snapshot(),
                 "machine_positions_um": deepcopy_json(self.machine_positions_um),
+                "record_result": result,
                 "standard_session": baseline,
                 "live_session": live_session,
-                "explanation": "Simulated recognition/review popup: the red live selections are what Python will record.",
+                "explanation": "Fresh reviewed capture recorded with the exact stable in-memory machine pose.",
             }
         )
 
@@ -307,7 +326,7 @@ class V6StandardWorkflowSimulator:
                 "capture_id": capture_id,
                 "memory_path": str(self.config.memory_path),
                 "standard_positions_path": str(STANDARD_POSITIONS_PATH),
-                "standard_baseline_dir": str(STANDARD_BASELINE_DIR),
+                "standard_baseline_dir": str(self.config.baseline_dir),
                 "machine_positions_um": deepcopy_json(self.machine_positions_um),
             }
         )
@@ -331,6 +350,42 @@ class V6StandardWorkflowSimulator:
             }
         )
 
+    def convergence_loop(self, capture_id: str) -> None:
+        for attempt in range(1, 10):
+            self.capture_review_record(capture_id)
+            self.offset_correction(capture_id)
+            result = as_dict(self.trace[-1].get("result"))
+            if result.get("action") == "no_offset_correction_required":
+                return
+            if result.get("ok") is not True:
+                raise RuntimeError(str(result.get("status") or f"{capture_id} convergence failed"))
+        raise RuntimeError(
+            f"{capture_id} did not converge after eight correction attempts "
+            "and a final fresh verification capture"
+        )
+
+    def final_verification(self) -> None:
+        result = run_v6_vision_workflow(
+            {
+                "schema_version": SCHEMA_VERSION,
+                "command": "verify_final_geometry",
+                "memory_path": str(self.config.memory_path),
+                "standard_positions_path": str(STANDARD_POSITIONS_PATH),
+                "standard_baseline_dir": str(self.config.baseline_dir),
+            }
+        )
+        self.add_step(
+            {
+                "kind": "final_verification",
+                "subsequence": "SUB_V6FinalVerification_ReadOnly",
+                "result": result,
+                "machine_positions_um": deepcopy_json(self.machine_positions_um),
+                "explanation": "Read-only proof of 289 um, 989 um, and 700 um center spacing.",
+            }
+        )
+        if result.get("action") != "final_geometry_verified":
+            raise RuntimeError(str(result.get("status") or "final geometry verification failed"))
+
     def transition_move_loop(self, transition_id: str) -> None:
         for call_index in range(1, 40):
             result = run_v6_vision_workflow(
@@ -340,7 +395,7 @@ class V6StandardWorkflowSimulator:
                     "transition_id": transition_id,
                     "memory_path": str(self.config.memory_path),
                     "standard_positions_path": str(STANDARD_POSITIONS_PATH),
-                    "standard_baseline_dir": str(STANDARD_BASELINE_DIR),
+                    "standard_baseline_dir": str(self.config.baseline_dir),
                     "machine_positions_um": deepcopy_json(self.machine_positions_um),
                 }
             )
@@ -363,7 +418,9 @@ class V6StandardWorkflowSimulator:
             if result.get("action") == "transition_complete":
                 return
             if result.get("ok") is not True:
-                return
+                raise RuntimeError(
+                    str(result.get("status") or f"transition {transition_id} failed")
+                )
         raise RuntimeError(f"transition {transition_id} did not complete inside the simulator loop limit")
 
     def apply_planned_move(self, move: JsonDict, *, velocity_class: str) -> JsonDict:
@@ -387,7 +444,7 @@ class V6StandardWorkflowSimulator:
         diagnostics = as_dict(result.get("diagnostics"))
         correction_kind = str(diagnostics.get("correction_kind") or "")
         correction = as_dict(diagnostics.get("correction"))
-        um_per_pixel = float(correction.get("um_per_pixel") or 0.0)
+        um_per_pixel = float(as_dict(correction.get("scale_context")).get("um_per_pixel") or 0.0)
         if um_per_pixel <= 0.0:
             return
         for move in result.get("planned_moves", []):
@@ -395,16 +452,20 @@ class V6StandardWorkflowSimulator:
             delta_um = float(move.get("delta_um") or 0.0)
             stage_name, axis = AXIS_FOR_STAGE[stage]
             if correction_kind == "coarse_top":
-                if axis == "z":
-                    residual.coarse_x_px -= delta_um / um_per_pixel
-                elif axis == "x":
+                if axis == "machine_x_um":
+                    residual.coarse_x_px += delta_um / um_per_pixel
+                elif axis == "machine_z_um":
                     residual.coarse_y_px -= delta_um / um_per_pixel
             elif correction_kind == "top_fine":
-                if axis == "z":
-                    residual.fine_x_px -= delta_um / um_per_pixel
-                elif axis == "x":
+                if axis == "machine_x_um":
+                    residual.fine_x_px += delta_um / um_per_pixel
+                elif axis == "machine_z_um":
                     residual.fine_y_px -= delta_um / um_per_pixel
-            elif correction_kind == "side_mirror_y" and axis == "y" and stage_name.startswith("tower_"):
+            elif (
+                correction_kind == "side_mirror_y"
+                and axis == "machine_y_um"
+                and stage_name.startswith("tower_")
+            ):
                 residual.side_full_y_px += delta_um / um_per_pixel
 
     def apply_stage_target(self, stage: str, target_um: float) -> None:
@@ -421,6 +482,7 @@ class V6StandardWorkflowSimulator:
         self.camera_settings["Illu_Coax"] = 0.9
         self.camera_settings["Illu_1"] = 0.9
         self.camera_settings["Illu_2"] = 0.9
+        self.camera_settings["source"] = "reapplied_standard_position_before_operator_gate"
 
     def add_step(self, step: JsonDict) -> None:
         step["step_index"] = len(self.trace) + 1
@@ -439,8 +501,9 @@ class V6StandardWorkflowSimulator:
 
 
 class WorkflowPopupViewer:
-    def __init__(self, auto_advance_ms: int = 0) -> None:
+    def __init__(self, auto_advance_ms: int = 0, *, popup_scope: str = "vision") -> None:
         self.auto_advance_ms = auto_advance_ms
+        self.popup_scope = popup_scope
         self.tk = None
         self.root = None
         try:
@@ -454,7 +517,21 @@ class WorkflowPopupViewer:
             self.tk = None
             self.root = None
 
+    def review_capture(self, capture_id: str, image_path: Path, initial_session: JsonDict) -> JsonDict | None:
+        from migrations.migration_v6.vision_recognition_lab import run_vision_recognition_lab_session
+
+        result = run_vision_recognition_lab_session(
+            image_path,
+            initial_session=initial_session,
+            capture_id=capture_id,
+        )
+        if result.get("ok") is not True:
+            raise RuntimeError(str(result.get("status") or f"review cancelled for {capture_id}"))
+        return result
+
     def show_step(self, step: JsonDict) -> None:
+        if self.popup_scope != "all" or step.get("kind") == "capture_review_record":
+            return
         if self.tk is None or self.root is None:
             return
         tk = self.tk
@@ -521,6 +598,43 @@ def run_standard_workflow_simulation(config: SimulatorConfig) -> JsonDict:
         return V6StandardWorkflowSimulator(config).run()
 
 
+def replace_simulator_baseline(
+    capture_id: str,
+    replacement_path: Path,
+    *,
+    baseline_dir: Path = STANDARD_BASELINE_DIR,
+    backup_root: Path = ROOT / "tmp" / "v6_baseline_backups",
+) -> Path:
+    """Explicitly replace one baseline after backing up the previous JSON."""
+
+    if capture_id not in CAPTURE_SPECS:
+        raise ValueError(f"unsupported V6 capture id for baseline replacement: {capture_id}")
+    replacement_path = Path(replacement_path)
+    if not replacement_path.is_file():
+        raise FileNotFoundError(f"replacement baseline does not exist: {replacement_path}")
+    replacement = json.loads(replacement_path.read_text(encoding="utf-8"))
+    if replacement.get("ok") is not True or not as_dict(replacement.get("selected_recognition")):
+        raise ValueError("replacement baseline must be a saved reviewed session with selected_recognition")
+    replacement_capture_id = str(replacement.get("capture_id") or "").strip()
+    if replacement_capture_id and replacement_capture_id != capture_id:
+        raise ValueError(
+            f"replacement baseline capture_id {replacement_capture_id!r} does not match {capture_id!r}"
+        )
+    validate_reviewed_capture_session(capture_id, copy.deepcopy(replacement), {})
+    destination = Path(baseline_dir) / f"{capture_id}.json"
+    if not destination.is_file():
+        raise FileNotFoundError(f"existing baseline does not exist and will not be silently created: {destination}")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    backup_dir = Path(backup_root) / timestamp
+    backup_dir.mkdir(parents=True, exist_ok=False)
+    backup_path = backup_dir / destination.name
+    shutil.copy2(destination, backup_path)
+    temporary = destination.with_name(f".{destination.name}.replacement.tmp")
+    temporary.write_text(json.dumps(replacement, indent=2, sort_keys=True), encoding="utf-8")
+    os.replace(temporary, destination)
+    return backup_path
+
+
 def filtered_sequence(workflow_target: str) -> list[tuple[str, str]]:
     if workflow_target == "all":
         return FULL_MAIN_SEQUENCE
@@ -537,7 +651,11 @@ def filtered_sequence(workflow_target: str) -> list[tuple[str, str]]:
             filtered.append((kind, value))
         elif kind == "offset" and OFFSET_SPECS[value]["target"] == workflow_target:
             filtered.append((kind, value))
+        elif kind == "converge" and OFFSET_SPECS[value]["target"] == workflow_target:
+            filtered.append((kind, value))
         elif kind == "transition" and transition_target(value) == workflow_target:
+            filtered.append((kind, value))
+        elif kind == "verify" and workflow_target == "all":
             filtered.append((kind, value))
     return filtered
 
@@ -626,8 +744,8 @@ def shift_selected_circles(session: JsonDict, *, dx: float, dy: float) -> None:
         item["shape"] = shape
 
 
-def load_baseline(capture_id: str) -> JsonDict:
-    return json.loads((STANDARD_BASELINE_DIR / f"{capture_id}.json").read_text(encoding="utf-8"))
+def load_baseline(capture_id: str, baseline_dir: Path = STANDARD_BASELINE_DIR) -> JsonDict:
+    return json.loads((baseline_dir / f"{capture_id}.json").read_text(encoding="utf-8"))
 
 
 def resolve_standard_image_path(baseline: JsonDict) -> Path:
@@ -852,10 +970,6 @@ def deepcopy_json(value: Any) -> Any:
     return copy.deepcopy(value)
 
 
-def utc_now_text() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
 def parse_args(argv: list[str] | None = None) -> SimulatorConfig:
     parser = argparse.ArgumentParser(description="Replay V6 against standard images with simulated reviewed detections.")
     parser.add_argument("--target", choices=["all", "ball_1", "ball_2"], default="all", help="Workflow slice to replay.")
@@ -868,6 +982,19 @@ def parse_args(argv: list[str] | None = None) -> SimulatorConfig:
     parser.add_argument("--fine-shift-y-px", type=float, default=0.0, help="Injected fine top ball image-Y residual.")
     parser.add_argument("--side-shift-y-px", type=float, default=0.0, help="Injected side full-image ball Y shift before mirror flip.")
     parser.add_argument("--auto-advance-ms", type=int, default=0, help="Auto-close each popup after this many milliseconds.")
+    parser.add_argument(
+        "--popup-scope",
+        choices=["vision", "all"],
+        default="vision",
+        help="Default opens editable vision review only; all also opens movement diagnostics.",
+    )
+    parser.add_argument(
+        "--replace-baseline",
+        action="append",
+        default=[],
+        metavar="CAPTURE_ID=SESSION_JSON",
+        help="Explicitly replace a simulator baseline after backing up the previous JSON.",
+    )
     args = parser.parse_args(argv)
 
     output_path = args.output
@@ -876,6 +1003,14 @@ def parse_args(argv: list[str] | None = None) -> SimulatorConfig:
         output_path = Path(tempfile.gettempdir()) / DEFAULT_TRACE_NAME
     if memory_path is None and output_path is not None:
         memory_path = output_path.with_name("v6_vision_memory_sim.json")
+    baseline_replacements: dict[str, Path] = {}
+    for raw_replacement in args.replace_baseline:
+        capture_id, separator, raw_path = str(raw_replacement).partition("=")
+        if not separator or not capture_id.strip() or not raw_path.strip():
+            parser.error("--replace-baseline must be CAPTURE_ID=SESSION_JSON")
+        if capture_id.strip() in baseline_replacements:
+            parser.error(f"duplicate --replace-baseline for {capture_id.strip()}")
+        baseline_replacements[capture_id.strip()] = Path(raw_path.strip())
     return SimulatorConfig(
         workflow_target=args.target,
         headless=args.headless,
@@ -887,6 +1022,8 @@ def parse_args(argv: list[str] | None = None) -> SimulatorConfig:
         fine_shift_y_px=args.fine_shift_y_px,
         side_shift_y_px=args.side_shift_y_px,
         auto_advance_ms=args.auto_advance_ms,
+        popup_scope=args.popup_scope,
+        baseline_replacements=baseline_replacements,
     )
 
 

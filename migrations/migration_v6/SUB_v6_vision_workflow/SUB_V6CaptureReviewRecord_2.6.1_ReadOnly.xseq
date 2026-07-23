@@ -34,187 +34,384 @@
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Fiducial" />
    </Statement>
+   <Statement Label="None" Editable="FALSE" Name="SetAnalogOut" Library="Analog">
+      <Parameter Name="Analog Line" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="cam_12_ExpTime" />
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="11000.0" StringValue="11000.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetAnalogOut" Library="Analog">
+      <Parameter Name="Analog Line" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Illu_Coax" />
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.9" StringValue="0.9" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetAnalogOut" Library="Analog">
+      <Parameter Name="Analog Line" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Illu_1" />
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.9" StringValue="0.9" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetAnalogOut" Library="Analog">
+      <Parameter Name="Analog Line" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Illu_2" />
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.9" StringValue="0.9" />
+   </Statement>
+   <Statement Label="L_OperatorImageGate" Editable="FALSE" Name="DisplayExtdSelectionDialog" Library="Standard">
+      <Parameter Name="Dialog text" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="V6 capture 2.6.1: adjust focus and framing with camera/tower pose controls now. Standard exposure and lights are already applied; do not change them or zoom. Press Capture only when the image is ready and all motion has stopped." />
+      <Parameter Name="LeftPos" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="TopPos" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Window Title" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+      <Parameter Name="Button 1 (OK) text" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Abort" />
+      <Parameter Name="Button 2 (Skip) text" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Capture" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_UserAbort" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_X" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_BeforeCameraXUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Y" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_BeforeCameraYUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Z" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_BeforeCameraZUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_BeforeTower1XUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y1" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_BeforeTower1YUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_BeforeTower1ZUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X2" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_BeforeTower2XUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y2" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_BeforeTower2YUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z2" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_BeforeTower2ZUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Zoom" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_BeforeZoomUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
    <Statement Label="" Editable="FALSE" Name="Grab" Library="AdvancedIMAQ">
       <Parameter Name="Camera" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="CAM_12" />
       <Parameter Name="Image Out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="r_Image_Ref" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_X" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_AfterCameraXUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Y" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_AfterCameraYUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Z" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_AfterCameraZUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_AfterTower1XUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y1" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_AfterTower1YUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_AfterTower1ZUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X2" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_AfterTower2XUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y2" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_AfterTower2YUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z2" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_AfterTower2ZUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Zoom" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_AfterZoomUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="IMAQWriteFile" Library="AdvancedIMAQ">
       <Parameter Name="Image In" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="r_Image_Ref" />
       <Parameter Name="FileName" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="python_vision_input.bmp" />
       <Parameter Name="FileType" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="BMP" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
-      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_X" />
-      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
-      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CameraXUm" />
-      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
-      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Y" />
-      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
-      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CameraYUm" />
-      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
-      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Z" />
-      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
-      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CameraZUm" />
-      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
-      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X1" />
-      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
-      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_Tower1XUm" />
-      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
-      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y1" />
-      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
-      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_Tower1YUm" />
-      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
-      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z1" />
-      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
-      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_Tower1ZUm" />
-      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
-      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X2" />
-      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
-      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_Tower2XUm" />
-      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
-      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y2" />
-      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
-      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_Tower2YUm" />
-      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
-      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z2" />
-      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
-      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_Tower2ZUm" />
-      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
-      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Zoom" />
-      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
-      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ZoomUm" />
-      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
-   </Statement>
    <Statement Label="L_BuildPythonInput" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;schema_version&quot;:1,&quot;command&quot;:&quot;record_capture&quot;,&quot;capture_id&quot;:&quot;2.6.1&quot;,&quot;memory_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_vision_memory.json&quot;,&quot;memory_output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_vision_memory.json&quot;,&quot;standard_positions_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/standard_positions.json&quot;,&quot;standard_baseline_dir&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/vision_baselines&quot;,&quot;image_path&quot;:&quot;D:/TestMasterData/data/Python_Automation/python_vision_input.bmp&quot;,&quot;roi_output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_2.6.1_reviewed_rois.json&quot;,&quot;review_session_output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_2.6.1_reviewed_session.json&quot;,&quot;result_output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_2.6.1_capture_record_result.json&quot;,&quot;camera_x_um&quot;:" />
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;schema_version&quot;:2,&quot;command&quot;:&quot;record_capture&quot;,&quot;capture_id&quot;:&quot;2.6.1&quot;,&quot;memory_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_vision_memory.json&quot;,&quot;memory_output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_vision_memory.json&quot;,&quot;standard_positions_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/standard_positions.json&quot;,&quot;standard_baseline_dir&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/vision_baselines&quot;,&quot;image_path&quot;:&quot;D:/TestMasterData/data/Python_Automation/python_vision_input.bmp&quot;,&quot;roi_output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_2.6.1_reviewed_rois.json&quot;,&quot;review_session_output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_2.6.1_reviewed_session.json&quot;,&quot;result_output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_2.6.1_capture_record_result.json&quot;,&quot;capture_stability_tolerance_um&quot;:1.0,&quot;camera_settings&quot;:{&quot;exposure&quot;:11000.0,&quot;Illu_Coax&quot;:0.9,&quot;Illu_1&quot;:0.9,&quot;Illu_2&quot;:0.9,&quot;source&quot;:&quot;reapplied_standard_position_before_operator_gate&quot;},&quot;before_camera_machine_x_um&quot;:" />
       <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json00" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
       <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json00" />
-      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CameraXUm" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_BeforeCameraXUm" />
       <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json01" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json01" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;camera_y_um&quot;:" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;before_camera_machine_y_um&quot;:" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json02" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
       <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json02" />
-      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CameraYUm" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_BeforeCameraYUm" />
       <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json03" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json03" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;camera_z_um&quot;:" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;before_camera_machine_z_um&quot;:" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json04" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
       <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json04" />
-      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CameraZUm" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_BeforeCameraZUm" />
       <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json05" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json05" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;tower_1_x_um&quot;:" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;before_tower_1_machine_x_um&quot;:" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json06" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
       <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json06" />
-      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Tower1XUm" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_BeforeTower1XUm" />
       <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json07" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json07" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;tower_1_y_um&quot;:" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;before_tower_1_machine_y_um&quot;:" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json08" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
       <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json08" />
-      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Tower1YUm" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_BeforeTower1YUm" />
       <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json09" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json09" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;tower_1_z_um&quot;:" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;before_tower_1_machine_z_um&quot;:" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json10" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
       <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json10" />
-      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Tower1ZUm" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_BeforeTower1ZUm" />
       <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json11" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json11" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;tower_2_x_um&quot;:" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;before_tower_2_machine_x_um&quot;:" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json12" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
       <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json12" />
-      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Tower2XUm" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_BeforeTower2XUm" />
       <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json13" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json13" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;tower_2_y_um&quot;:" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;before_tower_2_machine_y_um&quot;:" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json14" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
       <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json14" />
-      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Tower2YUm" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_BeforeTower2YUm" />
       <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json15" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json15" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;tower_2_z_um&quot;:" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;before_tower_2_machine_z_um&quot;:" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json16" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
       <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json16" />
-      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Tower2ZUm" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_BeforeTower2ZUm" />
       <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json17" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json17" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;zoom_um&quot;:" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;before_zoom_um&quot;:" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json18" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
       <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json18" />
-      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ZoomUm" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_BeforeZoomUm" />
       <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json19" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json19" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;after_camera_machine_x_um&quot;:" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json20" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json20" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_AfterCameraXUm" />
+      <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json21" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json21" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;after_camera_machine_y_um&quot;:" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json22" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json22" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_AfterCameraYUm" />
+      <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json23" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json23" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;after_camera_machine_z_um&quot;:" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json24" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json24" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_AfterCameraZUm" />
+      <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json25" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json25" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;after_tower_1_machine_x_um&quot;:" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json26" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json26" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_AfterTower1XUm" />
+      <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json27" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json27" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;after_tower_1_machine_y_um&quot;:" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json28" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json28" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_AfterTower1YUm" />
+      <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json29" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json29" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;after_tower_1_machine_z_um&quot;:" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json30" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json30" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_AfterTower1ZUm" />
+      <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json31" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json31" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;after_tower_2_machine_x_um&quot;:" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json32" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json32" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_AfterTower2XUm" />
+      <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json33" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json33" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;after_tower_2_machine_y_um&quot;:" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json34" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json34" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_AfterTower2YUm" />
+      <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json35" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json35" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;after_tower_2_machine_z_um&quot;:" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json36" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json36" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_AfterTower2ZUm" />
+      <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json37" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json37" />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=",&quot;after_zoom_um&quot;:" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json38" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json38" />
+      <Parameter Name="Number" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_AfterZoomUm" />
+      <Parameter Name="Precision" Description="" Type="I32" Direction="Input" ValueType="Constant" NumericValue="6" StringValue="6" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_Json39" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_Json39" />
       <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="}" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonInputJson" />
    </Statement>
@@ -263,7 +460,7 @@
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
       <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_SchemaVersion" />
       <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.0" StringValue="1.0" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="2.0" StringValue="2.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Python" />
@@ -294,6 +491,18 @@
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Python capture/review returned ok=false or unsupported schema." />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Statement Label="L_Error_UserAbort" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="35.0" StringValue="35.0" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Operator cancelled before the v6 image grab." />
       <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>

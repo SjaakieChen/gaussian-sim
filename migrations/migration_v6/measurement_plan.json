@@ -1,213 +1,221 @@
 {
-  "schema_version": 1,
-  "description": "Migration v6 guarded vision workflow plan for reviewed capture recording, rebased standard-position transitions, and bounded offset correction.",
-  "machine_coordinate_system": {
-    "reference": "machine_reference",
-    "reference_feature": "laser_rectangle_center",
-    "units": "um",
-    "machine_x_um": "Align_X optical propagation axis",
-    "machine_z_um": "Align_Z horizontal transverse axis in the top view",
-    "machine_y_um": "Align_Y vertical transverse axis from the mirror side view"
+  "schema_version": 2,
+  "description": "Migration V6 reviewed coarse-to-fine alignment geometry and capture contract.",
+  "workflow_interface": {
+    "module": "python_vision_geometry/v6_offset_workflow.py",
+    "commands": [
+      "init",
+      "record_capture",
+      "next_offset_correction",
+      "next_transition_move",
+      "verify_final_geometry"
+    ],
+    "python_motion_boundary": "Python records and proposes. Guarded YASE performs operator-confirmed motion."
   },
-  "calibration": {
-    "reference_edge_length_um": 500.0,
-    "source": "vision recognition lab fixed rectangle short edge calibration",
-    "view_transforms_status": "top signs follow v5 placeholders; side view is treated as a mirror and flips image y before machine-y correction"
+  "canonical_axes": {
+    "units": "um",
+    "image_right": {
+      "machine_axis": "machine_x_um",
+      "stage_family": "Align_X",
+      "measurement_sign": 1.0
+    },
+    "image_up": {
+      "machine_axis": "machine_z_um",
+      "stage_family": "Align_Z",
+      "measurement_sign": 1.0
+    },
+    "image_y_down": {
+      "machine_axis": "machine_z_um",
+      "stage_family": "Align_Z",
+      "measurement_sign": -1.0
+    },
+    "mirror_corrected_vertical": {
+      "machine_axis": "machine_y_um",
+      "stage_family": "Align_Y"
+    },
+    "legacy_alias_policy": "x, y, and z are accepted only as normalized input aliases; schema-2 output uses machine_x_um, machine_y_um, and machine_z_um."
+  },
+  "final_targets_um": {
+    "reference_feature": "reviewed_laser_rectangle_center",
+    "ball_1": {
+      "machine_x_um": 289.0,
+      "machine_y_um": 0.0,
+      "machine_z_um": 0.0
+    },
+    "ball_2": {
+      "machine_x_um": 989.0,
+      "machine_y_um": 0.0,
+      "machine_z_um": 0.0
+    },
+    "ball_center_spacing_machine_x_um": 700.0
   },
   "physical_constants_um": {
     "laser_rectangle_short_edge_um": 500.0,
     "ball_diameter_um": 500.0,
-    "trench_depth_um": 300.0,
-    "assumed_ball_center_y_um": -50.0,
-    "height_assumption": "chip top / laser rectangle plane is y=0; ball rests on trench bottom, so ball center = ball_radius - trench_depth"
+    "trench_top_to_floor_um": 300.0
   },
-  "sequence_geometry_memory": {
-    "reference": "machine_reference",
-    "reference_feature": "laser_rectangle_center",
-    "method": "remember rectangle corners from top reference focus and ball circle from top ball focus, then compare them in the unchanged top-view camera x/z frame and output machine_coordinates_um",
-    "top_reference_to_ball_focus_pairs": [
-      {
-        "target": "ball_1",
-        "reference_capture_id": "2.4.1",
-        "top_ball_capture_id": "2.5.1",
-        "side_capture_id": "2.6.1"
+  "calibration_contexts": {
+    "gross_top_xz": {
+      "purpose": "Bring the active ball safely into the expected frame.",
+      "scale_source": "reviewed standard ball diameter",
+      "mapping": {
+        "image_x_px": "machine_x_um",
+        "image_y_px": "negative machine_z_um"
       },
-      {
-        "target": "ball_2",
-        "reference_capture_id": "4.4.1",
-        "top_ball_capture_id": "4.5.1",
-        "side_capture_id": "4.6.2"
-      }
-    ],
-    "fail_closed_requirements": [
-      "Reference capture must have one selected laser/reference rectangle.",
-      "Top ball-focus capture must have one selected ball circle.",
-      "Reference and top ball-focus captures must have unchanged camera x/z unless a calibrated registration is supplied.",
-      "Machine y defaults to the explicit trench-depth model until a reviewed side-view vertical reference is selected.",
-      "Auto side-reference height is reported as a diagnostic candidate unless machine_y_source is explicitly set to side_reference."
-    ]
-  },
-  "sequence_capture_memory": {
-    "module": "python_vision_geometry/sequence_memory_workflow.py",
-    "purpose": "Durably record each capture's saved vision session, image path, and queried machine_positions_um before solving.",
-    "required_capture_ids": ["2.1.1", "2.4.1", "2.5.1", "2.6.1", "4.1.1", "4.4.1", "4.5.1", "4.6.2"],
-    "read_only_yase_sequences": [
-      "SUB_vision_geometry/SUB_V5SequenceMemoryInit_ReadOnly.xseq",
-      "SUB_vision_geometry/SUB_V5SequenceMemoryNextAction_ReadOnly.xseq",
-      "SUB_vision_geometry/SUB_V5CaptureReviewRecord_ReadOnly.xseq",
-      "SUB_vision_geometry/SUB_V5MacroAlignmentSolve_ReadOnly.xseq"
-    ],
-    "guarded_motion_yase_sequence": "SUB_vision_geometry/SUB_V5MacroAlignmentFinalWorkflow_Guarded.xseq",
-    "next_action_command": "Return the next required capture, missing official baseline, or solve_ready status with machine_positions_um targets only.",
-    "next_motion_or_capture_command": "Return one flat YASE-friendly final workflow action from live machine positions: move_to_next_capture with stage1/target1_um, capture_review_record_required, or solve_ready.",
-    "focus_plane_memory": "Focused records remember camera.y by feature height. next_action reports same-height focus guidance and only applies it to machine_positions_um when apply_remembered_focus_planes is true.",
-    "standard_evidence_command": "python_vision_geometry/standard_capture_evidence.py reports detected v4 image features, focus planes, same-camera gross motion rank, gross-to-close machine deltas, and final machine_coordinates_um.",
-    "position_override_rule": "If a capture record includes machine_positions_um, those live positions override the standard v4 position payload for that capture.",
-    "motion_policy": "Python records data and chooses the next flat action. The guarded final YASE wrapper may move only by calling SUB_ApplyDefaultPositionMove; image capture stays in SUB_V5CaptureReviewRecord_ReadOnly."
-  },
-  "view_mappings": {
-    "top_xz": {
-      "description": "Direct top view. Use for in-plane ball position relative to laser/chip reference.",
-      "image_x": { "axis": "machine_z_um", "sign": 1.0 },
-      "image_y": { "axis": "machine_x_um", "sign": 1.0 },
-      "required_axes": ["machine_x_um", "machine_z_um"]
+      "reuse_rule": "Only the matching gross view and reviewed standard baseline may be compared."
     },
-    "mirror_side_xy": {
-      "description": "Bottom mirror side/profile view. The mirror is visible in the camera image and is vertically mirrored: the trench-bottom/chip-side direction appears at the top of the mirror.",
-      "mirror_view": true,
-      "mirror_flip_y": true,
-      "image_x": { "axis": "machine_x_um", "sign": 1.0 },
-      "image_y_after_mirror_flip": { "axis": "machine_y_um", "sign": 1.0 },
-      "required_axes": ["machine_x_um", "machine_y_um"]
+    "fine_top_xz": {
+      "purpose": "Measure ball X/Z relative to the laser rectangle center.",
+      "scale_source": "reviewed 500 um laser rectangle short edge",
+      "machine_x_formula": "camera_ball_x - camera_reference_x + pixel_x_ball_minus_rectangle * um_per_pixel",
+      "machine_z_formula": "camera_ball_z - camera_reference_z - pixel_y_ball_minus_rectangle * um_per_pixel",
+      "reuse_rule": "Reference and ball captures must have the same fine-top view, zoom, and image dimensions."
+    },
+    "mirror_side_y": {
+      "purpose": "Measure ball Y relative to the physical trench top.",
+      "required_reviewed_features": [
+        "one mirror ROI",
+        "one side ball center",
+        "one trench_top_surface line",
+        "one trench_bottom_floor line"
+      ],
+      "mirror_formula": "mirror_flipped_y_px = mirror_roi_bottom_y_px - full_image_y_px",
+      "scale_formula": "um_per_pixel = 300 / abs(trench_floor_y_px - trench_top_y_px)",
+      "reuse_rule": "The side scale is valid only for the reviewed mirror view and zoom."
     }
   },
-  "default_close_position_bias": {
-    "enabled": true,
-    "max_bias_um": 350.0,
-    "fail_if_gross_offset_exceeds_um": 900.0,
-    "requires_um_per_pixel": true,
-    "auto_gross_detection": {
-      "standard_capture_ids": ["2.1.1", "4.1.1"],
-      "purpose": "detect coarse gross ball center in known v4 ROIs before planning close-focus positions",
-      "candidate_input": "candidate_image_path or candidate_session",
-      "motion_policy": "bounded tower-only proposal; no automatic hardware motion"
-    },
-    "default_gross_view_mapping": {
-      "image_x": { "tower_axis": "z", "sign": 1.0 },
-      "image_y": { "tower_axis": "x", "sign": 1.0 }
-    },
-    "notes": [
-      "Use 2.1 and 4.1 only to estimate a bounded correction before moving to close focus positions.",
-      "The bias is applied only to the active ball tower; camera, zoom, exposure, and focus settings remain the reviewed standard close-position values.",
-      "Do not apply an unbounded vision-derived move.",
-      "Bias plans are read-only/operator-review proposals unless bias_mapping_evidence.use_for_motion is explicitly true from a validated calibration."
-    ]
+  "capture_memory": {
+    "active_record_fields": [
+      "capture_id",
+      "position_id",
+      "target",
+      "view",
+      "camera_settings",
+      "image_dimensions_px",
+      "calibration_context",
+      "machine_positions_before_grab_um",
+      "machine_positions_after_grab_um",
+      "machine_positions_um",
+      "capture_stability",
+      "session",
+      "scale_source",
+      "revision",
+      "recorded_at_utc"
+    ],
+    "replacement_rule": "A re-recorded capture replaces its active record, archives the prior revision, and invalidates dependent correction, transition, and verification plans.",
+    "cancel_rule": "Review cancellation does not update memory.",
+    "stability_rule": "All camera, zoom, and tower axes are queried before and after the grab; excessive motion rejects the capture.",
+    "settings_rule": "Standard exposure and three light outputs are reapplied before the operator focus/framing gate and stored as commanded values; the operator must not change them because analog readback is not claimed."
+  },
+  "convergence": {
+    "fresh_capture_required_after_each_move": true,
+    "max_correction_attempts": 8,
+    "max_reviewed_captures_including_final_check": 9,
+    "abort_on_increasing_residual": true,
+    "coarse_max_step_um": 350.0,
+    "fine_top_max_step_um": 150.0,
+    "side_max_step_um": 75.0
+  },
+  "motion_policy": {
+    "standard_approach_velocity": "medium",
+    "transition_velocity": "medium",
+    "vision_correction_velocity": "slow",
+    "fast_close_to_chip_allowed": false,
+    "real_image_derived_move_requires_operator_confirmation": true
   },
   "steps": [
     {
       "order": 1,
       "capture_id": "2.1.1",
       "position_id": "2.1",
-      "label": "ball_1_gross_dual_view",
       "target": "ball_1",
-      "view": "gross_dual",
-      "purpose": "Confirm ball 1 is reachable and estimate coarse top/side offset before close views.",
-      "human_selection": ["ball_1_circle", "visible_laser_or_chip_reference_if_available"],
-      "result_use": "coarse_position_bias_only",
-      "close_position_ids": ["2.2", "2.3", "2.4", "2.5", "2.6"]
+      "view": "gross_top_xz",
+      "result_use": "coarse_frame_correction",
+      "human_selection": ["ball_1_gross_ball"]
     },
     {
       "order": 2,
       "capture_id": "2.4.1",
       "position_id": "2.4",
-      "label": "ball_1_laser_reference_top_focus",
       "target": "ball_1",
-      "view": "top_xz",
-      "purpose": "Measure the laser/chip reference in the best top-focus plane.",
-      "human_selection": ["laser_reference_rectangle_corners"],
-      "result_use": "reference_focus_registration",
-      "focus_plane_key": "top_laser_reference"
+      "view": "fine_top_xz",
+      "result_use": "laser_rectangle_reference",
+      "human_selection": ["laser_reference_rectangle"]
     },
     {
       "order": 3,
       "capture_id": "2.5.1",
       "position_id": "2.5",
-      "label": "ball_1_top_ball_focus",
       "target": "ball_1",
-      "view": "top_xz",
-      "purpose": "Measure ball 1 in-plane center relative to the laser/chip reference.",
-      "human_selection": ["ball_1_circle", "laser_reference_rectangle_or_registered_reference"],
-      "result_use": "machine_x_and_machine_z",
-      "focus_plane_key": "top_ball_focus"
+      "view": "fine_top_xz",
+      "result_use": "ball_1_machine_x_and_machine_z",
+      "human_selection": ["ball_1_top_ball"]
     },
     {
       "order": 4,
       "capture_id": "2.6.1",
       "position_id": "2.6",
-      "label": "ball_1_mirror_side_height",
       "target": "ball_1",
-      "view": "mirror_side_xy",
-      "purpose": "Measure ball 1 height from the mirror side/profile view.",
-      "human_selection": ["ball_1_circle", "side_laser_or_chip_reference_rectangle"],
-      "result_use": "machine_y_and_machine_x_consistency",
-      "focus_plane_key": "side_ball_focus"
+      "view": "mirror_side_y",
+      "result_use": "ball_1_machine_y",
+      "human_selection": [
+        "mirror ROI",
+        "ball_1_side_ball",
+        "trench_top_surface",
+        "trench_bottom_floor"
+      ]
     },
     {
       "order": 5,
       "capture_id": "4.1.1",
       "position_id": "4.1",
-      "label": "ball_2_gross_dual_view",
       "target": "ball_2",
-      "view": "gross_dual",
-      "purpose": "Confirm ball 2 is reachable and estimate coarse top/side offset before close views.",
-      "human_selection": ["ball_2_circle", "visible_laser_or_chip_reference_if_available"],
-      "result_use": "coarse_position_bias_only",
-      "close_position_ids": ["4.2", "4.3", "4.4", "4.5", "4.6.1", "4.6.2"]
+      "view": "gross_top_xz",
+      "result_use": "coarse_frame_correction",
+      "human_selection": ["ball_2_gross_ball"]
     },
     {
       "order": 6,
       "capture_id": "4.4.1",
       "position_id": "4.4",
-      "label": "ball_2_laser_reference_top_focus",
       "target": "ball_2",
-      "view": "top_xz",
-      "purpose": "Measure the laser/chip reference in the best top-focus plane.",
-      "human_selection": ["laser_reference_rectangle_corners"],
-      "result_use": "reference_focus_registration",
-      "focus_plane_key": "top_laser_reference"
+      "view": "fine_top_xz",
+      "result_use": "laser_rectangle_reference",
+      "human_selection": ["laser_reference_rectangle"]
     },
     {
       "order": 7,
       "capture_id": "4.5.1",
       "position_id": "4.5",
-      "label": "ball_2_top_ball_focus",
       "target": "ball_2",
-      "view": "top_xz",
-      "purpose": "Measure ball 2 in-plane center relative to the laser/chip reference.",
-      "human_selection": ["ball_2_circle", "laser_reference_rectangle_or_registered_reference"],
-      "result_use": "machine_x_and_machine_z",
-      "focus_plane_key": "top_ball_focus"
+      "view": "fine_top_xz",
+      "result_use": "ball_2_machine_x_and_machine_z",
+      "human_selection": ["ball_2_top_ball"]
     },
     {
       "order": 8,
       "capture_id": "4.6.2",
       "position_id": "4.6.2",
-      "label": "ball_2_mirror_side_height",
       "target": "ball_2",
-      "view": "mirror_side_xy",
-      "purpose": "Measure ball 2 height from the mirror side/profile view using the brighter side-profile settings.",
-      "human_selection": ["ball_2_circle", "side_laser_or_chip_reference_rectangle"],
-      "result_use": "machine_y_and_machine_x_consistency",
-      "focus_plane_key": "side_ball_focus"
+      "view": "mirror_side_y",
+      "result_use": "ball_2_machine_y",
+      "human_selection": [
+        "mirror ROI",
+        "ball_2_side_ball",
+        "trench_top_surface",
+        "trench_bottom_floor"
+      ]
     }
   ],
   "fail_closed_requirements": [
-    "Every precise top/side capture used for geometry must include relative_measurement.",
-    "Every precise ball must have top_xz and mirror_side_xy observations.",
-    "Repeated axis disagreement must be at or below max_axis_disagreement_um.",
-    "No direct MoveStage may be issued from this plan; motion must go through the reviewed guarded YASE apply layer."
+    "No correction without a current reviewed capture at the supplied exact machine pose.",
+    "No fine-top correction when view, zoom, or image dimensions differ.",
+    "No side Y correction for missing, duplicate, reversed, out-of-ROI, or implausibly separated mirror ruler features.",
+    "No correction outside the configured total residual or per-step bound.",
+    "No repeated correction from the same capture revision.",
+    "No continued convergence when the residual increases.",
+    "No YASE transition anchor without a current reviewed source capture and a matching converged revision when that source has an offset correction.",
+    "No direct hardware motion from Python."
   ],
-  "thresholds": {
-    "max_axis_disagreement_um": 10.0
-  }
+  "commissioning_boundary": "Repository tests and static audits are not physical machine validation. Signs, soft limits, collision clearance, waits, and mirror behavior require guarded machine commissioning."
 }

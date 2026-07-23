@@ -4,35 +4,35 @@
    <Comment>Initialize v6 vision workflow memory.</Comment>
    <Comment>Review MACHINE_CONFIGURATION.md and COMMON_MISTAKES.md before machine use.</Comment>
    <Statement Label="L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
-      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6SequenceMemoryInit_ReadOnly" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_SequenceName" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6SequenceMemoryInit_ReadOnly" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_SequenceName" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
-      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="set" Library="Standard">
-      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;schema_version&quot;:1,&quot;command&quot;:&quot;init&quot;,&quot;memory_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_vision_memory.json&quot;,&quot;standard_positions_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/standard_positions.json&quot;,&quot;standard_baseline_dir&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/vision_baselines&quot;,&quot;output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_vision_memory.json&quot;}" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="{&quot;schema_version&quot;:2,&quot;command&quot;:&quot;init&quot;,&quot;memory_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_vision_memory.json&quot;,&quot;standard_positions_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/standard_positions.json&quot;,&quot;standard_baseline_dir&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/standard_positions_v4/vision_baselines&quot;,&quot;output_path&quot;:&quot;D:/TestMasterData/Process/Python_Automation/python_env/log/v6_vision_memory.json&quot;}" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonInputJson" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
-      <Parameter Name="File Path" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\v6_init_input.json" />
-      <Parameter Name="Mode" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
-      <Parameter Name="Data" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
-      <Parameter Name="success" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_V6InitInputWritten" />
+      <Parameter Name="File Path" Description="&lt;B&gt;file path&lt;/B&gt; is the path name of the file. If file path is empty (default) or is &lt;Not A Path&gt;, the VI displays a dialog box from which you can select a file. Error 43 occurs if you cancel the dialog box." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\v6_init_input.json" />
+      <Parameter Name="Mode" Description="Parameter: select if file should be created or replaced (New File), or the data should be appended to an existing file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Data to be written to a file." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonInputJson" />
+      <Parameter Name="success" Description="Result: indicates, if the operation was successful" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_V6InitInputWritten" />
    </Statement>
    <Statement Label="L_CallPython" Editable="FALSE" Name="TMPython_ExecuteScript" Library="">
       <Parameter Name="Interpreter" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Python_310_PYTHON_AUTOMATION_INTERPRETER" />
@@ -42,34 +42,34 @@
       <Parameter Name="ParamOut" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_PythonResultJson" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
-      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="WriteToFile" Library="FileIO">
-      <Parameter Name="File Path" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\v6_init_result_from_yase.json" />
-      <Parameter Name="Mode" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
-      <Parameter Name="Data" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
-      <Parameter Name="success" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_V6InitResultWritten" />
+      <Parameter Name="File Path" Description="&lt;B&gt;file path&lt;/B&gt; is the path name of the file. If file path is empty (default) or is &lt;Not A Path&gt;, the VI displays a dialog box from which you can select a file. Error 43 occurs if you cancel the dialog box." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="D:\TestMasterData\Process\Python_Automation\python_env\log\v6_init_result_from_yase.json" />
+      <Parameter Name="Mode" Description="Parameter: select if file should be created or replaced (New File), or the data should be appended to an existing file." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="New file" />
+      <Parameter Name="Data" Description="Data to be written to a file." Type="String" Direction="Input" ValueType="Variable" VariableName="s_PythonResultJson" />
+      <Parameter Name="success" Description="Result: indicates, if the operation was successful" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_V6InitResultWritten" />
    </Statement>
    <Statement Label="L_Success" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6SequenceMemoryInit_ReadOnly complete." />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6SequenceMemoryInit_ReadOnly complete." />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="L_End" Editable="FALSE" Name="DisplayStatus" Library="Standard">
-      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQDefinition">
-      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
-      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
+      <Parameter Name="Value" Description="Enter default value for parameter in numeric format." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQDefinition">
-      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
-      <Parameter Name="Value" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
+      <Parameter Name="Value" Description="Enter default value for parameter in string format." Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="Standard">
    </Statement>
    <SequenceProperties>
    </SequenceProperties>
@@ -77,6 +77,18 @@
    </SequenceTags>
    <History>
       <Sequence-Description>Initialize v6 vision workflow memory.</Sequence-Description>
+      <Editor-Version>V 3.1.0 Build:103281600</Editor-Version>
       <Entry>2026-07-22 Generated for migration v6 guarded vision workflow</Entry>
+      <Entry>2026-07-23 10:00:39 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:05:39 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:10:39 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:15:39 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:20:39 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:25:39 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:30:39 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:35:39 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:40:39 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:44:17 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 Completed V6 reviewed vision alignment workflow</Entry>
    </History>
 </Sequence>

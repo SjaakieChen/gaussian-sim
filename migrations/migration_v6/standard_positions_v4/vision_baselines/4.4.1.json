@@ -103,6 +103,7 @@
           "y1": 89.54290771484375,
           "y2": 741.5000610351562
         },
+        "feature_role": "laser_reference",
         "shape_kind": "rectangle",
         "source": "rectangle"
       }

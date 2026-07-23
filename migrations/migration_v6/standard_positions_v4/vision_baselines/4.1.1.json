@@ -46,6 +46,7 @@
           "x": 1997.5,
           "y": 879.5
         },
+        "feature_role": "ball_2_gross_ball",
         "shape_kind": "circle",
         "source": "auto_gross_ball_circle"
       }

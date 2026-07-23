@@ -17,31 +17,40 @@ interlocks.
 
 ## Axis Conclusions
 
-- Machine `X` is the optical/laser direction.
-- Machine `Z` is the lateral top-view transverse direction.
-- Machine `Y` is the vertical/clearance direction.
 - Holder `1` is the left ball/lens tower and maps to `Align_*1`.
 - Holder `2` is the right ball/lens tower and maps to `Align_*2`.
-- The checked-in convention says linear-axis signs are already correct; no
-  simulator sign flips are applied.
+- V6 schema 2 uses canonical machine-axis keys, not camera-relative labels.
+- Legacy `x`, `y`, and `z` inputs are normalized at the boundary.
 
-For v6 reviewed top-view correction this means:
-
-```text
-image X residual -> tower machine Z correction
-image Y residual -> tower machine X correction
-```
-
-For v6 side-view mirror correction:
+The V6 reviewed-vision contract is:
 
 ```text
-full image Y -> mirror-local Y -> vertical flip -> tower machine Y correction
+image right               -> positive machine_x_um -> Align_X*
+image up                  -> positive machine_z_um -> Align_Z*
+mirror-corrected vertical -> machine_y_um          -> Align_Y*
 ```
 
-The side-view sign remains a machine-check item because the example production
-side correction adjusts pitch/roll rather than ball tower Y. V6 therefore logs
-mirror-transform diagnostics and fails closed when the side reference is
-missing or ambiguous.
+Because image Y increases downward, direct top-view image Y has the opposite
+sign from `machine_z_um`. A correction also has the opposite sign from the
+measured residual: for example, a ball right of its target requires negative
+`machine_x_um`.
+
+Fine-top measurements add the recorded camera X/Z displacement between the
+reference and ball captures before calculating the remaining tower correction.
+The scale is rejected when view, zoom, or image dimensions differ.
+
+For the V6 side mirror:
+
+```text
+full image Y -> mirror-local Y -> vertical flip
+300 um / reviewed trench-line separation -> side scale
+flipped ball-to-trench-top residual -> tower machine Y correction
+```
+
+The side-view sign remains a machine-check item. Repository evidence cannot
+prove the physical direction of the target machine. V6 logs the full transform
+and fails closed for missing, duplicate, reversed, out-of-ROI, or implausibly
+separated ruler features.
 
 ## Movement-Order Conclusions
 
@@ -89,5 +98,7 @@ must not rebase the target from the updated current position after each move.
 - Confirm the derived clearance Y values are physically safe on the machine.
 - Confirm motion wait timeouts are compatible with the medium/slow velocities
   and worst-case deltas.
+- Confirm image-right/`Align_X*` and image-up/`Align_Z*` correction signs with
+  deliberately small guarded moves.
 - Confirm the side-view mirror Y sign with a deliberately small reviewed test
   move before using side-view Y correction operationally.

@@ -61,11 +61,14 @@ FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM = 500.0
 FEATURE_ROLE_CHOICES = (
     "laser_reference",
     "ball_candidate",
+    "ball_1_gross_ball",
     "ball_1_top_ball",
     "ball_1_side_ball",
+    "ball_2_gross_ball",
     "ball_2_top_ball",
     "ball_2_side_ball",
-    "side_reference",
+    "trench_top_surface",
+    "trench_bottom_floor",
     "chip_reference",
     "fiducial_candidate",
     "object_candidate",
@@ -684,6 +687,73 @@ def read_grayscale_image(path: str | Path) -> np.ndarray:
     return np.clip(gray, 0.0, 1.0)
 
 
+def detect_side_trench_ruler_lines(
+    gray_image: np.ndarray,
+    rois: Sequence[VisionROI],
+) -> tuple[VisionLine, VisionLine] | tuple[()]:
+    """Propose the two horizontal mirror lines whose physical spacing is 300 um."""
+
+    if gray_image.ndim != 2 or not rois:
+        return ()
+    height, width = gray_image.shape
+    x1 = max(0, int(min(roi.normalized.x1 for roi in rois)))
+    y1 = max(0, int(min(roi.normalized.y1 for roi in rois)))
+    x2 = min(width, int(math.ceil(max(roi.normalized.x2 for roi in rois))))
+    y2 = min(height, int(math.ceil(max(roi.normalized.y2 for roi in rois))))
+    if x2 - x1 < 40 or y2 - y1 < 30:
+        return ()
+
+    crop = np.clip(gray_image[y1:y2, x1:x2], 0.0, 1.0).astype(np.float64)
+    if crop.shape[0] < 9:
+        return ()
+    vertical_gradient = np.abs(np.diff(crop, axis=0))
+    coverage = max(1, int(vertical_gradient.shape[1] * 0.2))
+    # Average the strongest 20% of each row's vertical edges. This keeps a
+    # trench line that is visible on only one side of a tower while rejecting
+    # small local ball highlights.
+    gradient = np.mean(np.sort(vertical_gradient, axis=1)[:, -coverage:], axis=1)
+    candidates = [
+        index
+        for index in range(5, gradient.size - 5)
+        if gradient[index] == np.max(gradient[index - 4 : index + 5])
+    ]
+    candidates.sort(key=lambda index: float(gradient[index]), reverse=True)
+    pair: tuple[int, int] | None = None
+    pair_score = -math.inf
+    for first in candidates[:30]:
+        for second in candidates[:30]:
+            separation = abs(second - first)
+            if not 50 <= separation <= 1000:
+                continue
+            ordered = tuple(sorted((first, second)))
+            score = float(gradient[ordered[0]] + gradient[ordered[1]])
+            if score > pair_score:
+                pair = ordered
+                pair_score = score
+    if pair is None:
+        return ()
+
+    floor_raw_y = float(y1 + pair[0])
+    top_raw_y = float(y1 + pair[1])
+    floor = VisionLine(
+        x1=float(x1),
+        y1=floor_raw_y,
+        x2=float(x2 - 1),
+        y2=floor_raw_y,
+        score=float(gradient[pair[0]]),
+        label="trench floor proposal (mirror raw top)",
+    )
+    top = VisionLine(
+        x1=float(x1),
+        y1=top_raw_y,
+        x2=float(x2 - 1),
+        y2=top_raw_y,
+        score=float(gradient[pair[1]]),
+        label="trench top proposal (mirror raw bottom)",
+    )
+    return floor, top
+
+
 def photo_image_from_grayscale(gray_image: np.ndarray) -> tk.PhotoImage:
     """Build a Tk image from a normalized grayscale array without Pillow."""
 
@@ -1163,14 +1233,14 @@ def format_relative_measurement_for_yase(
 
 
 def default_feature_role_for_selection(shape_kind: str, source: str) -> str:
-    """Return the v5 semantic role implied by a selected recognition item."""
+    """Return the V6 semantic role implied by a selected recognition item."""
 
     normalized_kind = str(shape_kind or "").strip()
     normalized_source = str(source or "").strip()
     if normalized_kind == "rectangle":
         return "laser_reference"
     if normalized_kind == "line" or normalized_source == "side_reference_line":
-        return "side_reference"
+        return "trench_top_surface"
     if normalized_kind == "circle" or normalized_source == "silhouette_circle":
         return "ball_candidate"
     if normalized_kind == "silhouette":
@@ -1178,6 +1248,63 @@ def default_feature_role_for_selection(shape_kind: str, source: str) -> str:
     if normalized_kind == "intersection":
         return "fiducial_candidate"
     return "unknown"
+
+
+def initial_selected_recognition_items(session: dict[str, Any]) -> list[dict[str, Any]]:
+    selected = session.get("selected_recognition")
+    if not isinstance(selected, dict):
+        return []
+    items: list[dict[str, Any]] = []
+    for roi_key in sorted(selected):
+        values = selected.get(roi_key)
+        if isinstance(values, list):
+            items.extend(value for value in values if isinstance(value, dict))
+    return items
+
+
+def recognition_payload_center(item: dict[str, Any]) -> tuple[float, float] | None:
+    shape = item.get("shape")
+    if not isinstance(shape, dict):
+        return None
+    kind = str(item.get("shape_kind") or "")
+    try:
+        if kind in {"circle", "intersection", "semicircle", "silhouette"}:
+            return float(shape["x"]), float(shape["y"])
+        if kind == "line":
+            return (
+                0.5 * (float(shape["x1"]) + float(shape["x2"])),
+                0.5 * (float(shape["y1"]) + float(shape["y2"])),
+            )
+        if kind == "rectangle":
+            corners = shape.get("corners")
+            if isinstance(corners, list) and len(corners) == 4:
+                return (
+                    sum(float(corner["x"]) for corner in corners) / 4.0,
+                    sum(float(corner["y"]) for corner in corners) / 4.0,
+                )
+            return (
+                0.5 * (float(shape["x1"]) + float(shape["x2"])),
+                0.5 * (float(shape["y1"]) + float(shape["y2"])),
+            )
+    except (KeyError, TypeError, ValueError):
+        return None
+    return None
+
+
+def expected_role_for_capture(capture_id: str, shape_kind: str) -> str:
+    roles = {
+        "2.1.1": "ball_1_gross_ball",
+        "2.4.1": "laser_reference",
+        "2.5.1": "ball_1_top_ball",
+        "2.6.1": "ball_1_side_ball",
+        "4.1.1": "ball_2_gross_ball",
+        "4.4.1": "laser_reference",
+        "4.5.1": "ball_2_top_ball",
+        "4.6.2": "ball_2_side_ball",
+    }
+    if shape_kind == "line":
+        return "trench_top_surface"
+    return roles.get(str(capture_id), default_feature_role_for_selection(shape_kind, shape_kind))
 
 
 def circle_roi_mask(full_x: np.ndarray, full_y: np.ndarray, roi: VisionROI) -> np.ndarray:
@@ -3082,12 +3209,18 @@ class VisionRecognitionLab(tk.Toplevel):
         captured_image_path: str | Path | None = None,
         session_done_callback: Callable[[], None] | None = None,
         show_session_done_button: bool = False,
+        initial_session: dict[str, Any] | None = None,
+        capture_id: str | None = None,
     ) -> None:
         super().__init__(master)
         self.image_root = Path(image_root)
         self._captured_image_path = Path(captured_image_path) if captured_image_path is not None else None
         self._session_done_callback = session_done_callback
         self._show_session_done_button = show_session_done_button
+        self._initial_session = deepcopy(initial_session) if isinstance(initial_session, dict) else None
+        self._capture_id = str(capture_id or "").strip()
+        self._session_saved = False
+        self._session_cancelled = False
         self.library = VisionPositionLibrary(positions=(), images=())
         self._position_display_to_id: dict[str, str] = {}
         self._image_item_to_image: dict[str, VisionPositionImage] = {}
@@ -3131,6 +3264,8 @@ class VisionRecognitionLab(tk.Toplevel):
         self._build_ui()
         if self._captured_image_path is not None:
             self.load_captured_image(self._captured_image_path)
+            if self._initial_session:
+                self.preload_review_session(self._initial_session)
         else:
             self.reload_library()
 
@@ -3350,7 +3485,13 @@ class VisionRecognitionLab(tk.Toplevel):
             ttk.Button(roi_buttons, text="Save + Close", command=self._finish_session).grid(
                 row=1,
                 column=0,
-                columnspan=2,
+                sticky="ew",
+                pady=(4, 0),
+                padx=(0, 4),
+            )
+            ttk.Button(roi_buttons, text="Cancel", command=self._cancel_session).grid(
+                row=1,
+                column=1,
                 sticky="ew",
                 pady=(4, 0),
             )
@@ -3440,6 +3581,10 @@ class VisionRecognitionLab(tk.Toplevel):
             sticky="ew",
             padx=(0, 4),
         )
+        if self._captured_image_path is not None:
+            self.save_official_button.grid_remove()
+            self.score_official_button.grid_remove()
+            self.save_v5_memory_button.grid_remove()
         self.recognition_legend_toggle_button = ttk.Button(
             recognition_actions,
             text="Legend",
@@ -3627,6 +3772,81 @@ class VisionRecognitionLab(tk.Toplevel):
         self.position_summary_var.set(f"Captured image | {path}")
         self._populate_images((image,))
 
+    def preload_review_session(self, session: dict[str, Any]) -> None:
+        """Load baseline ROIs, run live recognition, and preselect nearest proposals."""
+
+        raw_rois = session.get("rois")
+        if not isinstance(raw_rois, list):
+            raw_rois = []
+        self._rois = []
+        for raw_roi in raw_rois:
+            if not isinstance(raw_roi, dict):
+                continue
+            try:
+                roi = VisionROI(
+                    kind=str(raw_roi.get("kind") or "box"),
+                    x1=float(raw_roi["x1"]),
+                    y1=float(raw_roi["y1"]),
+                    x2=float(raw_roi["x2"]),
+                    y2=float(raw_roi["y2"]),
+                    orientation=str(raw_roi.get("orientation") or "right"),
+                ).normalized
+            except (KeyError, TypeError, ValueError):
+                continue
+            if roi.width >= 3.0 and roi.height >= 3.0:
+                self._rois.append(roi)
+        self._update_roi_count()
+        self._refresh_parameter_visibility()
+        if self._rois:
+            self.run_recognition()
+            self._preselect_nearest_initial_features(session)
+        else:
+            self._render_current_image()
+        self.tool_status_var.set(
+            "Baseline proposals loaded on the live image; review, replace, assign roles, then save."
+        )
+
+    def _preselect_nearest_initial_features(self, session: dict[str, Any]) -> None:
+        expected = initial_selected_recognition_items(session)
+        if not expected or not self._recognition_tree_items:
+            return
+        used: set[str] = set()
+        for expected_item in expected:
+            expected_kind = str(expected_item.get("shape_kind") or "")
+            expected_center = recognition_payload_center(expected_item)
+            if expected_center is None:
+                continue
+            expected_roi_index = int(expected_item.get("roi_index") or 0)
+            candidates: list[tuple[float, str]] = []
+            for item_id, item in self._recognition_tree_items.items():
+                if item_id in used or item.shape_kind != expected_kind:
+                    continue
+                if expected_roi_index and item.roi_index != expected_roi_index:
+                    continue
+                current_center = self._shape_center(item.shape_kind, item.shape)
+                distance = math.hypot(
+                    current_center[0] - expected_center[0],
+                    current_center[1] - expected_center[1],
+                )
+                candidates.append((distance, item_id))
+            if not candidates:
+                continue
+            distance, item_id = min(candidates)
+            roi = self._rois[self._recognition_tree_items[item_id].roi_index - 1]
+            if distance > 0.4 * math.hypot(roi.width, roi.height):
+                continue
+            used.add(item_id)
+            self._selected_recognition_item_ids.add(item_id)
+            self._selected_recognition_item_order.append(item_id)
+            role = str(expected_item.get("feature_role") or "").strip()
+            if not role:
+                role = expected_role_for_capture(self._capture_id, expected_kind)
+            if role in FEATURE_ROLE_CHOICES:
+                self._recognition_item_role_overrides[item_id] = role
+        self._update_recognition_tree_selection_marks()
+        self._update_selected_measurement()
+        self._render_current_image()
+
     def selected_position_id(self) -> str:
         raw = self.position_var.get().strip()
         if raw in self._position_display_to_id:
@@ -3646,6 +3866,17 @@ class VisionRecognitionLab(tk.Toplevel):
 
     def current_rois(self) -> tuple[VisionROI, ...]:
         return tuple(self._rois)
+
+    def reviewed_mirror_roi_payload(self) -> dict[str, float] | None:
+        if self._capture_id not in {"2.6.1", "4.6.2"} or not self._rois:
+            return None
+        return {
+            "x1": min(roi.normalized.x1 for roi in self._rois),
+            "y1": min(roi.normalized.y1 for roi in self._rois),
+            "x2": max(roi.normalized.x2 for roi in self._rois),
+            "y2": max(roi.normalized.y2 for roi in self._rois),
+            "source": "reviewed_union_of_side_rois",
+        }
 
     def add_roi(self, roi: VisionROI) -> None:
         normalized = roi.normalized
@@ -3726,6 +3957,12 @@ class VisionRecognitionLab(tk.Toplevel):
     def current_session_payload(self, status: str) -> dict[str, Any]:
         if self._selected_image is None:
             raise ValueError("No image is loaded.")
+        dimensions = None
+        if self._source_gray_image is not None:
+            dimensions = {
+                "image_width_px": int(self._source_gray_image.shape[1]),
+                "image_height_px": int(self._source_gray_image.shape[0]),
+            }
         return vision_session_payload(
             image_path=self._selected_image.path,
             rois=self.current_rois(),
@@ -3736,6 +3973,9 @@ class VisionRecognitionLab(tk.Toplevel):
             measurements=self.selected_measurements_payload(),
             relative_measurement=self.selected_relative_measurement_payload(),
             yase_display=self.selected_yase_display_status(status),
+            capture_id=self._capture_id or None,
+            mirror_roi=self.reviewed_mirror_roi_payload(),
+            image_dimensions_px=dimensions,
         )
 
     def official_baseline_path(self) -> Path:
@@ -4032,6 +4272,23 @@ class VisionRecognitionLab(tk.Toplevel):
             silhouette_algorithm_name=self.selected_silhouette_recognizer_name(),
             silhouette_sensitivity=self.selected_silhouette_sensitivity(),
         )
+        if self._capture_id in {"2.6.1", "4.6.2"}:
+            trench_lines = detect_side_trench_ruler_lines(self._source_gray_image, tuple(self._rois))
+            if trench_lines:
+                result = VisionRecognitionResult(
+                    algorithm_name=f"{result.algorithm_name}+two_line_trench_ruler",
+                    display_name=f"{result.display_name} + two-line trench ruler",
+                    lines=tuple(trench_lines) + result.lines,
+                    intersections=result.intersections,
+                    circles=result.circles,
+                    rectangles=result.rectangles,
+                    semicircles=result.semicircles,
+                    silhouettes=result.silhouettes,
+                    message=(
+                        f"{result.message}; proposed physical trench floor and top lines "
+                        "for the reviewed 300 um mirror ruler"
+                    ),
+                )
         self._recognition_result = result
         self._populate_recognition_tree(result)
         self._render_current_image()
@@ -4048,6 +4305,16 @@ class VisionRecognitionLab(tk.Toplevel):
         self.tool_status_var.set("Recognition cleared")
 
     def _finish_session(self) -> None:
+        self._session_saved = True
+        self._session_cancelled = False
+        if self._session_done_callback is not None:
+            self._session_done_callback()
+            return
+        self.destroy()
+
+    def _cancel_session(self) -> None:
+        self._session_saved = False
+        self._session_cancelled = True
         if self._session_done_callback is not None:
             self._session_done_callback()
             return
@@ -5616,16 +5883,20 @@ def vision_session_payload(
     measurements: Sequence[dict[str, Any]] | None = None,
     relative_measurement: dict[str, Any] | None = None,
     yase_display: str | None = None,
+    capture_id: str | None = None,
+    mirror_roi: dict[str, Any] | None = None,
+    image_dimensions_px: dict[str, int] | None = None,
+    action: str | None = None,
 ) -> dict[str, Any]:
     roi_payload = [vision_roi_to_dict(roi) for roi in rois]
     measurement_payloads = list(measurements or ())
     if relative_measurement is None:
         relative_measurement = relative_measurement_payload_from_measurements(measurement_payloads)
     display_status = yase_display or format_relative_measurement_for_yase(relative_measurement, status)
-    return {
+    payload = {
         "schema_version": 3,
         "ok": ok,
-        "action": "vision_lab_saved" if roi_payload else "vision_lab_closed_without_rois",
+        "action": action or ("vision_lab_saved" if roi_payload else "vision_lab_closed_without_rois"),
         "status": display_status,
         "session_status": status,
         "yase_display": display_status,
@@ -5639,6 +5910,15 @@ def vision_session_payload(
         "measurements": measurement_payloads,
         "relative_measurement": relative_measurement,
     }
+    if capture_id:
+        payload["capture_id"] = capture_id
+    if mirror_roi:
+        payload["mirror_roi"] = deepcopy(mirror_roi)
+        payload["mirror_view"] = True
+        payload["mirror_flip_y"] = True
+    if image_dimensions_px:
+        payload["image_dimensions_px"] = deepcopy(image_dimensions_px)
+    return payload
 
 
 def run_vision_recognition_lab_session(
@@ -5646,6 +5926,8 @@ def run_vision_recognition_lab_session(
     *,
     roi_output_path: str | Path | None = None,
     result_output_path: str | Path | None = None,
+    initial_session: dict[str, Any] | None = None,
+    capture_id: str | None = None,
 ) -> dict[str, Any]:
     source_path = Path(image_path)
     if not source_path.is_file():
@@ -5665,10 +5947,26 @@ def run_vision_recognition_lab_session(
         captured_image_path=source_path,
         session_done_callback=finish,
         show_session_done_button=True,
+        initial_session=initial_session,
+        capture_id=capture_id,
     )
-    lab.protocol("WM_DELETE_WINDOW", finish)
+    lab.protocol("WM_DELETE_WINDOW", lab._cancel_session)  # pylint: disable=protected-access
     try:
         root.mainloop()
+        if lab._session_cancelled or not lab._session_saved:  # pylint: disable=protected-access
+            payload = vision_session_payload(
+                image_path=source_path,
+                rois=(),
+                result=None,
+                status="Vision review cancelled; no memory update is allowed",
+                ok=False,
+                capture_id=capture_id,
+                action="vision_lab_cancelled",
+            )
+            if result_output_path is not None:
+                payload["result_output_path"] = str(Path(result_output_path))
+                _write_json(result_output_path, payload)
+            return payload
         status = "Vision recognition lab closed"
         if not finished:
             status = "Vision recognition lab ended"
@@ -5682,6 +5980,16 @@ def run_vision_recognition_lab_session(
             measurements=lab.selected_measurements_payload(),
             relative_measurement=lab.selected_relative_measurement_payload(),
             yase_display=lab.selected_yase_display_status(status),
+            capture_id=capture_id,
+            mirror_roi=lab.reviewed_mirror_roi_payload(),
+            image_dimensions_px=(
+                {
+                    "image_width_px": int(lab._source_gray_image.shape[1]),  # pylint: disable=protected-access
+                    "image_height_px": int(lab._source_gray_image.shape[0]),  # pylint: disable=protected-access
+                }
+                if lab._source_gray_image is not None  # pylint: disable=protected-access
+                else None
+            ),
         )
         if roi_output_path is not None:
             roi_payload = {
@@ -5727,6 +6035,8 @@ def run_vision_recognition_lab_from_params(params_in: dict[str, Any]) -> dict[st
         image_path,
         roi_output_path=params_in.get("roi_output_path"),
         result_output_path=params_in.get("result_output_path"),
+        initial_session=params_in.get("initial_session"),
+        capture_id=params_in.get("capture_id"),
     )
 
 

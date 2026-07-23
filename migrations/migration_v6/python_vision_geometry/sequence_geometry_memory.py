@@ -1,4 +1,4 @@
-"""Solve v5 machine coordinates from remembered multi-capture vision features.
+"""Solve V6 machine coordinates from remembered multi-capture vision features.
 
 This module handles the real v5 capture pattern where the laser/reference
 rectangle and the ball edge are often not measured in the same focused image.
@@ -78,8 +78,8 @@ DEFAULT_AUTO_FEATURE_SPECS: dict[str, dict[str, Any]] = {
 }
 DEFAULT_VIEW_MAPPINGS: dict[str, dict[str, dict[str, float | str]]] = {
     "top_xz": {
-        "image_x": {"axis": "machine_z_um", "sign": 1.0},
-        "image_y": {"axis": "machine_x_um", "sign": 1.0},
+        "image_x": {"axis": "machine_x_um", "sign": 1.0},
+        "image_y": {"axis": "machine_z_um", "sign": -1.0},
     },
 }
 DEFAULT_TARGET_SPECS: dict[str, dict[str, str]] = {
@@ -207,14 +207,14 @@ def solve_sequence_geometry(params_in: JsonDict) -> JsonDict:
             "schema_version": SCHEMA_VERSION,
             "ok": True,
             "action": "sequence_geometry_solved",
-            "status": "v5 sequence geometry solved from remembered capture features",
+            "status": "v6 sequence geometry solved from remembered capture features",
             "machine_coordinate_system": {
                 "reference": "machine_reference",
                 "reference_feature": "laser_rectangle_center",
                 "units": "um",
                 "axes": {
-                    "machine_x_um": "Align_X optical propagation axis from top-view image y",
-                    "machine_z_um": "Align_Z horizontal transverse axis from top-view image x",
+                    "machine_x_um": "Align_X axis from top-view image right",
+                    "machine_z_um": "Align_Z axis from top-view image up",
                     "machine_y_um": "vertical axis; default estimated from ball radius minus trench depth",
                 },
             },

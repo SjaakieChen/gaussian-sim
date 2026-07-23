@@ -4,585 +4,381 @@
    <Comment>Full v6 guarded macro workflow.</Comment>
    <Comment>Review MACHINE_CONFIGURATION.md and COMMON_MISTAKES.md before machine use.</Comment>
    <Statement Label="L_Start" Editable="FALSE" Name="****" Library="XSEQFlowControl">
-      <Parameter Name="Comment" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="Comment" Description="Enter comment text." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6MainWorkflow_Guarded" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_SequenceName" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6MainWorkflow_Guarded" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_SequenceName" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="DisplayStatus" Library="Standard">
-      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_SequenceName" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="set" Library="Standard">
-      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6SequenceMemoryInit_ReadOnly" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6MoveToPosition_1.0_pickup_b1_side_view" Library="process\SUB_v6_standard_positions">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6MoveToPosition_1.1_pickup_b1_lowered_vacuum" Library="process\SUB_v6_standard_positions">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6MoveToPosition_2.1_dual_view_focus" Library="process\SUB_v6_standard_positions">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_2.1.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6Converge_2.1.1_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_2.1.1_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_2.1.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_2.1.1_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6TransitionMove_2.1_to_2.4_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_2.4.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6TransitionMove_2.4_to_2.5_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_2.5.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6Converge_2.5.1_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_2.5.1_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_2.5.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_2.5.1_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6TransitionMove_2.5_to_2.6_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_2.6.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6Converge_2.6.1_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_2.6.1_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_2.6.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_2.6.1_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6MoveToPosition_3.0_pickup_ball_2" Library="process\SUB_v6_standard_positions">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6MoveToPosition_3.1_pickup_ball_2_vac" Library="process\SUB_v6_standard_positions">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6MoveToPosition_4.1_dual_view_focus_ball" Library="process\SUB_v6_standard_positions">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_4.1.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6Converge_4.1.1_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_4.1.1_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_4.1.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_4.1.1_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6TransitionMove_4.1_to_4.4_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_4.4.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6TransitionMove_4.4_to_4.5_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_4.5.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6Converge_4.5.1_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_4.5.1_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_4.5.1_ReadOnly" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_4.5.1_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6TransitionMove_4.5_to_4.6.2_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_4.6.2_ReadOnly" Library="process\SUB_v6_vision_workflow">
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6Converge_4.6.2_Guarded" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_4.6.2_Guarded" Library="process\SUB_v6_vision_workflow">
+   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6FinalVerification_ReadOnly" Library="process\SUB_v6_vision_workflow">
       <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
       <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6CaptureReviewRecord_4.6.2_ReadOnly" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_V6OffsetCorrection_4.6.2_Guarded" Library="process\SUB_v6_vision_workflow">
-      <Parameter Name="ErrorType" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
-   </Statement>
-   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="L_Success" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6MainWorkflow_Guarded complete." />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6MainWorkflow_Guarded complete." />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="L_Error_Fiducial" Editable="FALSE" Name="set" Library="Standard">
-      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="31.0" StringValue="31.0" />
-      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="31.0" StringValue="31.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Stages are not fiducialed. Aborted before v6 motion." />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Stages are not fiducialed. Aborted before v6 motion." />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="L_Error_Stage" Editable="FALSE" Name="set" Library="Standard">
-      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="32.0" StringValue="32.0" />
-      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="32.0" StringValue="32.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Parsed stage is not allowed for this v6 move sequence." />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Parsed stage is not allowed for this v6 move sequence." />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="L_Error_Delta" Editable="FALSE" Name="set" Library="Standard">
-      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="33.0" StringValue="33.0" />
-      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="33.0" StringValue="33.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Planned absolute move delta exceeds MaxSingleMoveUm." />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Planned absolute move delta exceeds MaxSingleMoveUm." />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="L_Error_Velocity" Editable="FALSE" Name="set" Library="Standard">
-      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="34.0" StringValue="34.0" />
-      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="34.0" StringValue="34.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="A required MainVelocity value is missing or not greater than zero." />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="A required MainVelocity value is missing or not greater than zero." />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="L_Error_UserAbort" Editable="FALSE" Name="set" Library="Standard">
-      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="35.0" StringValue="35.0" />
-      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="35.0" StringValue="35.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Operator aborted before MoveStage or SetAnalogOut." />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Operator aborted before MoveStage or SetAnalogOut." />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="L_Error_Timeout" Editable="FALSE" Name="set" Library="Standard">
-      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="36.0" StringValue="36.0" />
-      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="36.0" StringValue="36.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
-      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Axis wait timed out. Confirm physical motion has stopped before continuing." />
-      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Axis wait timed out. Confirm physical motion has stopped before continuing." />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
    <Statement Label="L_End" Editable="FALSE" Name="DisplayStatus" Library="Standard">
-      <Parameter Name="Status text" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ReturnNumParam" Library="XSEQDefinition">
-      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
-      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorType" />
+      <Parameter Name="Value" Description="Enter default value for parameter in numeric format." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="ReturnStrParam" Library="XSEQDefinition">
-      <Parameter Name="Name" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
-      <Parameter Name="Value" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
+      <Parameter Name="Name" Description="Name (label) parameter." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="ErrorMessage" />
+      <Parameter Name="Value" Description="Enter default value for parameter in string format." Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="XSEQFlowControl">
+   <Statement Label="" Editable="FALSE" Name="EndSeq" Library="Standard">
    </Statement>
    <SequenceProperties>
    </SequenceProperties>
@@ -590,6 +386,19 @@
    </SequenceTags>
    <History>
       <Sequence-Description>Full v6 guarded macro workflow.</Sequence-Description>
+      <Editor-Version>V 3.1.0 Build:103281600</Editor-Version>
       <Entry>2026-07-22 Generated for migration v6 guarded vision workflow</Entry>
+      <Entry>2026-07-23 09:58:14 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:03:14 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:08:14 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:13:14 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:18:14 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:23:14 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:28:14 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:33:14 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:38:14 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:43:14 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 10:44:17 Sequence modified [chenj]</Entry>
+      <Entry>2026-07-23 Completed V6 reviewed vision alignment workflow</Entry>
    </History>
 </Sequence>

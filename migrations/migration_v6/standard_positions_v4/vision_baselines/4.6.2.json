@@ -1,41 +1,144 @@
 {
-  "action": "auto_feature_session",
-  "auto_detected": true,
-  "auto_feature_kind": "side_ball_circle",
+  "action": "vision_lab_saved",
   "image_path": "standard_positions_v4/newhead/4.6.2.PNG",
   "mirror_flip_y": true,
-  "mirror_note": "V6 treats side view as a mirror: top of mirror corresponds to trench-bottom/chip-side direction.",
+  "mirror_note": "Bottom mirror: physical trench floor appears above physical trench top in raw image Y.",
+  "mirror_roi": {
+    "source": "reviewed_union_of_side_rois",
+    "x1": 50.0,
+    "x2": 2540.0,
+    "y1": 220.0,
+    "y2": 1300.0
+  },
   "mirror_view": true,
+  "official_baseline": {
+    "baseline_path": "standard_positions_v4/vision_baselines/4.6.2.json",
+    "capture_id": "4.6.2",
+    "image_rel_path": "newhead/4.6.2.PNG",
+    "position_id": "4.6.2",
+    "schema_version": 1
+  },
   "ok": true,
+  "ready_for_recognition": true,
+  "recognition_result": {
+    "algorithm_name": "skimage_hough_sized+two_line_trench_ruler",
+    "circles": [
+      {
+        "label": "auto hough ball circle",
+        "radius": 285.4800109863281,
+        "score": 18.0,
+        "x": 1467.800048828125,
+        "y": 944.5999755859375
+      }
+    ],
+    "display_name": "Reviewed side ball + two-line trench ruler",
+    "intersections": [],
+    "lines": [
+      {
+        "label": "trench floor proposal (mirror raw top)",
+        "score": 0.09181037329765687,
+        "x1": 50.0,
+        "x2": 2539.0,
+        "y1": 391.0,
+        "y2": 391.0
+      },
+      {
+        "label": "trench top proposal (mirror raw bottom)",
+        "score": 0.10724465860181065,
+        "x1": 50.0,
+        "x2": 2539.0,
+        "y1": 752.0,
+        "y2": 752.0
+      }
+    ],
+    "message": "Reviewed ball and two physical trench lines; their known separation is 300 um.",
+    "rectangles": [],
+    "semicircles": [],
+    "silhouettes": []
+  },
+  "roi_count": 2,
   "rois": [
+    {
+      "kind": "edges",
+      "orientation": "right",
+      "x1": 50.0,
+      "x2": 2540.0,
+      "y1": 220.0,
+      "y2": 1300.0
+    },
     {
       "kind": "circle",
       "orientation": "right",
-      "x1": 650.0,
-      "x2": 1600.0,
-      "y1": 500.0,
-      "y2": 1600.0
+      "x1": 1050.0,
+      "x2": 1850.0,
+      "y1": 600.0,
+      "y2": 1300.0
     }
   ],
   "schema_version": 3,
   "selected_recognition": {
     "roi_1": [
       {
+        "feature_role": "trench_bottom_floor",
+        "roi": {
+          "kind": "edges",
+          "orientation": "right",
+          "x1": 50.0,
+          "x2": 2540.0,
+          "y1": 220.0,
+          "y2": 1300.0
+        },
+        "roi_index": 1,
+        "selection_index": 1,
+        "shape": {
+          "label": "trench floor proposal (mirror raw top)",
+          "score": 0.09181037329765687,
+          "x1": 50.0,
+          "x2": 2539.0,
+          "y1": 391.0,
+          "y2": 391.0
+        },
+        "shape_kind": "line",
+        "source": "two_line_trench_ruler"
+      },
+      {
+        "feature_role": "trench_top_surface",
+        "roi": {
+          "kind": "edges",
+          "orientation": "right",
+          "x1": 50.0,
+          "x2": 2540.0,
+          "y1": 220.0,
+          "y2": 1300.0
+        },
+        "roi_index": 1,
+        "selection_index": 2,
+        "shape": {
+          "label": "trench top proposal (mirror raw bottom)",
+          "score": 0.10724465860181065,
+          "x1": 50.0,
+          "x2": 2539.0,
+          "y1": 752.0,
+          "y2": 752.0
+        },
+        "shape_kind": "line",
+        "source": "two_line_trench_ruler"
+      }
+    ],
+    "roi_2": [
+      {
+        "feature_role": "ball_2_side_ball",
         "roi": {
           "kind": "circle",
           "orientation": "right",
-          "x1": 650.0,
-          "x2": 1600.0,
-          "y1": 500.0,
-          "y2": 1600.0
+          "x1": 1050.0,
+          "x2": 1850.0,
+          "y1": 600.0,
+          "y2": 1300.0
         },
-        "roi_index": 1,
+        "roi_index": 2,
+        "selection_index": 3,
         "shape": {
-          "auto_hough": {
-            "dp": 1.2,
-            "param1": 60.0,
-            "param2": 18.0
-          },
           "label": "auto hough ball circle",
           "radius": 285.4800109863281,
           "score": 18.0,
@@ -47,13 +150,10 @@
       }
     ]
   },
-  "side_reference_line": {
-    "score": 9.78478260869565,
-    "source": "auto_horizontal_bright_to_dark_edge",
-    "x1_px": 650.0,
-    "x2_px": 1800.0,
-    "y_px": 403.0
-  },
+  "session_status": "Reviewed V6 side baseline for 4.6.2",
   "standard_capture_id": "4.6.2",
-  "status": "V6 side baseline with mirror side-reference for 4.6.2"
+  "standard_image_rel_path": "newhead/4.6.2.PNG",
+  "standard_position_id": "4.6.2",
+  "status": "V6 side baseline with reviewed 300 um two-line mirror ruler",
+  "yase_display": "Reviewed V6 side baseline for 4.6.2"
 }

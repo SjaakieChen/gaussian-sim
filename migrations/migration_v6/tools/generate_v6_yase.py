@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+import xml.etree.ElementTree as ET
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,7 @@ STANDARD_BASELINE_MACHINE_DIR = f"{PYTHON_ENV}/standard_positions_v4/vision_base
 IMAGE_PATH = f"{DATA_DIR}/python_vision_input.bmp"
 INTERPRETER = "Python_310_PYTHON_AUTOMATION_INTERPRETER"
 MODULE = "python_vision_geometry.v6_offset_workflow"
+SCHEMA_VERSION = 2
 
 STAGE_ORDER = [
     "Camera_X",
@@ -43,20 +45,26 @@ STAGE_ORDER = [
     "Align_Y2",
 ]
 QUERY_STAGES = [
-    ("Camera_X", "d_CameraXUm", "camera_x_um"),
-    ("Camera_Y", "d_CameraYUm", "camera_y_um"),
-    ("Camera_Z", "d_CameraZUm", "camera_z_um"),
-    ("Align_X1", "d_Tower1XUm", "tower_1_x_um"),
-    ("Align_Y1", "d_Tower1YUm", "tower_1_y_um"),
-    ("Align_Z1", "d_Tower1ZUm", "tower_1_z_um"),
-    ("Align_X2", "d_Tower2XUm", "tower_2_x_um"),
-    ("Align_Y2", "d_Tower2YUm", "tower_2_y_um"),
-    ("Align_Z2", "d_Tower2ZUm", "tower_2_z_um"),
-    ("Zoom", "d_ZoomUm", "zoom_um"),
+    ("Camera_X", "CameraXUm", "camera_machine_x_um"),
+    ("Camera_Y", "CameraYUm", "camera_machine_y_um"),
+    ("Camera_Z", "CameraZUm", "camera_machine_z_um"),
+    ("Align_X1", "Tower1XUm", "tower_1_machine_x_um"),
+    ("Align_Y1", "Tower1YUm", "tower_1_machine_y_um"),
+    ("Align_Z1", "Tower1ZUm", "tower_1_machine_z_um"),
+    ("Align_X2", "Tower2XUm", "tower_2_machine_x_um"),
+    ("Align_Y2", "Tower2YUm", "tower_2_machine_y_um"),
+    ("Align_Z2", "Tower2ZUm", "tower_2_machine_z_um"),
+    ("Zoom", "ZoomUm", "zoom_um"),
 ]
 CAPTURE_IDS = ["2.1.1", "2.4.1", "2.5.1", "2.6.1", "4.1.1", "4.4.1", "4.5.1", "4.6.2"]
 OFFSET_CAPTURE_IDS = ["2.1.1", "2.5.1", "2.6.1", "4.1.1", "4.5.1", "4.6.2"]
 TRANSITIONS = ["2.1_to_2.4", "2.4_to_2.5", "2.5_to_2.6", "4.1_to_4.4", "4.4_to_4.5", "4.5_to_4.6.2"]
+EDITOR_SAVED_FILES = {
+    "SUB_V6ApplyApproachMove_Guarded.xseq",
+    "SUB_V6ApplyOffsetCorrectionMove_Guarded.xseq",
+    "SUB_V6MainWorkflow_Guarded.xseq",
+    "SUB_V6SequenceMemoryInit_ReadOnly.xseq",
+}
 
 
 def main() -> None:
@@ -71,11 +79,13 @@ def main() -> None:
     write_text(WORKFLOW_DIR / "SUB_V6ApplyApproachMove_Guarded.xseq", generate_apply_move_sequence("approach"))
     write_text(WORKFLOW_DIR / "SUB_V6ApplyOffsetCorrectionMove_Guarded.xseq", generate_apply_move_sequence("offset"))
     for capture_id in CAPTURE_IDS:
-        write_text(capture_sequence_path(capture_id), generate_capture_sequence(capture_id))
+        write_text(capture_sequence_path(capture_id), generate_capture_sequence(capture_id, positions))
     for capture_id in OFFSET_CAPTURE_IDS:
         write_text(offset_sequence_path(capture_id), generate_offset_sequence(capture_id))
+        write_text(convergence_sequence_path(capture_id), generate_convergence_sequence(capture_id))
     for transition_id in TRANSITIONS:
         write_text(transition_sequence_path(transition_id), generate_transition_sequence(transition_id, positions))
+    write_text(final_verification_sequence_path(), generate_final_verification_sequence())
     write_text(WORKFLOW_DIR / "SUB_V6MainWorkflow_Guarded.xseq", generate_main_workflow(positions))
 
 
@@ -174,7 +184,7 @@ def generate_apply_move_sequence(kind: str) -> str:
 def generate_init_sequence() -> str:
     sequence_name = "SUB_V6SequenceMemoryInit_ReadOnly"
     payload = {
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "command": "init",
         "memory_path": MEMORY_PATH,
         "standard_positions_path": STANDARD_POSITIONS_MACHINE_PATH,
@@ -192,10 +202,14 @@ def generate_init_sequence() -> str:
     return sequence_document(sequence_name, statements, "Initialize v6 vision workflow memory.")
 
 
-def generate_capture_sequence(capture_id: str) -> str:
+def generate_capture_sequence(capture_id: str, positions: list[dict[str, Any]]) -> str:
     sequence_name = capture_sequence_path(capture_id).stem
+    position_id = capture_id.rsplit(".", 1)[0]
+    if capture_id == "4.6.2":
+        position_id = "4.6.2"
+    position = position_by_id(positions, position_id)
     payload = {
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "command": "record_capture",
         "capture_id": capture_id,
         "memory_path": MEMORY_PATH,
@@ -206,14 +220,44 @@ def generate_capture_sequence(capture_id: str) -> str:
         "roi_output_path": f"{LOG_DIR}/v6_{capture_id}_reviewed_rois.json",
         "review_session_output_path": f"{LOG_DIR}/v6_{capture_id}_reviewed_session.json",
         "result_output_path": f"{LOG_DIR}/v6_{capture_id}_capture_record_result.json",
+        "capture_stability_tolerance_um": 1.0,
+        "camera_settings": {
+            "exposure": setting_value(position, "exposure"),
+            "Illu_Coax": 0.9,
+            "Illu_1": 0.9,
+            "Illu_2": 0.9,
+            "source": "reapplied_standard_position_before_operator_gate",
+        },
     }
-    numeric_fields = [(field_name, variable_name) for _stage, variable_name, field_name in QUERY_STAGES]
+    before_fields = [
+        (f"before_{field_name}", f"d_Before{variable_suffix}")
+        for _stage, variable_suffix, field_name in QUERY_STAGES
+    ]
+    after_fields = [
+        (f"after_{field_name}", f"d_After{variable_suffix}")
+        for _stage, variable_suffix, field_name in QUERY_STAGES
+    ]
     statements = common_sequence_start(sequence_name)
     statements.extend(stage_check_statements("L_Error_Fiducial"))
+    statements.extend(setting_statements(position))
+    statements.append(
+        dialog_statement(
+            "L_OperatorImageGate",
+            (
+                f"V6 capture {capture_id}: adjust focus and framing with camera/tower pose controls now. "
+                "Standard exposure and lights are already applied; do not change them or zoom. "
+                "Press Capture only when the image is ready and all motion has stopped."
+            ),
+            ok="Abort",
+            skip="Capture",
+        )
+    )
+    statements.append(goto_statement("L_Error_UserAbort"))
+    statements.extend(query_stage_statements("Before"))
     statements.append(grab_statement())
+    statements.extend(query_stage_statements("After"))
     statements.append(imaq_write_statement())
-    statements.extend(query_stage_statements())
-    statements.extend(json_builder_statements(payload, numeric_fields, "s_PythonInputJson"))
+    statements.extend(json_builder_statements(payload, before_fields + after_fields, "s_PythonInputJson"))
     safe_capture_id = safe_id(capture_id)
     statements.append(write_file_statement(rf"D:\TestMasterData\Process\Python_Automation\python_env\log\v6_{safe_capture_id}_capture_input.json", "s_PythonInputJson", f"b_V6Capture{safe_capture_id}InputWritten"))
     statements.append(tmpython_statement("V6VisionReviewRecordStep"))
@@ -223,6 +267,7 @@ def generate_capture_sequence(capture_id: str) -> str:
     statements.extend(return_success_end(sequence_name))
     statements.extend(simple_error_label("L_Error_Fiducial", "31.0", "Stages are not fiducialed. Aborted before v6 capture review."))
     statements.extend(simple_error_label("L_Error_Python", "41.0", "Python capture/review returned ok=false or unsupported schema."))
+    statements.extend(simple_error_label("L_Error_UserAbort", "35.0", "Operator cancelled before the v6 image grab."))
     statements.extend(final_return_end())
     return sequence_document(sequence_name, statements, f"Capture CAM_12 and record reviewed v6 capture {capture_id}.")
 
@@ -230,7 +275,7 @@ def generate_capture_sequence(capture_id: str) -> str:
 def generate_offset_sequence(capture_id: str) -> str:
     sequence_name = offset_sequence_path(capture_id).stem
     payload = {
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "command": "next_offset_correction",
         "capture_id": capture_id,
         "memory_path": MEMORY_PATH,
@@ -238,10 +283,14 @@ def generate_offset_sequence(capture_id: str) -> str:
         "standard_baseline_dir": STANDARD_BASELINE_MACHINE_DIR,
         "output_path": f"{LOG_DIR}/v6_{capture_id}_offset_result.json",
     }
-    numeric_fields = [(field_name, variable_name) for _stage, variable_name, field_name in QUERY_STAGES]
+    numeric_fields = [
+        (field_name, f"d_Current{variable_suffix}")
+        for _stage, variable_suffix, field_name in QUERY_STAGES
+    ]
     statements = common_sequence_start(sequence_name)
+    statements.append(set_num("d_Converged", "0.0"))
     statements.extend(stage_check_statements("L_Error_Fiducial"))
-    statements.extend(query_stage_statements())
+    statements.extend(query_stage_statements("Current"))
     statements.extend(json_builder_statements(payload, numeric_fields, "s_PythonInputJson"))
     safe_capture_id = safe_id(capture_id)
     statements.append(write_file_statement(rf"D:\TestMasterData\Process\Python_Automation\python_env\log\v6_{safe_capture_id}_offset_input.json", "s_PythonInputJson", f"b_V6Offset{safe_capture_id}InputWritten"))
@@ -253,22 +302,23 @@ def generate_offset_sequence(capture_id: str) -> str:
     statements.append(ifstring_statement("s_NextAction", "=", "offset_correction_move"))
     statements.append(goto_statement("L_MaybeMove1"))
     statements.append(ifstring_statement("s_NextAction", "=", "no_offset_correction_required"))
-    statements.append(goto_statement("L_End"))
+    statements.append(goto_statement("L_SetConverged"))
     statements.append(goto_statement("L_Error_Action"))
     for index in (1, 2, 3):
         statements.extend(offset_apply_block(index))
+    statements.append(set_num("d_Converged", "1.0", label="L_SetConverged"))
     statements.extend(return_success_end(sequence_name))
     statements.extend(simple_error_label("L_Error_Fiducial", "31.0", "Stages are not fiducialed. Aborted before v6 offset correction."))
     statements.extend(simple_error_label("L_Error_Python", "41.0", "Python offset correction returned ok=false or unsupported schema. No move was applied."))
     statements.extend(simple_error_label("L_Error_Action", "42.0", "Python returned an unsupported v6 offset action. No move was applied."))
-    statements.extend(final_return_end())
+    statements.extend(final_return_end(extra_returns=[("Converged", "DBL", "d_Converged")]))
     return sequence_document(sequence_name, statements, f"Calculate and apply v6 offset correction for {capture_id}.")
 
 
 def generate_transition_sequence(transition_id: str, positions: list[dict[str, Any]]) -> str:
     sequence_name = transition_sequence_path(transition_id).stem
     transition = {
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "command": "next_transition_move",
         "transition_id": transition_id,
         "memory_path": MEMORY_PATH,
@@ -280,10 +330,13 @@ def generate_transition_sequence(transition_id: str, positions: list[dict[str, A
     }
     to_position_id = transition_id.split("_to_")[-1]
     to_position = next(position for position in positions if position["id"] == to_position_id)
-    numeric_fields = [(field_name, variable_name) for _stage, variable_name, field_name in QUERY_STAGES]
+    numeric_fields = [
+        (field_name, f"d_Current{variable_suffix}")
+        for _stage, variable_suffix, field_name in QUERY_STAGES
+    ]
     statements = common_sequence_start(sequence_name)
     statements.extend(stage_check_statements("L_Error_Fiducial"))
-    statements.extend(query_stage_statements())
+    statements.extend(query_stage_statements("Current"))
     statements.extend(json_builder_statements(transition, numeric_fields, "s_PythonInputJson"))
     safe_transition_id = safe_id(transition_id)
     statements.append(write_file_statement(rf"D:\TestMasterData\Process\Python_Automation\python_env\log\v6_{safe_transition_id}_transition_input.json", "s_PythonInputJson", f"b_V6Transition{safe_transition_id}InputWritten"))
@@ -316,6 +369,110 @@ def generate_transition_sequence(transition_id: str, positions: list[dict[str, A
     return sequence_document(sequence_name, statements, f"Rebased v6 transition {transition_id}.")
 
 
+def generate_convergence_sequence(capture_id: str) -> str:
+    sequence_name = convergence_sequence_path(capture_id).stem
+    statements = common_sequence_start(sequence_name)
+    statements.append(set_num("d_AttemptCount", "0.0"))
+    statements.append(
+        statement(
+            "calc",
+            "Standard",
+            label="L_CaptureLoop",
+            params=[
+                param("Number 1 in", "DBL", "Input", variable="d_AttemptCount"),
+                param("Operation", "Enum Word", "Input", string="+"),
+                param("Number 2 in", "DBL", "Input", string="1.0", numeric="1.0"),
+                param("Number out", "DBL", "Output", variable="d_AttemptCount"),
+            ],
+        )
+    )
+    statements.append(ifnum_statement("d_AttemptCount", ">", "9.0"))
+    statements.append(goto_statement("L_Error_MaxAttempts"))
+    statements.append(subsequence_call(capture_sequence_path(capture_id).stem, "process\\SUB_v6_vision_workflow"))
+    statements.append(ifnum_statement("d_ErrorType", "<>", "0.0"))
+    statements.append(goto_statement("L_End"))
+    statements.append(
+        statement(
+            f"SEQ::{offset_sequence_path(capture_id).stem}",
+            "process\\SUB_v6_vision_workflow",
+            params=[
+                param("ErrorType", "DBL", "Output", variable="d_ErrorType"),
+                param("ErrorMessage", "String", "Output", variable="s_ErrorMessage"),
+                param("Converged", "DBL", "Output", variable="d_Converged"),
+            ],
+        )
+    )
+    statements.append(ifnum_statement("d_ErrorType", "<>", "0.0"))
+    statements.append(goto_statement("L_End"))
+    statements.append(ifnum_statement("d_Converged", "=", "1.0"))
+    statements.append(goto_statement("L_Success"))
+    statements.append(goto_statement("L_CaptureLoop"))
+    statements.extend(return_success_end(sequence_name, success_text=f"{sequence_name} converged."))
+    statements.extend(
+        simple_error_label(
+            "L_Error_MaxAttempts",
+            "43.0",
+            (
+                f"{capture_id} did not converge after eight correction attempts "
+                "and a final fresh verification capture."
+            ),
+        )
+    )
+    statements.extend(final_return_end())
+    return sequence_document(
+        sequence_name,
+        statements,
+        (
+            f"Independently runnable reviewed capture/correct loop for {capture_id}: "
+            "maximum eight moves plus one final fresh verification capture."
+        ),
+    )
+
+
+def generate_final_verification_sequence() -> str:
+    sequence_name = final_verification_sequence_path().stem
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "command": "verify_final_geometry",
+        "memory_path": MEMORY_PATH,
+        "standard_positions_path": STANDARD_POSITIONS_MACHINE_PATH,
+        "standard_baseline_dir": STANDARD_BASELINE_MACHINE_DIR,
+        "output_path": f"{LOG_DIR}/v6_final_geometry_verification.json",
+        "final_tolerance_um": 1.0,
+        "spacing_tolerance_um": 1.0,
+    }
+    statements = common_sequence_start(sequence_name)
+    statements.extend(json_builder_statements(payload, [], "s_PythonInputJson"))
+    statements.append(tmpython_statement("V6VisionWorkflowStep"))
+    statements.append(display_status_variable("s_PythonResultJson"))
+    statements.extend(parse_python_ok_or_error("L_Error_Python", parse_schema=True))
+    statements.append(json_get("String", "action", "s_NextAction"))
+    statements.append(ifstring_statement("s_NextAction", "=", "final_geometry_verified"))
+    statements.append(goto_statement("L_Success"))
+    statements.append(goto_statement("L_Error_Tolerance"))
+    statements.extend(return_success_end(sequence_name, success_text="V6 final 289/989/700 geometry verified."))
+    statements.extend(
+        simple_error_label(
+            "L_Error_Python",
+            "41.0",
+            "Python final geometry verification failed or returned an unsupported schema.",
+        )
+    )
+    statements.extend(
+        simple_error_label(
+            "L_Error_Tolerance",
+            "44.0",
+            "Final reviewed centers or 700 um spacing are outside tolerance. No move was requested.",
+        )
+    )
+    statements.extend(final_return_end())
+    return sequence_document(
+        sequence_name,
+        statements,
+        "Read-only verification of ball centers (289,0,0), (989,0,0), and 700 um center spacing.",
+    )
+
+
 def generate_main_workflow(positions: list[dict[str, Any]]) -> str:
     sequence_name = "SUB_V6MainWorkflow_Guarded"
     calls = [
@@ -323,41 +480,24 @@ def generate_main_workflow(positions: list[dict[str, Any]]) -> str:
         (standard_position_path(position_by_id(positions, "1.0")).stem, "process\\SUB_v6_standard_positions"),
         (standard_position_path(position_by_id(positions, "1.1")).stem, "process\\SUB_v6_standard_positions"),
         (standard_position_path(position_by_id(positions, "2.1")).stem, "process\\SUB_v6_standard_positions"),
-        (capture_sequence_path("2.1.1").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("2.1.1").stem, "process\\SUB_v6_vision_workflow"),
-        (capture_sequence_path("2.1.1").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("2.1.1").stem, "process\\SUB_v6_vision_workflow"),
+        (convergence_sequence_path("2.1.1").stem, "process\\SUB_v6_vision_workflow"),
         (transition_sequence_path("2.1_to_2.4").stem, "process\\SUB_v6_vision_workflow"),
         (capture_sequence_path("2.4.1").stem, "process\\SUB_v6_vision_workflow"),
         (transition_sequence_path("2.4_to_2.5").stem, "process\\SUB_v6_vision_workflow"),
-        (capture_sequence_path("2.5.1").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("2.5.1").stem, "process\\SUB_v6_vision_workflow"),
-        (capture_sequence_path("2.5.1").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("2.5.1").stem, "process\\SUB_v6_vision_workflow"),
+        (convergence_sequence_path("2.5.1").stem, "process\\SUB_v6_vision_workflow"),
         (transition_sequence_path("2.5_to_2.6").stem, "process\\SUB_v6_vision_workflow"),
-        (capture_sequence_path("2.6.1").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("2.6.1").stem, "process\\SUB_v6_vision_workflow"),
-        (capture_sequence_path("2.6.1").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("2.6.1").stem, "process\\SUB_v6_vision_workflow"),
+        (convergence_sequence_path("2.6.1").stem, "process\\SUB_v6_vision_workflow"),
         (standard_position_path(position_by_id(positions, "3.0")).stem, "process\\SUB_v6_standard_positions"),
         (standard_position_path(position_by_id(positions, "3.1")).stem, "process\\SUB_v6_standard_positions"),
         (standard_position_path(position_by_id(positions, "4.1")).stem, "process\\SUB_v6_standard_positions"),
-        (capture_sequence_path("4.1.1").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("4.1.1").stem, "process\\SUB_v6_vision_workflow"),
-        (capture_sequence_path("4.1.1").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("4.1.1").stem, "process\\SUB_v6_vision_workflow"),
+        (convergence_sequence_path("4.1.1").stem, "process\\SUB_v6_vision_workflow"),
         (transition_sequence_path("4.1_to_4.4").stem, "process\\SUB_v6_vision_workflow"),
         (capture_sequence_path("4.4.1").stem, "process\\SUB_v6_vision_workflow"),
         (transition_sequence_path("4.4_to_4.5").stem, "process\\SUB_v6_vision_workflow"),
-        (capture_sequence_path("4.5.1").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("4.5.1").stem, "process\\SUB_v6_vision_workflow"),
-        (capture_sequence_path("4.5.1").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("4.5.1").stem, "process\\SUB_v6_vision_workflow"),
+        (convergence_sequence_path("4.5.1").stem, "process\\SUB_v6_vision_workflow"),
         (transition_sequence_path("4.5_to_4.6.2").stem, "process\\SUB_v6_vision_workflow"),
-        (capture_sequence_path("4.6.2").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("4.6.2").stem, "process\\SUB_v6_vision_workflow"),
-        (capture_sequence_path("4.6.2").stem, "process\\SUB_v6_vision_workflow"),
-        (offset_sequence_path("4.6.2").stem, "process\\SUB_v6_vision_workflow"),
+        (convergence_sequence_path("4.6.2").stem, "process\\SUB_v6_vision_workflow"),
+        (final_verification_sequence_path().stem, "process\\SUB_v6_vision_workflow"),
     ]
     statements = common_sequence_start(sequence_name)
     for call_name, library in calls:
@@ -533,9 +673,9 @@ def move_popup_statements() -> list[str]:
     return statements
 
 
-def query_stage_statements() -> list[str]:
+def query_stage_statements(variable_prefix: str) -> list[str]:
     statements = []
-    for stage, variable, _field in QUERY_STAGES:
+    for stage, variable_suffix, _field in QUERY_STAGES:
         statements.append(
             statement(
                 "QueryStage",
@@ -543,7 +683,7 @@ def query_stage_statements() -> list[str]:
                 params=[
                     param("Stage", "String", "Input", string=stage),
                     param("Query", "Enum Word", "Input", string="Absolute"),
-                    param("Position [um]", "DBL", "Output", variable=variable),
+                    param("Position [um]", "DBL", "Output", variable=f"d_{variable_prefix}{variable_suffix}"),
                     param("Message", "String", "Output", variable="s_QueryStageMessage"),
                 ],
             )
@@ -605,7 +745,7 @@ def parse_python_ok_or_error(error_label: str, *, parse_schema: bool) -> list[st
     if parse_schema:
         statements.extend([
             json_get("Numeric", "schema_version", "d_SchemaVersion"),
-            ifnum_statement("d_SchemaVersion", "<>", "1.0"),
+            ifnum_statement("d_SchemaVersion", "<>", f"{SCHEMA_VERSION}.0"),
             goto_statement(error_label),
         ])
     return statements
@@ -697,8 +837,8 @@ def return_success_end(sequence_name: str, *, success_text: str | None = None) -
     ]
 
 
-def final_return_end() -> list[str]:
-    return [
+def final_return_end(extra_returns: list[tuple[str, str, str]] | None = None) -> list[str]:
+    statements = [
         display_status_variable("s_ErrorMessage", label="L_End"),
         statement("ReturnNumParam", "XSEQDefinition", params=[
             param("Name", "String", "Input", string="ErrorType"),
@@ -708,8 +848,21 @@ def final_return_end() -> list[str]:
             param("Name", "String", "Input", string="ErrorMessage"),
             param("Value", "String", "Input", variable="s_ErrorMessage"),
         ]),
-        statement("EndSeq", "XSEQFlowControl"),
     ]
+    for name, type_name, variable in extra_returns or []:
+        statement_name = "ReturnStrParam" if type_name == "String" else "ReturnNumParam"
+        statements.append(
+            statement(
+                statement_name,
+                "XSEQDefinition",
+                params=[
+                    param("Name", "String", "Input", string=name),
+                    param("Value", type_name, "Input", variable=variable),
+                ],
+            )
+        )
+    statements.append(statement("EndSeq", "XSEQFlowControl"))
+    return statements
 
 
 def error_and_end_statements(error_type: str, message: str) -> list[str]:
@@ -1018,6 +1171,14 @@ def offset_sequence_path(capture_id: str) -> Path:
     return WORKFLOW_DIR / f"SUB_V6OffsetCorrection_{capture_id}_Guarded.xseq"
 
 
+def convergence_sequence_path(capture_id: str) -> Path:
+    return WORKFLOW_DIR / f"SUB_V6Converge_{capture_id}_Guarded.xseq"
+
+
+def final_verification_sequence_path() -> Path:
+    return WORKFLOW_DIR / "SUB_V6FinalVerification_ReadOnly.xseq"
+
+
 def transition_sequence_path(transition_id: str) -> Path:
     return WORKFLOW_DIR / f"SUB_V6TransitionMove_{transition_id}_Guarded.xseq"
 
@@ -1047,7 +1208,90 @@ def xml(value: str) -> str:
 
 
 def write_text(path: Path, text: str) -> None:
+    if path.name in EDITOR_SAVED_FILES and path.is_file():
+        text = preserve_editor_saved_content(path, text)
     path.write_text(text, encoding="ISO-8859-1")
+
+
+def preserve_editor_saved_content(path: Path, generated: str) -> str:
+    """Keep editor-populated descriptions and YASE history on four saved files."""
+
+    existing = path.read_text(encoding="ISO-8859-1")
+    root = ET.fromstring(existing)
+    descriptions: dict[tuple[str, str, str, str], str] = {}
+    for statement_node in root.findall("Statement"):
+        statement_name = statement_node.attrib.get("Name", "")
+        for parameter in statement_node.findall("Parameter"):
+            description = parameter.attrib.get("Description", "")
+            if not description:
+                continue
+            key = (
+                statement_name,
+                parameter.attrib.get("Name", ""),
+                parameter.attrib.get("Type", ""),
+                parameter.attrib.get("Direction", ""),
+            )
+            descriptions.setdefault(key, description)
+
+    def enrich_statement(match: re.Match[str]) -> str:
+        block = match.group(0)
+        name_match = re.search(r'\bName="([^"]*)"', match.group(1))
+        if not name_match:
+            return block
+        statement_name = name_match.group(1)
+
+        def enrich_parameter(parameter_match: re.Match[str]) -> str:
+            parameter = parameter_match.group(0)
+            try:
+                attributes = ET.fromstring(parameter).attrib
+            except ET.ParseError:
+                return parameter
+            key = (
+                statement_name,
+                attributes.get("Name", ""),
+                attributes.get("Type", ""),
+                attributes.get("Direction", ""),
+            )
+            description = descriptions.get(key)
+            if not description or 'Description=""' not in parameter:
+                return parameter
+            return parameter.replace('Description=""', f'Description="{xml(description)}"', 1)
+
+        return re.sub(r"<Parameter\b[^>]*/>", enrich_parameter, block)
+
+    generated = re.sub(
+        r"<Statement\b([^>]*)>.*?</Statement>",
+        enrich_statement,
+        generated,
+        flags=re.DOTALL,
+    )
+    if re.search(r'Name="EndSeq" Library="Standard"', existing):
+        generated = generated.replace(
+            'Name="EndSeq" Library="XSEQFlowControl"',
+            'Name="EndSeq" Library="Standard"',
+        )
+
+    existing_trailer = re.search(
+        r"   <SequenceProperties>.*?   </History>",
+        existing,
+        flags=re.DOTALL,
+    )
+    generated_trailer = re.search(
+        r"   <SequenceProperties>.*?   </History>",
+        generated,
+        flags=re.DOTALL,
+    )
+    if existing_trailer and generated_trailer:
+        trailer = existing_trailer.group(0)
+        entry = "      <Entry>2026-07-23 Completed V6 reviewed vision alignment workflow</Entry>"
+        if entry not in trailer:
+            trailer = trailer.replace("   </History>", f"{entry}\n   </History>")
+        generated = (
+            generated[: generated_trailer.start()]
+            + trailer
+            + generated[generated_trailer.end() :]
+        )
+    return generated
 
 
 if __name__ == "__main__":

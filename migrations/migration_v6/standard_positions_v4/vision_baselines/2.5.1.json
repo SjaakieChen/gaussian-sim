@@ -45,6 +45,7 @@
           "x": 1102.60009765625,
           "y": 549.800048828125
         },
+        "feature_role": "ball_1_top_ball",
         "shape_kind": "circle",
         "source": "auto_ball_circle"
       }

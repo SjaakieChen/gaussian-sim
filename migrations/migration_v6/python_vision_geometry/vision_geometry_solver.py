@@ -1,4 +1,4 @@
-"""Fuse v5 vision captures into one read-only machine-coordinate frame.
+"""Fuse reviewed vision captures into one read-only machine-coordinate frame.
 
 The solver consumes reviewed vision recognition lab session payloads. It does
 not capture images and does not move hardware.
@@ -29,8 +29,8 @@ PRECISE_VIEWS = {"top_xz", "mirror_side_xy"}
 REQUIRED_TARGETS = ("ball_1", "ball_2")
 DEFAULT_VIEW_MAPPINGS: dict[str, dict[str, dict[str, float | str]]] = {
     "top_xz": {
-        "image_x": {"axis": "machine_z_um", "sign": 1.0},
-        "image_y": {"axis": "machine_x_um", "sign": 1.0},
+        "image_x": {"axis": "machine_x_um", "sign": 1.0},
+        "image_y": {"axis": "machine_z_um", "sign": -1.0},
     },
     "mirror_side_xy": {
         "image_x": {"axis": "machine_x_um", "sign": 1.0},
@@ -63,7 +63,7 @@ class Observation:
 
 
 class VisionGeometrySolverStep(TMPythonStatementJ):
-    """TMPython entrypoint for read-only v5 geometry fusion."""
+    """TMPython entrypoint for read-only V6 geometry fusion."""
 
     def run(self, params_in: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -91,7 +91,7 @@ def solve_common_geometry(params_in: JsonDict) -> JsonDict:
             "schema_version": SCHEMA_VERSION,
             "ok": True,
             "action": "geometry_solved",
-            "status": "v5 vision geometry solved",
+            "status": "v6 vision geometry solved",
             "machine_coordinate_system": {
                 "reference": "machine_reference",
                 "reference_feature": "laser_rectangle_center",

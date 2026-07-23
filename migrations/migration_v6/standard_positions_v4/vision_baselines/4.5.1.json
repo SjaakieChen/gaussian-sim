@@ -63,6 +63,7 @@
           "x": 1306.0,
           "y": 1351.0
         },
+        "feature_role": "ball_2_top_ball",
         "shape_kind": "circle",
         "source": "circle"
       }
