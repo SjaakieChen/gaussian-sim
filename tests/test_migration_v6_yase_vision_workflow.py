@@ -9,6 +9,10 @@ import numpy as np
 import pytest
 
 from migrations.migration_v6.python_vision_geometry import v6_offset_workflow as v6_module
+from migrations.migration_v6.python_vision_geometry.position_bias_planner import (
+    DEFAULT_GROSS_AUTO_FEATURE_SPECS,
+    auto_detect_gross_ball_session,
+)
 from migrations.migration_v6.python_vision_geometry.v6_offset_workflow import (
     CAPTURE_SPECS,
     CORRECTION_PREREQUISITES,
@@ -27,9 +31,11 @@ from migrations.migration_v6.python_vision_geometry.v6_offset_workflow import (
     validate_reviewed_capture_session,
 )
 from migrations.migration_v6.vision_recognition_lab import (
+    DIRECT_TOP_VIEW_MAX_Y_FRACTION,
     FEATURE_ROLE_CHOICES,
     VisionROI,
     VisionRecognitionLab,
+    detect_coarse_top_ball_circle,
     detect_side_trench_ruler_lines,
     feature_role_display_label,
     feature_role_options_for_capture,
@@ -472,6 +478,72 @@ def test_v6_default_runtime_data_is_the_complete_copy_ready_v6_set():
         )
 
 
+@pytest.mark.parametrize(
+    ("capture_id", "expected_role"),
+    (
+        ("2.1.1", "ball_1_gross_ball"),
+        ("4.1.1", "ball_2_gross_ball"),
+    ),
+)
+def test_v6_coarse_baselines_and_auto_detection_use_upper_direct_view(
+    capture_id,
+    expected_role,
+):
+    image_path = ROOT / "Standard position images" / "v4" / "newhead" / f"{capture_id}.PNG"
+    gray = read_grayscale_image(image_path)
+    direct_view_max_y = gray.shape[0] * DIRECT_TOP_VIEW_MAX_Y_FRACTION
+    baseline = json.loads(
+        (DEFAULT_STANDARD_BASELINE_DIR / f"{capture_id}.json").read_text(encoding="utf-8")
+    )
+    selected = [
+        item
+        for items in baseline["selected_recognition"].values()
+        for item in items
+        if item["feature_role"] == expected_role
+    ]
+
+    assert len(selected) == 1
+    assert selected[0]["shape_kind"] == "circle"
+    assert selected[0]["shape"]["y"] < direct_view_max_y
+    assert selected[0]["roi"]["y2"] <= direct_view_max_y
+
+    spec = DEFAULT_GROSS_AUTO_FEATURE_SPECS[capture_id]
+    assert spec["roi"][3] <= direct_view_max_y
+    auto_session = auto_detect_gross_ball_session({}, capture_id, image_path)
+    detected = auto_session["selected_recognition"]["roi_1"][0]["shape"]
+    assert detected["y"] < direct_view_max_y
+    assert detected["x"] == pytest.approx(selected[0]["shape"]["x"], abs=1.0)
+    assert detected["y"] == pytest.approx(selected[0]["shape"]["y"], abs=1.0)
+    assert detected["radius"] == pytest.approx(selected[0]["shape"]["radius"], abs=1.0)
+
+
+def test_v6_coarse_top_recognizer_rejects_lower_mirror_roi():
+    image_path = ROOT / "Standard position images" / "v4" / "newhead" / "2.1.1.PNG"
+    gray = read_grayscale_image(image_path)
+
+    with pytest.raises(ValueError, match="lower mirror"):
+        detect_coarse_top_ball_circle(
+            gray,
+            (VisionROI("circle", 1100.0, 1500.0, 1700.0, 1944.0),),
+            "2.1.1",
+        )
+
+
+def test_v6_workflow_rejects_coarse_top_circle_in_lower_mirror_region():
+    assert (
+        v6_module.DEFAULT_DIRECT_TOP_VIEW_MAX_Y_FRACTION
+        == DIRECT_TOP_VIEW_MAX_Y_FRACTION
+    )
+    session = _circle_session(1275.5, 1713.5, role="ball_1_gross_ball")
+    session["image_dimensions_px"] = {
+        "image_width_px": 2592,
+        "image_height_px": 1944,
+    }
+
+    with pytest.raises(ValueError, match="lower mirror region"):
+        validate_reviewed_capture_session("2.1.1", session, {})
+
+
 def test_v6_measurement_plan_and_operator_docs_use_schema_2_canonical_contract():
     plan = json.loads(V6_MEASUREMENT_PLAN.read_text(encoding="utf-8"))
     assert plan["schema_version"] == 2
@@ -541,6 +613,9 @@ def test_v6_review_ui_preloads_live_proposal_allows_override_and_tracks_cancel()
         selected = lab.selected_recognition_payload()
         assert len(lab.current_rois()) == 1
         assert selected["roi_1"][0]["feature_role"] == "ball_1_gross_ball"
+        assert selected["roi_1"][0]["shape"]["x"] == pytest.approx(1269.5, abs=1.0)
+        assert selected["roi_1"][0]["shape"]["y"] == pytest.approx(619.5, abs=1.0)
+        assert selected["roi_1"][0]["shape"]["radius"] == pytest.approx(62.4, abs=1.0)
         assert tuple(lab.feature_role_combobox.cget("values")) == (
             "Ball 1 circle (COARSE TOP view)",
             "Ignore this detection",

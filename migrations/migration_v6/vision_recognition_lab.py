@@ -58,6 +58,8 @@ BRIGHT_RECTANGLE_OVERLAY_COLOR = "#ff4fd8"
 VISION_RECOGNITION_LAB_VERSION = "v3"
 VISION_RECOGNITION_LAB_TITLE = f"Vision Recognition Lab {VISION_RECOGNITION_LAB_VERSION}"
 FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM = 500.0
+COARSE_TOP_CAPTURE_IDS = frozenset({"2.1.1", "4.1.1"})
+DIRECT_TOP_VIEW_MAX_Y_FRACTION = 0.65
 FEATURE_ROLE_CHOICES = (
     "laser_reference",
     "ball_candidate",
@@ -761,6 +763,95 @@ def read_grayscale_image(path: str | Path) -> np.ndarray:
     if gray.size and gray.max() > 1.0:
         gray = gray / max(float(gray.max()), 1.0)
     return np.clip(gray, 0.0, 1.0)
+
+
+def detect_coarse_top_ball_circle(
+    gray_image: np.ndarray,
+    rois: Sequence[VisionROI],
+    capture_id: str,
+) -> VisionCircle:
+    """Detect only the direct top-view ball and exclude the lower mirror."""
+
+    if capture_id not in COARSE_TOP_CAPTURE_IDS:
+        raise ValueError(f"{capture_id} is not a V6 coarse top capture")
+    if gray_image.ndim != 2 or not rois:
+        raise ValueError("coarse top recognition requires a grayscale image and ROI")
+
+    try:
+        from .python_vision_geometry.position_bias_planner import (
+            auto_detect_gross_ball_circle,
+            gross_auto_feature_spec,
+        )
+    except ImportError:
+        from python_vision_geometry.position_bias_planner import (  # type: ignore[no-redef]
+            auto_detect_gross_ball_circle,
+            gross_auto_feature_spec,
+        )
+
+    height, width = gray_image.shape
+    direct_view_max_y = int(math.floor(height * DIRECT_TOP_VIEW_MAX_Y_FRACTION))
+    roi = rois[0].normalized
+    x1 = max(0, int(math.floor(roi.x1)))
+    y1 = max(0, int(math.floor(roi.y1)))
+    x2 = min(width, int(math.ceil(roi.x2)))
+    y2 = min(direct_view_max_y, int(math.ceil(roi.y2)))
+    if x2 <= x1 or y2 <= y1:
+        raise ValueError(
+            "coarse top ROI does not overlap the upper direct camera view; "
+            "the lower mirror is not valid for this capture"
+        )
+
+    spec = gross_auto_feature_spec({}, capture_id)
+    spec["roi"] = [x1, y1, x2, y2]
+    gray_float = np.asarray(gray_image, dtype=float)
+    if gray_float.size and float(np.nanmax(gray_float)) <= 1.0:
+        gray_float = gray_float * 255.0
+    gray_u8 = np.clip(gray_float, 0.0, 255.0).astype(np.uint8)
+    shape = auto_detect_gross_ball_circle(gray_u8, spec, capture_id)
+    if float(shape["y"]) >= direct_view_max_y:
+        raise ValueError("coarse top detection entered the lower mirror region")
+    return VisionCircle(
+        x=float(shape["x"]),
+        y=float(shape["y"]),
+        radius=float(shape["radius"]),
+        score=float(shape["score"]),
+        label=f"{capture_id} upper direct-view ball",
+    )
+
+
+def recognize_coarse_top_ball(
+    gray_image: np.ndarray,
+    rois: Sequence[VisionROI],
+    capture_id: str,
+) -> VisionRecognitionResult:
+    try:
+        circle = detect_coarse_top_ball_circle(gray_image, rois, capture_id)
+    except (ImportError, RuntimeError, TypeError, ValueError) as exc:
+        return VisionRecognitionResult(
+            algorithm_name="v6_coarse_top_ball",
+            display_name="V6 coarse top ball",
+            lines=(),
+            intersections=(),
+            circles=(),
+            rectangles=(),
+            semicircles=(),
+            silhouettes=(),
+            message=f"Coarse top ball not detected; lower mirror excluded: {exc}",
+        )
+    return VisionRecognitionResult(
+        algorithm_name="v6_coarse_top_ball",
+        display_name="V6 coarse top ball",
+        lines=(),
+        intersections=(),
+        circles=(circle,),
+        rectangles=(),
+        semicircles=(),
+        silhouettes=(),
+        message=(
+            f"Detected {capture_id} ball in the upper direct camera view; "
+            "lower mirror excluded"
+        ),
+    )
 
 
 def detect_side_trench_ruler_lines(
@@ -4384,15 +4475,22 @@ class VisionRecognitionLab(tk.Toplevel):
                 self._restore_canvas_view_state(view_state)
             self.tool_status_var.set(ROI_REQUIRED_MESSAGE)
             return None
-        result = recognize_shapes(
-            self._source_gray_image,
-            self.selected_recognizer_name(),
-            tuple(self._rois),
-            geometry_sensitivity=self.selected_geometry_sensitivity(),
-            bright_rectangle_sensitivity=self.selected_bright_rectangle_sensitivity(),
-            silhouette_algorithm_name=self.selected_silhouette_recognizer_name(),
-            silhouette_sensitivity=self.selected_silhouette_sensitivity(),
-        )
+        if self._capture_id in COARSE_TOP_CAPTURE_IDS:
+            result = recognize_coarse_top_ball(
+                self._source_gray_image,
+                tuple(self._rois),
+                self._capture_id,
+            )
+        else:
+            result = recognize_shapes(
+                self._source_gray_image,
+                self.selected_recognizer_name(),
+                tuple(self._rois),
+                geometry_sensitivity=self.selected_geometry_sensitivity(),
+                bright_rectangle_sensitivity=self.selected_bright_rectangle_sensitivity(),
+                silhouette_algorithm_name=self.selected_silhouette_recognizer_name(),
+                silhouette_sensitivity=self.selected_silhouette_sensitivity(),
+            )
         if self._capture_id in {"2.6.1", "4.6.2"}:
             trench_lines = detect_side_trench_ruler_lines(self._source_gray_image, tuple(self._rois))
             if trench_lines:

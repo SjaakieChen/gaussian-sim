@@ -36,10 +36,10 @@ DEFAULT_GROSS_VIEW_MAPPING = {
 DEFAULT_STANDARD_POSITIONS_PATH = Path(__file__).resolve().parents[3] / "Standard position images" / "v4" / "standard_positions.json"
 DEFAULT_GROSS_AUTO_FEATURE_SPECS: dict[str, dict[str, Any]] = {
     "2.1.1": {
-        "roi": [1100, 1500, 1700, 1944],
-        "min_radius_px": 30,
-        "max_radius_px": 100,
-        "expected_center_px": [1275.5, 1713.5],
+        "roi": [900, 250, 1650, 1100],
+        "min_radius_px": 40,
+        "max_radius_px": 85,
+        "expected_center_px": [1270.0, 620.0],
     },
     "4.1.1": {
         "roi": [1700, 550, 2250, 1050],

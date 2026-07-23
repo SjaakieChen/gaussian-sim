@@ -53,6 +53,7 @@ DEFAULT_MAX_TRENCH_LINE_SEPARATION_PX = 1000.0
 DEFAULT_MIN_SIDE_SCALE_UM_PER_PX = 0.05
 DEFAULT_MAX_SIDE_SCALE_UM_PER_PX = 20.0
 DEFAULT_COLLISION_EPSILON_UM = 1.0e-6
+DEFAULT_DIRECT_TOP_VIEW_MAX_Y_FRACTION = 0.65
 DEFAULT_LAYOUT_SOURCE_MACHINE_X_UM = 0.0
 DEFAULT_LAYOUT_TAPER_MACHINE_X_UM = 1278.0
 TRANSITION_STATUSES = {"in_progress", "complete"}
@@ -2563,12 +2564,25 @@ def validate_reviewed_capture_session(capture_id: str, session: JsonDict, params
         "top_fine_offset_correction": "top_ball",
         "side_mirror_y_offset_correction": "side_ball",
     }[str(spec["result_use"])]
-    selected_circle_feature(
+    reviewed_circle = selected_circle_feature(
         session,
         f"{capture_id} reviewed ball",
         target=str(spec["target"]),
         role_context=role_context,
     )
+    if spec["result_use"] == "coarse_offset_correction":
+        dimensions = as_dict(session.get("image_dimensions_px"))
+        image_height_px = dimensions.get("image_height_px")
+        if image_height_px is not None:
+            direct_view_max_y = (
+                positive_float(image_height_px, "image_dimensions_px.image_height_px")
+                * DEFAULT_DIRECT_TOP_VIEW_MAX_Y_FRACTION
+            )
+            if reviewed_circle.center_px["y"] >= direct_view_max_y:
+                raise ValueError(
+                    f"{capture_id} coarse top ball is in the lower mirror region; "
+                    "select the upper direct-view ball"
+                )
     if spec["result_use"] == "side_mirror_y_offset_correction":
         reviewed_trench_geometry(session, params_in=params_in, capture_id=capture_id)
 

@@ -135,6 +135,11 @@ standard reviewed ball center. A ball displaced right is corrected with
 negative `machine_x_um`; a ball displaced down is corrected with positive
 `machine_z_um`.
 
+Both coarse captures use the ball in the upper direct camera image. The lower
+mirror image is excluded from their automatic search ROIs and must not be
+assigned a coarse top-ball role. The lower mirror is used only by the dedicated
+side captures `2.6.1` and `4.6.2`.
+
 Fine top geometry uses the reviewed laser rectangle from `2.4.1`/`4.4.1` and
 the reviewed ball from `2.5.1`/`4.5.1`:
 
