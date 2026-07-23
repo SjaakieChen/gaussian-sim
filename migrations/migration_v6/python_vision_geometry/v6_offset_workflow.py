@@ -11,6 +11,8 @@ import copy
 import json
 import math
 import os
+import tempfile
+import time
 import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -56,6 +58,8 @@ DEFAULT_COLLISION_EPSILON_UM = 1.0e-6
 DEFAULT_DIRECT_TOP_VIEW_MAX_Y_FRACTION = 0.65
 DEFAULT_LAYOUT_SOURCE_MACHINE_X_UM = 0.0
 DEFAULT_LAYOUT_TAPER_MACHINE_X_UM = 1278.0
+DEFAULT_ATOMIC_REPLACE_ATTEMPTS = 20
+DEFAULT_ATOMIC_REPLACE_RETRY_SECONDS = 0.05
 TRANSITION_STATUSES = {"in_progress", "complete"}
 COARSE_SKIP_ACTION = "vision_lab_skip_coarse_assume_aligned"
 
@@ -364,6 +368,12 @@ def review_and_record_capture(params_in: JsonDict) -> JsonDict:
             roi_output_path=params_in.get("roi_output_path"),
             result_output_path=params_in.get("review_session_output_path")
             or params_in.get("vision_session_output_path"),
+        )
+    if review_session_is_testing_bypass(review_session):
+        raise ValueError(
+            f"capture {capture_id} is marked TEST BYPASS/testing_bypass; "
+            "standard geometry is not live alignment evidence and cannot be recorded "
+            "by the guarded V6 workflow"
         )
     skip_assume_aligned = review_requests_coarse_skip(review_session)
     if skip_assume_aligned and capture_id not in SKIPPABLE_CAPTURE_IDS:
@@ -2703,6 +2713,28 @@ def review_requests_coarse_skip(session: JsonDict) -> bool:
     )
 
 
+def review_session_is_testing_bypass(session: JsonDict) -> bool:
+    containers = (
+        session,
+        as_dict(session.get("review_evidence")),
+        as_dict(session.get("metadata")),
+    )
+    for container in containers:
+        raw_flag = container.get("testing_bypass")
+        if raw_flag is True or str(raw_flag or "").strip().lower() in {
+            "1",
+            "true",
+            "testing_bypass",
+            "test bypass",
+        }:
+            return True
+        for key in ("action", "review_mode", "review_source", "evidence", "status"):
+            value = str(container.get(key) or "").strip().lower().replace("-", "_")
+            if "testing_bypass" in value or "test bypass" in value:
+                return True
+    return False
+
+
 def open_v6_vision_review_ui(
     image_path: str,
     *,
@@ -3098,9 +3130,26 @@ def write_json_if_requested(payload: JsonDict, raw_path: Any) -> None:
     if not path.is_absolute():
         path = Path.cwd() / path
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.tmp")
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    os.replace(temporary, path)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=str(path.parent),
+        text=True,
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(payload, indent=2, sort_keys=True))
+        for attempt in range(DEFAULT_ATOMIC_REPLACE_ATTEMPTS):
+            try:
+                os.replace(temporary, path)
+                break
+            except PermissionError:
+                if attempt + 1 >= DEFAULT_ATOMIC_REPLACE_ATTEMPTS:
+                    raise
+                time.sleep(DEFAULT_ATOMIC_REPLACE_RETRY_SECONDS)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def require_memory(memory: JsonDict) -> None:

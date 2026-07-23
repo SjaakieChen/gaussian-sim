@@ -2,6 +2,7 @@ from pathlib import Path
 
 from migrations.migration_v6.python_vision_geometry.cleanroom_runtime_check import (
     EXPECTED_CAPTURE_IDS,
+    YASE_JSON_STATEMENT_PATH_MARKER,
     run_checks,
 )
 
@@ -39,3 +40,43 @@ def test_v6_cleanroom_runtime_check_can_require_tmpython_for_machine_runtime():
         ]["detail"]
     else:
         assert payload["ok"] is True
+
+
+def test_v6_cleanroom_runtime_check_requires_registered_yase_json_statements(tmp_path):
+    sequencer_ini = tmp_path / "Sequencer.ini"
+    sequencer_ini.write_text(
+        (
+            "[Statements]\n"
+            "Path=\"existing,"
+            + YASE_JSON_STATEMENT_PATH_MARKER.replace("\\", "\\\\")
+            + "\"\n"
+        ),
+        encoding="utf-8",
+    )
+
+    registered = run_checks(
+        V6,
+        require_tmpython=False,
+        check_tk=False,
+        sequencer_ini_path=sequencer_ini,
+        require_yase_json_statements=True,
+    )
+    registered_check = _check_by_name(registered)["yase_json_statement_registration"]
+    assert registered["ok"] is True
+    assert registered_check["status"] == "ok"
+
+    sequencer_ini.write_text(
+        '[Statements]\nPath="#SM_ROOT#\\\\core\\\\Statements"\n',
+        encoding="utf-8",
+    )
+    missing = run_checks(
+        V6,
+        require_tmpython=False,
+        check_tk=False,
+        sequencer_ini_path=sequencer_ini,
+        require_yase_json_statements=True,
+    )
+    missing_check = _check_by_name(missing)["yase_json_statement_registration"]
+    assert missing["ok"] is False
+    assert missing_check["status"] == "fail"
+    assert "can fail to parse" in missing_check["detail"]

@@ -1,6 +1,6 @@
 ﻿# Python Automation Machine Configuration
 
-Last verified: 2026-07-10 16:54 local time
+Last verified: 2026-07-23 local cleanroom run
 
 This document records the local TestMaster, YASE, and TMPython configuration
 used by the Python Automation process. Use it as the reference when creating
@@ -36,6 +36,7 @@ COMMON_MISTAKES.md
 | Fixed-Z read-only JSON bridge | Successful end-to-end checkout |
 | Camera image bridge | Successful end-to-end checkout with a real `CAM_12` frame |
 | Python-saved camera copy | Byte-for-byte verified by matching SHA-256 hashes |
+| Global JSON statement path | `#SM_ROOT#\Functions\JSON\JSON_Statements` registered and proven by V6 parse/run |
 | Hardware motion from Python | Not approved or proven |
 | Simple JSON test on disk | Repository copy now uses the Python 3.10 interpreter name; verify after copying/saving in YASE |
 | Default-positioning migration v4 | Static XML, label, and copy-layout validation only; not yet machine-run verified |
@@ -81,6 +82,7 @@ D:\TestMasterData\
 |   |-- Hardware.ini                Hardware devices, including CAM_12
 |   |-- Systemvar.ini               Global/runtime system variables
 |   |-- TMPython.ini                TMPython interpreter definitions
+|   |-- Sequencer.ini               Global statement-library search paths
 |   `-- prototypes.xml              Global YASE statement prototypes
 |-- data\                           Per-process runtime data
 |   `-- Python_Automation\
@@ -170,6 +172,7 @@ Copy behavior into the Python_Automation process and validate it there.
 | `D:\TestMasterData\config\TMPython.ini` | Global TMPython interpreter registry | The section name must exactly match the YASE `Interpreter` field |
 | `D:\TestMasterData\config\Hardware.ini` | Global hardware/device configuration | `CAM_12` uses `IMAQdx_HW_Interface.vi`; do not change acquisition format casually |
 | `D:\TestMasterData\config\Systemvar.ini` | Global and runtime system variables | Contains panel/reference state, including opaque camera references |
+| `D:\TestMasterData\config\Sequencer.ini` | Global YASE/TestMaster statement search paths | Must include the installed JSON statement folder before V6 JSON extraction statements can parse |
 | `D:\TestMasterData\config\prototypes.xml` | Global YASE statement definitions | Useful for discovering exact statement and parameter names |
 | `Python_Automation\prototypes.xml` | Process-local prototype snapshot | YASE uses `ParamIn`/`ParamOut` for the installed TMPython statement |
 | `Python_Automation\Processvar.ini` | Python_Automation persistent process variables | Stores `LastInputJson` and `LastResultJson` for the fixed-Z checkout |
@@ -274,6 +277,24 @@ Critical rules:
   `fixed_z_staged_ball_placement.py` becomes `fixed_z_staged_ball_placement`.
 - Do not add a package prefix unless that package directory and its
   `__init__.py` actually exist under the working directory or on `sys.path`.
+
+## Required JSON statement registration
+
+V6 uses the installed `JSON_GetFieldValueBoolean`,
+`JSON_GetFieldValueNumeric`, and `JSON_GetFieldValueString` statements to
+validate TMPython output before any returned move is applied. The statement
+VIs being present on disk is not sufficient.
+
+The comma-separated `[Statements] Path` value in
+`D:\TestMasterData\config\Sequencer.ini` must include:
+
+```text
+#SM_ROOT#\\Functions\\JSON\\JSON_Statements
+```
+
+This registration was proven by a V6 parse/run on 2026-07-23. Restart or reload
+TestMaster/YASE after changing the path. Do not hand-edit generated
+`prototypes.xml` as a substitute for loading the statement folder.
 
 ## Python statement contract
 
@@ -879,6 +900,7 @@ PLEIADES is the process currently loaded in TestMaster.
 | Error/source | Meaning on this installation | Correction |
 | --- | --- | --- |
 | `5001: The interpreter <Python_310_ALIGNMENT_TEST> was not found` | The YASE `Interpreter` value does not exactly match a section in global `TMPython.ini` | Use `Python_310_PYTHON_AUTOMATION_INTERPRETER` |
+| `JSON_GetFieldValueBoolean/Numeric/String not found` during sequence parse | The installed JSON statement folder is absent from global `Sequencer.ini` | Register `#SM_ROOT#\\Functions\\JSON\\JSON_Statements`, then reload TestMaster/YASE |
 | `10500: Expecting value: line 1 column 1 (char 0)` | `ParamIn` is empty, so TMPython has no JSON value to decode | Build nonempty JSON first and connect the populated string variable to `ParamIn` |
 | `10500: Invalid \escape` | A Windows path reached the JSON decoder with single backslashes | Put forward slashes in JSON paths, for example `D:/TestMasterData/data/...` |
 | `No module named ...` | The YASE `Module` value does not match the Python file location | For a module directly in `python_env`, use the bare filename without `.py` or a package prefix |
@@ -930,6 +952,8 @@ Before the first run:
   the importable `.py` file is directly under the configured working directory.
 - Confirm global `TMPython.ini` contains the exact interpreter section and all
   three configured directories exist.
+- Confirm global `Sequencer.ini` registers
+  `#SM_ROOT#\Functions\JSON\JSON_Statements`.
 - In the TMPython statement, verify `Interpreter`, bare `Module`, `Class`,
   variable `ParamIn`, and variable `ParamOut` field by field.
 - Ensure `ParamIn` is valid, nonempty JSON. Use XML `&quot;` when editing the

@@ -31,6 +31,9 @@ IMAGE_PATH = f"{DATA_DIR}/python_vision_input.bmp"
 INTERPRETER = "Python_310_PYTHON_AUTOMATION_INTERPRETER"
 MODULE = "python_vision_geometry.v6_offset_workflow"
 SCHEMA_VERSION = 2
+AXIS_WAIT_TIMEOUT_SECONDS = 45.0
+AXIS_WAIT_MARGIN_SECONDS = 5.0
+MAX_PREDICTED_MOVE_SECONDS = AXIS_WAIT_TIMEOUT_SECONDS - AXIS_WAIT_MARGIN_SECONDS
 
 STAGE_ORDER = [
     "Camera_X",
@@ -137,6 +140,7 @@ def generate_apply_move_sequence(kind: str) -> str:
     statements.extend(validate_delta_statements())
     statements.extend(velocity_statements)
     statements.extend(select_velocity)
+    statements.extend(validate_move_duration_statements())
     statements.extend(move_popup_statements())
     statements.append(dialog_statement("L_UserConfirmMove", variable="s_MovePopupText", ok="Abort", skip="Move"))
     statements.append(goto_statement("L_Error_UserAbort"))
@@ -161,24 +165,8 @@ def generate_apply_move_sequence(kind: str) -> str:
             params=[param("AxisList [CSV Format]", "String", "Input", variable="s_MoveStage")],
         )
     )
-    statements.append(
-        statement(
-            "SEQ::SUB_SysCheckAxisMove",
-            "system..",
-            params=[
-                param("Axis1", "String", "Input", variable="s_MoveStage"),
-                param("Axis2", "String", "Input", string=""),
-                param("Axis3", "String", "Input", string=""),
-                param("Axis4", "String", "Input", string=""),
-                param("Axis5", "String", "Input", string=""),
-                param("Axis6", "String", "Input", string=""),
-                param("Error", "DBL", "Output", variable="d_ErrorType"),
-                param("S_ErrorMessage", "String", "Output", variable="s_ErrorMessage"),
-            ],
-        )
-    )
-    statements.append(ifnum_statement("d_ErrorType", "<>", "0.0"))
-    statements.append(goto_statement("L_End"))
+    statements.append(ifnum_statement("Timeout", "=", "1.0"))
+    statements.append(goto_statement("L_Error_Timeout"))
     statements.extend(success_and_error_end(sequence_name, success_text=f"{sequence_name} complete."))
     return sequence_document(sequence_name, statements, description)
 
@@ -228,7 +216,7 @@ def generate_capture_sequence(capture_id: str, positions: list[dict[str, Any]]) 
             "Illu_Coax": 0.9,
             "Illu_1": 0.9,
             "Illu_2": 0.9,
-            "source": "reapplied_standard_position_before_operator_gate",
+            "source": "reapplied_standard_position_before_capture_confirmation",
         },
     }
     before_fields = [
@@ -246,12 +234,16 @@ def generate_capture_sequence(capture_id: str, positions: list[dict[str, Any]]) 
         dialog_statement(
             "L_OperatorImageGate",
             (
-                f"V6 capture {capture_id}: adjust focus and framing with camera/tower pose controls now. "
-                "Standard exposure and lights are already applied; do not change them or zoom. "
-                "Press Capture only when the image is ready and all motion has stopped."
+                f"V6 capture {capture_id}: this YASE dialog is modal, so manual positioning is "
+                "not available while it is open. Standard exposure and lights are already "
+                "applied; do not change them or zoom. If the image is not ready, choose "
+                "Cancel to adjust, confirm the sequence has stopped and no stage is moving, "
+                "position manually after this dialog closes, then rerun this capture or "
+                "convergence subsequence with the same V6 memory. Choose Capture current "
+                "only when the displayed image is already ready and all motion has stopped."
             ),
-            ok="Abort",
-            skip="Capture",
+            ok="Cancel to adjust",
+            skip="Capture current",
         )
     )
     statements.append(goto_statement("L_Error_UserAbort"))
@@ -269,7 +261,17 @@ def generate_capture_sequence(capture_id: str, positions: list[dict[str, Any]]) 
     statements.extend(return_success_end(sequence_name))
     statements.extend(simple_error_label("L_Error_Fiducial", "31.0", "Stages are not fiducialed. Aborted before v6 capture review."))
     statements.extend(simple_error_label("L_Error_Python", "41.0", "Python capture/review returned ok=false or unsupported schema."))
-    statements.extend(simple_error_label("L_Error_UserAbort", "35.0", "Operator cancelled before the v6 image grab."))
+    statements.extend(
+        simple_error_label(
+            "L_Error_UserAbort",
+            "35.0",
+            (
+                "Capture cancelled before the image grab. Confirm no stage is moving, adjust "
+                "manually after the modal dialog closes, then rerun this capture or convergence "
+                "subsequence with the same V6 memory."
+            ),
+        )
+    )
     statements.extend(final_return_end())
     return sequence_document(sequence_name, statements, f"Capture CAM_12 and record reviewed v6 capture {capture_id}.")
 
@@ -656,13 +658,40 @@ def validate_delta_statements() -> list[str]:
     ]
 
 
-def move_popup_statements() -> list[str]:
-    parts = [
-        ("s_ConfirmText", " | Stage to move: ", "s_MovePopupText1"),
-        ("s_MovePopupText1", None, "s_MovePopupText2", "s_MoveStage"),
-        ("s_MovePopupText2", " | Absolute target [um]: ", "s_MovePopupText3"),
+def validate_move_duration_statements(
+    *,
+    delta_abs_variable: str = "d_DeltaAbsUm",
+    velocity_variable: str = "d_MoveVelocity",
+) -> list[str]:
+    max_seconds = float_string(MAX_PREDICTED_MOVE_SECONDS)
+    return [
+        statement(
+            "calc",
+            "Standard",
+            params=[
+                param("Number 1 in", "DBL", "Input", variable=delta_abs_variable),
+                param("Operation", "Enum Word", "Input", string="/"),
+                param("Number 2 in", "DBL", "Input", variable=velocity_variable),
+                param("Number out", "DBL", "Output", variable="d_PredictedMoveSeconds"),
+            ],
+        ),
+        statement(
+            "InRange",
+            "Standard",
+            params=[
+                param("Value", "DBL", "Input", variable="d_PredictedMoveSeconds"),
+                param("Min", "DBL", "Input", string="0.0", numeric="0.0"),
+                param("Max", "DBL", "Input", string=max_seconds, numeric=max_seconds),
+                param("In range?", "Boolean", "Output", variable="b_MoveDurationInRange"),
+            ],
+        ),
+        ifnum_statement("b_MoveDurationInRange", "=", "0.0"),
+        goto_statement("L_Error_Duration"),
     ]
-    statements = [
+
+
+def move_popup_statements() -> list[str]:
+    return [
         set_string("s_ConfirmText", " | Stage to move: ", "s_MovePopupText1"),
         set_string("s_MovePopupText1", variable_2="s_MoveStage", out="s_MovePopupText2"),
         set_string("s_MovePopupText2", " | Absolute target [um]: ", "s_MovePopupText3"),
@@ -670,9 +699,19 @@ def move_popup_statements() -> list[str]:
         set_string("s_MovePopupText4", " | Current [um]: ", "s_MovePopupText5"),
         set_str_num("s_MovePopupText5", "d_CurrentUm", "s_MovePopupText6", precision="3"),
         set_string("s_MovePopupText6", " | Delta [um]: ", "s_MovePopupText7"),
-        set_str_num("s_MovePopupText7", "d_DeltaUm", "s_MovePopupText", precision="3"),
+        set_str_num("s_MovePopupText7", "d_DeltaUm", "s_MovePopupText8", precision="3"),
+        set_string(
+            "s_MovePopupText8",
+            " | Predicted constant-speed time [s]: ",
+            "s_MovePopupText9",
+        ),
+        set_str_num(
+            "s_MovePopupText9",
+            "d_PredictedMoveSeconds",
+            "s_MovePopupText",
+            precision="3",
+        ),
     ]
-    return statements
 
 
 def query_stage_statements(variable_prefix: str) -> list[str]:
@@ -824,6 +863,16 @@ def success_and_error_end(sequence_name: str, *, success_text: str) -> list[str]
         *simple_error_label("L_Error_Velocity", "34.0", "A required MainVelocity value is missing or not greater than zero."),
         *simple_error_label("L_Error_UserAbort", "35.0", "Operator aborted before MoveStage or SetAnalogOut."),
         *simple_error_label("L_Error_Timeout", "36.0", "Axis wait timed out. Confirm physical motion has stopped before continuing."),
+        *simple_error_label(
+            "L_Error_Duration",
+            "37.0",
+            (
+                f"Predicted constant-speed move time exceeds "
+                f"{MAX_PREDICTED_MOVE_SECONDS:.0f} s for the "
+                f"{AXIS_WAIT_TIMEOUT_SECONDS:.0f} s wait timeout. No new move was issued. "
+                "Confirm the correct reviewed velocity or split the move before continuing."
+            ),
+        ),
         *final_return_end(),
     ]
 
@@ -977,6 +1026,38 @@ def velocity_var_for_standard_stage(stage: str) -> str:
 
 def move_stage_and_wait(stage: str, target: str, velocity_var: str) -> list[str]:
     return [
+        statement(
+            "QueryStage",
+            "Stage",
+            params=[
+                param("Stage", "String", "Input", string=stage),
+                param("Query", "Enum Word", "Input", string="Absolute"),
+                param("Position [um]", "DBL", "Output", variable="d_CurrentUm"),
+                param("Message", "String", "Output", variable="s_QueryStageMessage"),
+            ],
+        ),
+        statement(
+            "calc",
+            "Standard",
+            params=[
+                param("Number 1 in", "DBL", "Input", string=target, numeric=target),
+                param("Operation", "Enum Word", "Input", string="--"),
+                param("Number 2 in", "DBL", "Input", variable="d_CurrentUm"),
+                param("Number out", "DBL", "Output", variable="d_DeltaUm"),
+            ],
+        ),
+        statement(
+            "Math_Absolute",
+            "product_modules\\Functions\\Math\\",
+            params=[
+                param("InputValue", "DBL", "Input", variable="d_DeltaUm"),
+                param("AbsoluteValue", "DBL", "Output", variable="d_DeltaAbsUm"),
+            ],
+        ),
+        *validate_move_duration_statements(
+            delta_abs_variable="d_DeltaAbsUm",
+            velocity_variable=velocity_var,
+        ),
         statement("MoveStage", "Stage", params=[
             param("Stage", "String", "Input", string=stage),
             param("Velocity [um/s]", "DBL", "Input", variable=velocity_var),

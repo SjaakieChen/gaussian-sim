@@ -579,6 +579,17 @@ def test_v6_measurement_plan_and_operator_docs_use_schema_2_canonical_contract()
     assert skip_policy["vision_measurement_used"] is False
     assert skip_policy["motion_requested"] is False
     assert "final verification" in skip_policy["forbidden_uses"]
+    assert "does not permit manual positioning" in plan["capture_memory"][
+        "modal_capture_confirmation_rule"
+    ]
+    assert "TEST BYPASS" in plan["capture_memory"]["testing_bypass_rule"]
+    assert plan["motion_policy"]["axis_wait_timeout_seconds_observed"] == 45.0
+    assert plan["motion_policy"]["max_predicted_move_seconds"] == 40.0
+    assert plan["motion_policy"]["axis_wait_margin_seconds"] == 5.0
+    assert plan["cleanroom_preflight"]["runtime_check_required_flags"] == [
+        "--require-tmpython",
+        "--require-yase-json-statements",
+    ]
 
     readme = (V6 / "README.md").read_text(encoding="utf-8")
     assert "Do not rerun the memory initializer between normal steps" in readme
@@ -587,11 +598,23 @@ def test_v6_measurement_plan_and_operator_docs_use_schema_2_canonical_contract()
     assert "ball 1 to ball 2 = 200 um" in readme
     assert "Skip coarse - assume aligned" in readme
     assert "final verification cannot be" in readme.replace("\n", " ")
+    assert "Cancel to adjust" in readme
+    assert "--require-yase-json-statements" in readme
+    assert "TEST BYPASS" in readme
     assert "It is not physical machine validation" in readme.replace("\n", " ")
 
     mistakes = (ROOT / "COMMON_MISTAKES.md").read_text(encoding="utf-8")
     assert "Use medium speed for reviewed approach moves" in mistakes
     assert "Use slow speed for image-derived offset corrections" in mistakes
+    assert "Installed JSON statements must also be registered in Sequencer.ini" in mistakes
+    assert "A modal YASE popup blocks the positioning it asks for" in mistakes
+    assert "Standard-geometry test bypass is not live alignment evidence" in mistakes
+    assert "Hypothesis: TMPython can block when its stdout pipe fills" in mistakes
+
+    machine_configuration = (ROOT / "MACHINE_CONFIGURATION.md").read_text(
+        encoding="utf-8"
+    )
+    assert "#SM_ROOT#\\\\Functions\\\\JSON\\\\JSON_Statements" in machine_configuration
 
 
 def test_v6_review_ui_preloads_live_proposal_allows_override_and_tracks_cancel():
@@ -796,7 +819,9 @@ def test_v6_xseq_files_parse_have_valid_gotos_and_avoid_forbidden_fields():
     all_v6_text = "\n".join(
         path.read_text(encoding="utf-8", errors="ignore")
         for path in V6.rglob("*")
-        if path.is_file() and path.suffix.lower() in {".xseq", ".py", ".json", ".md", ".txt"}
+        if path.is_file()
+        and "migration back" not in path.parts
+        and path.suffix.lower() in {".xseq", ".py", ".json", ".md", ".txt"}
     )
     for forbidden in [
         "Python_310_ALIGNMENT_TEST",
@@ -884,7 +909,7 @@ def test_v6_standard_position_towers_raise_before_lateral_motion_then_lower():
                 )
 
 
-def test_v6_offset_apply_uses_slow_tower_speeds_and_keeps_operator_confirmation():
+def test_v6_offset_apply_uses_slow_tower_speeds_and_one_bounded_wait():
     path = V6_WORKFLOW_DIR / "SUB_V6ApplyOffsetCorrectionMove_Guarded.xseq"
     text = path.read_text(encoding="ISO-8859-1")
     names = _statement_names(path)
@@ -894,9 +919,41 @@ def test_v6_offset_apply_uses_slow_tower_speeds_and_keeps_operator_confirmation(
     assert "DisplayExtdSelectionDialog" in names
     assert "MoveStage" in names
     assert "Camera_" not in text
+    assert names.count("SEQ::SUB_SYS_AxisWaitFinishList") == 1
+    assert "SEQ::SUB_SysCheckAxisMove" not in names
+    assert "Predicted constant-speed time [s]" in text
+    assert "40.0" in text
+    assert "L_Error_Duration" in text
 
 
-def test_v6_capture_queries_all_stages_immediately_before_and_after_grab():
+def test_v6_move_sequences_guard_duration_before_move_and_use_one_wait_mechanism():
+    paths = [
+        *(path for path in V6_STANDARD_POSITION_DIR.glob("*.xseq")),
+        V6_WORKFLOW_DIR / "SUB_V6ApplyApproachMove_Guarded.xseq",
+        V6_WORKFLOW_DIR / "SUB_V6ApplyOffsetCorrectionMove_Guarded.xseq",
+    ]
+    for path in paths:
+        statements = _statements(path)
+        names = [statement.attrib["Name"] for statement in statements]
+        move_count = names.count("MoveStage")
+        division_count = sum(
+            1
+            for statement in statements
+            if statement.attrib["Name"] == "calc"
+            and _params_by_name(statement)["Operation"].get("StringValue") == "/"
+        )
+        assert move_count > 0
+        assert division_count == move_count
+        assert names.count("InRange") >= move_count
+        assert names.count("SEQ::SUB_SYS_AxisWaitFinishList") == move_count
+        assert "SEQ::SUB_SysCheckAxisMove" not in names
+        for move_index in (
+            index for index, name in enumerate(names) if name == "MoveStage"
+        ):
+            assert "InRange" in names[:move_index]
+
+
+def test_v6_capture_gate_is_honest_about_modal_manual_positioning():
     positions = {position["id"]: position for position in _standard_positions_payload()["positions"]}
     for capture_id in CAPTURE_IDS:
         path = _capture_sequence_path(capture_id)
@@ -907,6 +964,19 @@ def test_v6_capture_queries_all_stages_immediately_before_and_after_grab():
         assert names.count("DisplayExtdSelectionDialog") == 1
         assert names.count("SetAnalogOut") == 4
         assert max(index for index, name in enumerate(names) if name == "SetAnalogOut") < gate_index
+        gate = next(
+            statement
+            for statement in _statements(path)
+            if statement.attrib["Name"] == "DisplayExtdSelectionDialog"
+        )
+        gate_params = _params_by_name(gate)
+        gate_text = gate_params["Dialog text"]["StringValue"]
+        assert "this YASE dialog is modal" in gate_text
+        assert "manual positioning is not available while it is open" in gate_text
+        assert "rerun this capture or convergence subsequence with the same V6 memory" in gate_text
+        assert "adjust focus and framing with camera/tower pose controls now" not in gate_text
+        assert gate_params["Button 1 (OK) text"]["StringValue"] == "Cancel to adjust"
+        assert gate_params["Button 2 (Skip) text"]["StringValue"] == "Capture current"
         assert names.count("QueryStage") == 20
         assert gate_index < grab_index - 10
         assert names[grab_index - 10 : grab_index] == ["QueryStage"] * 10
@@ -922,7 +992,10 @@ def test_v6_capture_queries_all_stages_immediately_before_and_after_grab():
         }
         assert '"schema_version":2' in strings
         assert '"capture_stability_tolerance_um":1.0' in strings
-        assert '"source":"reapplied_standard_position_before_operator_gate"' in strings
+        assert (
+            '"source":"reapplied_standard_position_before_capture_confirmation"'
+            in strings
+        )
         assert f'"capture_id":"{capture_id}"' in strings
         tmpython = _tmpython_params(path)
         assert tmpython["Interpreter"]["StringValue"] == "Python_310_PYTHON_AUTOMATION_INTERPRETER"
@@ -968,6 +1041,37 @@ def test_v6_record_capture_preloads_simulator_initial_session(monkeypatch, tmp_p
         "capture_id": "2.1.1",
         "initial_session": initial_session,
     }
+
+
+def test_v6_atomic_memory_write_retries_transient_windows_file_lock(
+    monkeypatch,
+    tmp_path,
+):
+    memory_path = tmp_path / "memory.json"
+    original_replace = v6_module.os.replace
+    attempts = []
+
+    def replace_after_two_locks(source, destination):
+        attempts.append((source, destination))
+        if len(attempts) <= 2:
+            raise PermissionError(13, "simulated transient file lock")
+        return original_replace(source, destination)
+
+    monkeypatch.setattr(v6_module.os, "replace", replace_after_two_locks)
+    monkeypatch.setattr(v6_module.time, "sleep", lambda _seconds: None)
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "init",
+            "memory_path": str(memory_path),
+        }
+    )
+
+    assert result["ok"] is True
+    assert len(attempts) == 3
+    assert json.loads(memory_path.read_text(encoding="utf-8"))["schema_version"] == 2
+    assert list(tmp_path.glob(".memory.json.*.tmp")) == []
 
 
 def test_v6_coarse_skip_records_assumption_then_converges_without_motion(tmp_path):
@@ -1107,6 +1211,33 @@ def test_v6_ball_2_coarse_skip_does_not_bypass_ball_1_prerequisite(tmp_path):
     assert "reviewed capture record for 2.6.1" in correction["status"]
     memory = json.loads(memory_path.read_text(encoding="utf-8"))
     assert "4.1.1" not in memory["convergence"]
+
+
+@pytest.mark.parametrize("capture_id", CAPTURE_IDS)
+def test_v6_guarded_capture_rejects_testing_bypass_geometry(capture_id, tmp_path):
+    memory_path = tmp_path / f"{capture_id}.json"
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "record_capture",
+            "capture_id": capture_id,
+            "image_path": "testing-bypass-does-not-need-an-image.bmp",
+            "memory_path": str(memory_path),
+            "machine_positions_before_grab_um": _pose(),
+            "machine_positions_after_grab_um": _pose(),
+            "review_session": {
+                "ok": True,
+                "action": "vision_lab_saved",
+                "testing_bypass": True,
+                "status": "TEST BYPASS: standard geometry copied without live measurement",
+            },
+        }
+    )
+
+    assert result["ok"] is False
+    assert result["move_count"] == 0
+    assert "standard geometry is not live alignment evidence" in result["status"]
+    assert not memory_path.exists()
 
 
 def test_v6_convergence_wrappers_are_independent_and_main_calls_them_once():

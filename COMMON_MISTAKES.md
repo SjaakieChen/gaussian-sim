@@ -1,6 +1,6 @@
 # Common YASE, TMPython, JSON, and Image-Bridge Mistakes
 
-Last updated: 2026-07-17
+Last updated: 2026-07-23
 
 Record every confirmed integration mistake here when it is discovered. Include
 the visible error, actual cause, correction, and a prevention check. Machine
@@ -181,3 +181,101 @@ Prevention:
   coordinate; only lower Y after lateral axes are at target.
 - Treat direct hardcoded-position subsequences the same way, because operators
   can run them independently from an unknown current position.
+
+## 13. Installed JSON statements must also be registered in Sequencer.ini
+
+Observed error:
+
+```text
+Parse error in sequence
+Step 82: 'JSON_GetFieldValueBoolean' not found!
+Step 85: 'JSON_GetFieldValueNumeric' not found!
+```
+
+Cause confirmed on 2026-07-23: the JSON statement VIs existed under
+`C:\TestMaster\TestMaster\Functions\JSON\JSON_Statements`, but that folder was
+not included in the global TestMaster statement search path. Files existing on
+disk does not make their statements available to YASE.
+
+Correction confirmed in the cleanroom: append this entry to the comma-separated
+`[Statements] Path` value in `D:\TestMasterData\config\Sequencer.ini`, then
+restart or reload TestMaster/YASE:
+
+```text
+#SM_ROOT#\\Functions\\JSON\\JSON_Statements
+```
+
+The V6 cleanroom runtime check now verifies this registration when called with
+`--require-yase-json-statements`.
+
+Prevention:
+
+- Check global `Sequencer.ini` before using `JSON_GetFieldValueBoolean`,
+  `JSON_GetFieldValueNumeric`, or `JSON_GetFieldValueString`.
+- Do not rename XSEQ statements when the installed VI names already match.
+- Do not hand-edit generated `prototypes.xml`; reload the configured statement
+  folders.
+- Parse-check every migrated sequence before allowing hardware motion.
+
+## 14. A modal YASE popup blocks the positioning it asks for
+
+Confirmed on 2026-07-23: a modal YASE capture dialog blocked the normal manual
+camera and tower controls. Closing the popup immediately continued the
+sequence, so it was not a valid positioning interval.
+
+V6 capture dialogs must not claim that positioning is possible while they are
+open. The guarded capture flow now provides two honest choices:
+
+- `Capture current`: capture only if the displayed image is already ready and
+  all motion has stopped.
+- `Cancel to adjust`: stop the capture before the grab, verify that no stage is
+  moving, adjust manually after the dialog closes, then rerun only that capture
+  or convergence subsequence with the same V6 memory.
+
+If only a vision ROI or selected feature is wrong, correct it in the Tk review
+window without changing the stage pose or taking a new image.
+
+## 15. Standard-geometry test bypass is not live alignment evidence
+
+A control such as `TEST: Use Standard + Close` copies official geometry and
+does not measure the live image. A zero residual from that data means the
+standard geometry was assumed, not that the current part was aligned.
+
+The repository V6 guarded record boundary rejects sessions marked
+`TEST BYPASS` or `testing_bypass`; they cannot enter production V6 memory or
+support final verification. The returned cleanroom note also references a
+`Manual circle (no vision)` control that is not present in this repository
+snapshot. Do not rely on that control until its source is copied back, reviewed,
+and tested.
+
+## 16. Hypothesis: TMPython can block when its stdout pipe fills
+
+Observed on 2026-07-23: V6 stopped inside `TMPython_ExecuteScript` during
+transition `2.1_to_2.4`. The input file existed, but neither expected result
+file existed. The same pure Python transition calculation completed in about
+`0.002 s`.
+
+The current hypothesis is that the installed TMPython worker prints every
+complete input dictionary to stdout before starting the statement:
+
+```python
+print(pformat(self.input_params))
+```
+
+If the parent does not continuously drain stdout, repeated calls may fill the
+pipe and block before statement execution starts. Accumulated TMPython host
+processes may contribute. Neither point is yet proven as the root cause.
+
+Diagnostics and recovery:
+
+- Check that the input JSON exists while both result files are absent.
+- Inspect the newest `tmpython_*.log`; note whether it stops between thread
+  initialization and thread start.
+- Run the same pure Python workflow function outside TMPython.
+- Check for accumulated `python.exe -m tmpython.lv_interfaces` processes.
+- Abort the sequence and verify that no stage is moving. If the call does not
+  release, restart TestMaster to close its TMPython hosts.
+
+The V6 cleanroom runtime check reports whether the installed package contains
+the known input-print pattern. Do not patch vendor stdout handling until the
+hypothesis and proposed fix have been tested on the machine.

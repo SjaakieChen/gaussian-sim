@@ -15,6 +15,7 @@ import argparse
 import importlib
 import importlib.util
 import json
+import re
 import sys
 import traceback
 from dataclasses import dataclass
@@ -74,6 +75,8 @@ REQUIRED_RUNTIME_FILES = (
     "python_vision_geometry/cleanroom_runtime_check.py",
     "standard_positions_v4/standard_positions.json",
 )
+DEFAULT_SEQUENCER_INI_PATH = Path(r"D:\TestMasterData\config\Sequencer.ini")
+YASE_JSON_STATEMENT_PATH_MARKER = r"#SM_ROOT#\Functions\JSON\JSON_Statements"
 
 
 @dataclass(frozen=True)
@@ -153,13 +156,27 @@ def run_checks(
     *,
     require_tmpython: bool = False,
     check_tk: bool = True,
+    sequencer_ini_path: str | Path | None = None,
+    require_yase_json_statements: bool = False,
 ) -> JsonDict:
     root = Path(runtime_root).resolve() if runtime_root is not None else runtime_root_from_module()
+    sequencer_path = (
+        Path(sequencer_ini_path)
+        if sequencer_ini_path is not None
+        else DEFAULT_SEQUENCER_INI_PATH
+    )
     checks: list[CheckResult] = []
 
     checks.extend(check_required_files(root))
     checks.extend(check_public_imports())
     checks.append(check_tmpython(require_tmpython=require_tmpython))
+    checks.append(check_tmpython_stdout_pipe_risk())
+    checks.append(
+        check_yase_json_statement_registration(
+            sequencer_path,
+            required=require_yase_json_statements,
+        )
+    )
 
     lab_module = None
     workflow_module = None
@@ -214,6 +231,8 @@ def run_checks(
         "runtime_root": str(root),
         "require_tmpython": require_tmpython,
         "check_tk": check_tk,
+        "sequencer_ini_path": str(sequencer_path),
+        "require_yase_json_statements": require_yase_json_statements,
         "failure_count": len(failed),
         "warning_count": len(warned),
         "checks": [check.payload() for check in checks],
@@ -263,6 +282,99 @@ def check_tmpython(*, require_tmpython: bool) -> CheckResult:
     if require_tmpython:
         return fail("import:tmpython.statement", detail)
     return warning("import:tmpython.statement", detail)
+
+
+def check_tmpython_stdout_pipe_risk() -> CheckResult:
+    try:
+        package_spec = importlib.util.find_spec("tmpython")
+    except (ImportError, ModuleNotFoundError):
+        package_spec = None
+    package_roots = tuple(package_spec.submodule_search_locations or ()) if package_spec else ()
+    if not package_roots:
+        return warning(
+            "tmpython_stdout_pipe_risk",
+            "TMPython package source is unavailable, so the worker stdout-print hypothesis was not inspected.",
+        )
+
+    risky_sources = []
+    pattern = re.compile(
+        r"print\s*\(\s*pformat\s*\(\s*self\.input_params\s*\)\s*\)",
+        flags=re.MULTILINE,
+    )
+    for package_root in package_roots:
+        for source_path in Path(package_root).rglob("*.py"):
+            try:
+                source = source_path.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            if pattern.search(source):
+                risky_sources.append(str(source_path))
+    if risky_sources:
+        return warning(
+            "tmpython_stdout_pipe_risk",
+            (
+                "TMPython worker source prints the complete input dictionary to stdout. "
+                "Cleanroom evidence suggests, but does not yet prove, that repeated calls can "
+                "block if the parent does not drain that pipe. Preserve input/result logs and "
+                "restart TestMaster if a call stops before statement execution starts."
+            ),
+            {"matching_sources": risky_sources},
+        )
+    return ok(
+        "tmpython_stdout_pipe_risk",
+        (
+            "The known print(pformat(self.input_params)) worker pattern was not found. "
+            "This source check does not independently prove that stdout is continuously drained."
+        ),
+    )
+
+
+def check_yase_json_statement_registration(
+    sequencer_ini_path: str | Path,
+    *,
+    required: bool,
+) -> CheckResult:
+    path = Path(sequencer_ini_path)
+    if not path.is_file():
+        result = fail if required else warning
+        return result(
+            "yase_json_statement_registration",
+            (
+                f"Sequencer.ini was not found at {path}; cannot verify that "
+                "JSON_GetFieldValueBoolean/Numeric/String are registered."
+            ),
+        )
+    try:
+        text = path.read_text(encoding="utf-8-sig", errors="ignore")
+    except OSError as exc:
+        result = fail if required else warning
+        return result(
+            "yase_json_statement_registration",
+            f"could not read {path}: {type(exc).__name__}: {exc}",
+        )
+
+    normalized = text.replace("/", "\\")
+    while "\\\\" in normalized:
+        normalized = normalized.replace("\\\\", "\\")
+    if YASE_JSON_STATEMENT_PATH_MARKER.casefold() in normalized.casefold():
+        return ok(
+            "yase_json_statement_registration",
+            "Sequencer.ini registers the installed TestMaster JSON statement folder.",
+            {
+                "sequencer_ini_path": str(path),
+                "required_path": YASE_JSON_STATEMENT_PATH_MARKER,
+            },
+        )
+    result = fail if required else warning
+    return result(
+        "yase_json_statement_registration",
+        (
+            "Sequencer.ini does not register "
+            f"{YASE_JSON_STATEMENT_PATH_MARKER}; V6 sequences using "
+            "JSON_GetFieldValueBoolean/Numeric/String can fail to parse."
+        ),
+        {"sequencer_ini_path": str(path)},
+    )
 
 
 def check_vision_lab_algorithms(lab_module: Any) -> list[CheckResult]:
@@ -398,6 +510,20 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Skip creating a Tk root. Do not use this for final cleanroom UI readiness.",
     )
+    parser.add_argument(
+        "--sequencer-ini",
+        type=Path,
+        default=DEFAULT_SEQUENCER_INI_PATH,
+        help=(
+            "Global TestMaster Sequencer.ini to inspect for JSON statement registration. "
+            f"Defaults to {DEFAULT_SEQUENCER_INI_PATH}."
+        ),
+    )
+    parser.add_argument(
+        "--require-yase-json-statements",
+        action="store_true",
+        help="Fail unless Sequencer.ini registers the installed JSON statement folder.",
+    )
     parser.add_argument("--json-output", type=Path, default=None, help="Optional JSON report path.")
     return parser.parse_args(argv)
 
@@ -408,6 +534,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.runtime_root,
         require_tmpython=args.require_tmpython,
         check_tk=not args.skip_tk,
+        sequencer_ini_path=args.sequencer_ini,
+        require_yase_json_statements=args.require_yase_json_statements,
     )
     text = json.dumps(payload, indent=2, sort_keys=True)
     print(text)

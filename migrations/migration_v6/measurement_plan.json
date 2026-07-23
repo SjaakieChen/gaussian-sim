@@ -115,6 +115,8 @@
     ],
     "replacement_rule": "A re-recorded capture replaces its active record, archives the prior revision, and invalidates all downstream correction plans, convergence states, transitions, and final verification.",
     "cancel_rule": "Review cancellation does not update memory.",
+    "modal_capture_confirmation_rule": "The YASE capture dialog does not permit manual positioning. Capture only when the current image is already ready; otherwise cancel, confirm no motion, adjust after the dialog closes, and rerun that capture or convergence subsequence with the same memory.",
+    "testing_bypass_rule": "Sessions marked TEST BYPASS or testing_bypass are rejected and cannot enter guarded V6 memory.",
     "skip_policy": {
       "allowed_capture_ids": [
         "2.1.1",
@@ -132,7 +134,7 @@
       ]
     },
     "stability_rule": "All camera, zoom, and tower axes are queried before and after the grab; excessive motion rejects the capture.",
-    "settings_rule": "Standard exposure and three light outputs are reapplied before the operator focus/framing gate and stored as commanded values; the operator must not change them because analog readback is not claimed."
+    "settings_rule": "Standard exposure and three light outputs are reapplied before capture confirmation and stored as commanded values; the operator must not change them because analog readback is not claimed."
   },
   "convergence": {
     "fresh_capture_required_after_each_move": true,
@@ -149,6 +151,11 @@
     "vision_correction_velocity": "slow",
     "fast_close_to_chip_allowed": false,
     "real_image_derived_move_requires_operator_confirmation": true,
+    "axis_wait_timeout_seconds_observed": 45.0,
+    "max_predicted_move_seconds": 40.0,
+    "axis_wait_margin_seconds": 5.0,
+    "predicted_duration_formula": "abs(target_um - current_um) / selected_velocity_um_per_s",
+    "completion_mechanism": "Use SUB_SYS_AxisWaitFinishList once and branch explicitly on Timeout; do not stack SUB_SysCheckAxisMove.",
     "standard_position_order": [
       "raise every tower with an X/Z target to its reviewed clearance Y",
       "move camera and zoom",
@@ -264,7 +271,17 @@
     "No backward re-entry into ball 1 correction or transition motion while active ball 2 records remain in memory.",
     "No final pass unless source, ball-to-ball, taper, and trench-floor surface gaps are strictly positive.",
     "No YASE transition anchor without a current reviewed source capture and a matching converged revision when that source has an offset correction.",
+    "No guarded capture record from a session marked TEST BYPASS or testing_bypass.",
+    "No MoveStage when the predicted constant-speed duration exceeds the 40 second pre-move budget.",
     "No direct hardware motion from Python."
   ],
+  "cleanroom_preflight": {
+    "runtime_check_required_flags": [
+      "--require-tmpython",
+      "--require-yase-json-statements"
+    ],
+    "required_sequencer_statement_path": "#SM_ROOT#\\Functions\\JSON\\JSON_Statements",
+    "tmpython_stdout_note": "The worker stdout-pipe block remains a hypothesis; report the known input-print source pattern without modifying vendor code."
+  },
   "commissioning_boundary": "Repository tests and static audits validate ordering and reviewed common-frame geometry, not the raw stage-to-object collision envelope. Signs, soft limits, gripper and trench volumes, clearance Y coordinates, waits, and mirror behavior require guarded machine commissioning."
 }

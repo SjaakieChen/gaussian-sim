@@ -92,6 +92,19 @@ For v6 transition files, Python creates one anchored transition target in
 important because the transition sequence loops through one move at a time; it
 must not rebase the target from the updated current position after each move.
 
+Before every generated V6 `MoveStage`, YASE queries the current coordinate and
+calculates:
+
+```text
+predicted constant-speed duration = abs(target - current) / selected velocity
+```
+
+The move is rejected before issuance when that value exceeds `40 s`. This
+leaves a `5 s` margin below the observed `45 s`
+`SUB_SYS_AxisWaitFinish` timeout. After issuance, V6 uses only
+`SUB_SYS_AxisWaitFinishList` and branches explicitly on `Timeout`; the previous
+stacked `SUB_SysCheckAxisMove` call was removed.
+
 Image-derived lateral correction is allowed only while the active tower is at
 or above the reviewed standard-position Y for that view. Smaller machine Y is
 treated as downward. A side Y correction is not planned until the top-view
@@ -120,8 +133,9 @@ volume from code alone.
 - Confirm the derived clearance Y values are physically safe on the machine.
 - Commission the raw stage-to-ball, gripper, trench, and camera collision
   envelopes; the common-frame sphere checks do not replace them.
-- Confirm motion wait timeouts are compatible with the medium/slow velocities
-  and worst-case deltas.
+- Confirm that the observed `45 s` wait timeout still applies and that the
+  `40 s` pre-move duration budget is sufficient for acceleration and settling
+  on every axis.
 - Confirm image-right/`Align_X*` and image-up/`Align_Z*` correction signs with
   deliberately small guarded moves.
 - Confirm the side-view mirror Y sign with a deliberately small reviewed test

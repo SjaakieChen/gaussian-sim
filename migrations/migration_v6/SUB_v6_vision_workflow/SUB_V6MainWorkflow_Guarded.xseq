@@ -367,6 +367,18 @@
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
    </Statement>
+   <Statement Label="L_Error_Duration" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="37.0" StringValue="37.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Predicted constant-speed move time exceeds 40 s for the 45 s wait timeout. No new move was issued. Confirm the correct reviewed velocity or split the move before continuing." />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
    <Statement Label="L_End" Editable="FALSE" Name="DisplayStatus" Library="Standard">
       <Parameter Name="Status text" Description="Parameter: Status text to be displayed in the status window." Type="String" Direction="Input" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>

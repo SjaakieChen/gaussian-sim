@@ -113,7 +113,7 @@ def test_v6_full_standard_image_simulator_converges_and_verifies_final_geometry(
     assert memory["capture_history"]["2.5.1"]
     assert (
         memory["capture_records"]["2.5.1"]["camera_settings"]["source"]
-        == "reapplied_standard_position_before_operator_gate"
+        == "reapplied_standard_position_before_capture_confirmation"
     )
 
 
@@ -186,6 +186,11 @@ def test_v6_standard_image_simulator_side_shift_uses_two_line_mirror_ruler(tmp_p
 
 
 def test_v6_simulator_defaults_to_vision_only_popups_and_all_is_explicit(tmp_path):
+    capture_text = simulator_module.capture_gate_text("2.1.1")
+    assert "this YASE dialog is modal" in capture_text
+    assert "manual positioning is not available while it is open" in capture_text
+    assert "adjust focus and framing with camera/tower pose controls now" not in capture_text
+
     default_config = parse_args(["--headless", "--output", str(tmp_path / "default.json")])
     assert default_config.popup_scope == "vision"
     assert default_config.baseline_replacements == {}

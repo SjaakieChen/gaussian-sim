@@ -142,7 +142,7 @@ class V6StandardWorkflowSimulator:
             "Illu_Coax": 0.0,
             "Illu_1": 0.0,
             "Illu_2": 0.0,
-            "source": "reapplied_standard_position_before_operator_gate",
+            "source": "reapplied_standard_position_before_capture_confirmation",
         }
         self.residuals = {
             "ball_1": TargetPixelResidual(
@@ -513,7 +513,9 @@ class V6StandardWorkflowSimulator:
         self.camera_settings["Illu_Coax"] = 0.9
         self.camera_settings["Illu_1"] = 0.9
         self.camera_settings["Illu_2"] = 0.9
-        self.camera_settings["source"] = "reapplied_standard_position_before_operator_gate"
+        self.camera_settings["source"] = (
+            "reapplied_standard_position_before_capture_confirmation"
+        )
 
     def add_step(self, step: JsonDict) -> None:
         step["step_index"] = len(self.trace) + 1
@@ -584,9 +586,11 @@ class WorkflowPopupViewer:
         self._show_operator_dialog(
             title=f"SUB_V6CaptureReviewRecord_{capture_id}_ReadOnly",
             message=capture_gate_text(capture_id),
-            proceed_text="Capture",
+            proceed_text="Capture current",
             details=[
-                "The machine sequence reapplies standard exposure/lights before this gate.",
+                "The real YASE dialog is modal and does not permit manual positioning.",
+                "Cancel it if adjustment is needed, then rerun only the capture/convergence step.",
+                "The machine sequence reapplies standard exposure/lights before confirmation.",
                 "The simulator uses this standard image as the captured CAM_12 frame:",
                 str(image_path),
                 "Camera settings: " + json.dumps(camera_settings, sort_keys=True),
@@ -1198,9 +1202,12 @@ def standard_position_gate_text(position: JsonDict) -> str:
 
 def capture_gate_text(capture_id: str) -> str:
     return (
-        f"V6 capture {capture_id}: adjust focus and framing with camera/tower pose controls now. "
-        "Standard exposure and lights are already applied; do not change them or zoom. "
-        "Press Capture only when the image is ready and all motion has stopped."
+        f"V6 capture {capture_id}: this YASE dialog is modal, so manual positioning is "
+        "not available while it is open. Standard exposure and lights are already "
+        "applied; do not change them or zoom. Cancel if adjustment is needed, then "
+        "position manually after the dialog closes and rerun only this capture or "
+        "convergence step with the same V6 memory. Capture current only when the image "
+        "is already ready and all motion has stopped."
     )
 
 

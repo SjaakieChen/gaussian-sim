@@ -90,6 +90,42 @@
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_UserAbort" />
    </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y2" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="13000.0" StringValue="13000.0" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="--" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Math_Absolute" Library="product_modules\Functions\Math\">
+      <Parameter Name="InputValue" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaUm" />
+      <Parameter Name="AbsoluteValue" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="/" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_Medium" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="InRange" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+      <Parameter Name="Min" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Max" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="40.0" StringValue="40.0" />
+      <Parameter Name="In range?" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Duration" />
+   </Statement>
    <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
       <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y2" />
       <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_Medium" />
@@ -107,6 +143,42 @@
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_X" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-3500.0" StringValue="-3500.0" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="--" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Math_Absolute" Library="product_modules\Functions\Math\">
+      <Parameter Name="InputValue" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaUm" />
+      <Parameter Name="AbsoluteValue" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="/" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Camera_Medium" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="InRange" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+      <Parameter Name="Min" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Max" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="40.0" StringValue="40.0" />
+      <Parameter Name="In range?" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Duration" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
       <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_X" />
@@ -126,6 +198,42 @@
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
    </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Z" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-119194.0" StringValue="-119194.0" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="--" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Math_Absolute" Library="product_modules\Functions\Math\">
+      <Parameter Name="InputValue" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaUm" />
+      <Parameter Name="AbsoluteValue" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="/" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Camera_Medium" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="InRange" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+      <Parameter Name="Min" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Max" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="40.0" StringValue="40.0" />
+      <Parameter Name="In range?" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Duration" />
+   </Statement>
    <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
       <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Z" />
       <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Camera_Medium" />
@@ -143,6 +251,42 @@
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Zoom" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="--" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Math_Absolute" Library="product_modules\Functions\Math\">
+      <Parameter Name="InputValue" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaUm" />
+      <Parameter Name="AbsoluteValue" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="/" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Zoom" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="InRange" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+      <Parameter Name="Min" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Max" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="40.0" StringValue="40.0" />
+      <Parameter Name="In range?" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Duration" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
       <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Zoom" />
@@ -162,6 +306,42 @@
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
    </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Y" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-43995.0" StringValue="-43995.0" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="--" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Math_Absolute" Library="product_modules\Functions\Math\">
+      <Parameter Name="InputValue" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaUm" />
+      <Parameter Name="AbsoluteValue" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="/" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Camera_Medium" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="InRange" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+      <Parameter Name="Min" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Max" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="40.0" StringValue="40.0" />
+      <Parameter Name="In range?" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Duration" />
+   </Statement>
    <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
       <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Camera_Y" />
       <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Camera_Medium" />
@@ -179,6 +359,42 @@
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z2" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="-32200.0" StringValue="-32200.0" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="--" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Math_Absolute" Library="product_modules\Functions\Math\">
+      <Parameter Name="InputValue" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaUm" />
+      <Parameter Name="AbsoluteValue" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="/" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_Medium" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="InRange" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+      <Parameter Name="Min" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Max" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="40.0" StringValue="40.0" />
+      <Parameter Name="In range?" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Duration" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
       <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Z2" />
@@ -198,6 +414,42 @@
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
    </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X2" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="35599.0" StringValue="35599.0" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="--" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Math_Absolute" Library="product_modules\Functions\Math\">
+      <Parameter Name="InputValue" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaUm" />
+      <Parameter Name="AbsoluteValue" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="/" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_Medium" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="InRange" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+      <Parameter Name="Min" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Max" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="40.0" StringValue="40.0" />
+      <Parameter Name="In range?" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Duration" />
+   </Statement>
    <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
       <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_X2" />
       <Parameter Name="Velocity [um/s]" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_Medium" />
@@ -215,6 +467,42 @@
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="QueryStage" Library="Stage">
+      <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y2" />
+      <Parameter Name="Query" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Absolute" />
+      <Parameter Name="Position [um]" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Message" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_QueryStageMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="12000.0" StringValue="12000.0" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="--" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_CurrentUm" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Math_Absolute" Library="product_modules\Functions\Math\">
+      <Parameter Name="InputValue" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaUm" />
+      <Parameter Name="AbsoluteValue" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+      <Parameter Name="Operation" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="/" />
+      <Parameter Name="Number 2 in" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_Vel_Align_Medium" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="InRange" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+      <Parameter Name="Min" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Max" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="40.0" StringValue="40.0" />
+      <Parameter Name="In range?" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="" Type="DBL" Direction="Input" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+      <Parameter Name="Comp" Description="" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Duration" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="MoveStage" Library="Stage">
       <Parameter Name="Stage" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Align_Y2" />
@@ -324,6 +612,18 @@
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Axis wait timed out. Confirm physical motion has stopped before continuing." />
+      <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Statement Label="L_Error_Duration" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="" Type="DBL" Direction="Input" ValueType="Constant" NumericValue="37.0" StringValue="37.0" />
+      <Parameter Name="Number out" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Predicted constant-speed move time exceeds 40 s for the 45 s wait timeout. No new move was issued. Confirm the correct reviewed velocity or split the move before continuing." />
       <Parameter Name="String 2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
       <Parameter Name="String out" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>

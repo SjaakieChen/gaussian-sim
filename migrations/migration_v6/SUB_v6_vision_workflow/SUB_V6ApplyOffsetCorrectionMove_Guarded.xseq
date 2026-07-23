@@ -246,6 +246,26 @@
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
       <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Velocity" />
    </Statement>
+   <Statement Label="" Editable="FALSE" Name="calc" Library="Standard">
+      <Parameter Name="Number 1 in" Description="Parameter: First value of arithmetic operation." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaAbsUm" />
+      <Parameter Name="Operation" Description="Parameter: Choose operation from drop down list." Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="/" />
+      <Parameter Name="Number 2 in" Description="Parameter: Second value of operation." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_MoveVelocity" />
+      <Parameter Name="Number out" Description="Result: Result of operation." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="InRange" Library="Standard">
+      <Parameter Name="Value" Description="Parameter: Enter value to be checked." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+      <Parameter Name="Min" Description="Parameter: Enter minimum value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Max" Description="Parameter: Enter maximum value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="40.0" StringValue="40.0" />
+      <Parameter Name="In range?" Description="" Type="Boolean" Direction="Output" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="b_MoveDurationInRange" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Duration" />
+   </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Variable" VariableName="s_ConfirmText" />
       <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=" | Stage to move: " />
@@ -287,6 +307,17 @@
       <Parameter Name="String" Description="Parameter: Enter output string." Type="String" Direction="Input" ValueType="Variable" VariableName="s_MovePopupText7" />
       <Parameter Name="Number" Description="Parameter: Enter number to be formatted." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_DeltaUm" />
       <Parameter Name="Precision" Description="Parameter: Enter number of digits of output string." Type="I32" Direction="Input" ValueType="Constant" NumericValue="3" StringValue="3" />
+      <Parameter Name="String out" Description="Result: Returns formatted string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_MovePopupText8" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Variable" VariableName="s_MovePopupText8" />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue=" | Predicted constant-speed time [s]: " />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_MovePopupText9" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetStrNum" Library="Standard">
+      <Parameter Name="String" Description="Parameter: Enter output string." Type="String" Direction="Input" ValueType="Variable" VariableName="s_MovePopupText9" />
+      <Parameter Name="Number" Description="Parameter: Enter number to be formatted." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_PredictedMoveSeconds" />
+      <Parameter Name="Precision" Description="Parameter: Enter number of digits of output string." Type="I32" Direction="Input" ValueType="Constant" NumericValue="3" StringValue="3" />
       <Parameter Name="String out" Description="Result: Returns formatted string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_MovePopupText" />
    </Statement>
    <Statement Label="L_UserConfirmMove" Editable="FALSE" Name="DisplayExtdSelectionDialog" Library="Standard">
@@ -310,23 +341,13 @@
    <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SYS_AxisWaitFinishList" Library="system..">
       <Parameter Name="AxisList [CSV Format]" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_MoveStage" />
    </Statement>
-   <Statement Label="" Editable="FALSE" Name="SEQ::SUB_SysCheckAxisMove" Library="system..">
-      <Parameter Name="Axis1" Description="" Type="String" Direction="Input" ValueType="Variable" VariableName="s_MoveStage" />
-      <Parameter Name="Axis2" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="Axis3" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="Axis4" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="Axis5" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="Axis6" Description="" Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
-      <Parameter Name="Error" Description="" Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="S_ErrorMessage" Description="" Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
-   </Statement>
    <Statement Label="" Editable="FALSE" Name="ifnum" Library="Standard">
-      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="d_ErrorType" />
-      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="&lt;&gt;" />
-      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="0.0" />
+      <Parameter Name="Num1" Description="Parameter: Enter first value." Type="DBL" Direction="Input" ValueType="Variable" VariableName="Timeout" />
+      <Parameter Name="Comp" Description="Parameter: Select condition from drop down list. Available comparison operators (comp) are: &lt;, &gt; , &lt;= , &gt;= , = , &lt;&gt;" Type="Enum Word" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="=" />
+      <Parameter Name="Num2" Description="Parameter: Enter second value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="1.0" StringValue="1.0" />
    </Statement>
    <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
-      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_Error_Timeout" />
    </Statement>
    <Statement Label="L_Success" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="SUB_V6ApplyOffsetCorrectionMove_Guarded complete." />
@@ -402,6 +423,18 @@
    </Statement>
    <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
       <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Axis wait timed out. Confirm physical motion has stopped before continuing." />
+      <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
+      <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="Goto" Library="XSEQFlowControl">
+      <Parameter Name="Label" Description="Enter name of label to jump to." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="L_End" />
+   </Statement>
+   <Statement Label="L_Error_Duration" Editable="FALSE" Name="set" Library="Standard">
+      <Parameter Name="Value" Description="Parameter: Input value." Type="DBL" Direction="Input" ValueType="Constant" NumericValue="37.0" StringValue="37.0" />
+      <Parameter Name="Number out" Description="Result: Output value." Type="DBL" Direction="Output" ValueType="Variable" VariableName="d_ErrorType" />
+   </Statement>
+   <Statement Label="" Editable="FALSE" Name="SetString" Library="Standard">
+      <Parameter Name="String 1" Description="Parameter: Enter first string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="Predicted constant-speed move time exceeds 40 s for the 45 s wait timeout. No new move was issued. Confirm the correct reviewed velocity or split the move before continuing." />
       <Parameter Name="String 2" Description="Parameter: Enter second string." Type="String" Direction="Input" ValueType="Constant" NumericValue="0.0" StringValue="" />
       <Parameter Name="String out" Description="Result: Returns concatenated string." Type="String" Direction="Output" ValueType="Variable" VariableName="s_ErrorMessage" />
    </Statement>

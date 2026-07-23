@@ -38,9 +38,9 @@ the active records, history, convergence state, and anchored transition plans.
 - `SUB_V6MoveToPosition_*.xseq`: move to one hardcoded v4 position and apply
   its zoom/exposure plus `Illu_Coax = 0.9`, `Illu_1 = 0.9`, and
   `Illu_2 = 0.9`.
-- `SUB_V6CaptureReviewRecord_*_ReadOnly.xseq`: allow one operator focus/image
-  adjustment, query every camera/zoom/tower axis, grab the image, query every
-  axis again, and open the editable Tkinter review.
+- `SUB_V6CaptureReviewRecord_*_ReadOnly.xseq`: confirm that the current image
+  is ready or cancel before the grab, query every camera/zoom/tower axis, grab
+  the image, query every axis again, and open the editable Tkinter review.
 - `SUB_V6OffsetCorrection_*_Guarded.xseq`: calculate one bounded correction
   from the latest active reviewed capture and apply only operator-confirmed
   slow tower moves.
@@ -80,9 +80,16 @@ setup and initialize new memory.
 ## Capture Review And Memory
 
 Before every grab, the capture sequence reapplies the position's standard
-exposure and all three light values, then presents one operator gate for focus
-and framing adjustment with camera/tower pose controls. Do not change exposure,
-lights, or zoom at this gate. After confirmation, V6 queries the full pose,
+exposure and all three light values, then presents one modal capture
+confirmation. Manual camera/tower positioning is not available while this
+dialog is open. Choose `Capture current` only if the displayed image is already
+ready and all motion has stopped.
+
+If focus or framing is wrong, choose `Cancel to adjust`. Confirm that the
+sequence has stopped and no earlier stage command is still moving, adjust
+manually after the dialog closes, then rerun only that capture or convergence
+subsequence with the same V6 memory. Do not restart the main workflow while a
+ball is already held. After capture confirmation, V6 queries the full pose,
 grabs, queries the pose again, and rejects an unstable capture.
 
 The review UI preloads the proposed ROIs and detections. The operator can:
@@ -108,11 +115,14 @@ exact recorded pose, safe lateral height, and workflow prerequisites before it
 marks that coarse capture converged with zero motion. Fine-top references,
 fine-top balls, mirror-side measurements, and final verification cannot be
 skipped because their reviewed geometry is required for later calculations.
+Sessions marked `TEST BYPASS` or `testing_bypass` are rejected at the guarded
+record boundary because copied standard geometry is not live alignment
+evidence.
 
 The active capture record stores the exact post-grab pose, pre/post stability
 evidence, view, zoom, commanded camera settings, image dimensions, selected
 features, scale source, revision, and timestamp. Exposure and illumination are
-recorded as the standard values reapplied before the operator gate; the
+recorded as the standard values reapplied before capture confirmation; the
 repository has no verified analog-output readback statement. Re-recording the
 same capture ID moves the old active record into history and invalidates
 all downstream correction plans, convergence states, transitions, and final
@@ -121,7 +131,9 @@ side or second-ball convergence marker usable.
 
 Memory stays current when the operator changes a camera or tower position
 before the grab because the queried post-adjustment pose, not the hardcoded
-standard pose, is recorded.
+standard pose, is recorded. Memory JSON uses a unique same-directory temporary
+file and bounded atomic-replace retries so a brief Windows file-indexing lock
+does not immediately abort the workflow.
 
 ## Canonical Axes
 
@@ -261,6 +273,11 @@ Coordinates above are ordered as
 - Standard approaches and transitions use medium velocities.
 - Vision-derived corrections use slow velocities.
 - No close-to-chip V6 sequence uses a fast velocity.
+- Before every generated `MoveStage`, V6 calculates
+  `abs(delta_um) / velocity_um_per_s` and rejects a predicted duration above
+  `40 s`, leaving a `5 s` margin below the observed `45 s` axis-wait timeout.
+- V6 uses `SUB_SYS_AxisWaitFinishList` as its single completion mechanism and
+  branches explicitly on `Timeout`; it does not stack `SUB_SysCheckAxisMove`.
 - Every real image-derived move remains operator-confirmed in YASE.
 - Python does not directly move hardware.
 
@@ -318,14 +335,24 @@ Before running the workflow in the cleanroom, run this from
 `D:\TestMasterData\Process\Python_Automation\python_env`:
 
 ```powershell
-.\.venv\Scripts\python.exe -m python_vision_geometry.cleanroom_runtime_check --require-tmpython --json-output log\v6_cleanroom_runtime_check.json
+.\.venv\Scripts\python.exe -m python_vision_geometry.cleanroom_runtime_check --require-tmpython --require-yase-json-statements --json-output log\v6_cleanroom_runtime_check.json
 ```
 
 This is read-only. It verifies that the copied Python environment can import
 the V6 TMPython entrypoints, the real `vision_recognition_lab.py`, the OpenCV
 and scikit-image recognizers, the side trench ruler algorithm, Tkinter, and
-all required reviewed baseline JSON files. A failed check means do not start
-`SUB_V6MainWorkflow_Guarded.xseq`.
+all required reviewed baseline JSON files. It also verifies that global
+`Sequencer.ini` registers
+`#SM_ROOT#\Functions\JSON\JSON_Statements`; without that folder, the V6 JSON
+extraction statements can fail while parsing. A failed check means do not
+start `SUB_V6MainWorkflow_Guarded.xseq`.
+
+The report warns if the installed TMPython package contains the known
+`print(pformat(self.input_params))` worker pattern. A possible stdout-pipe
+block remains a hypothesis, not a confirmed root cause. If a TMPython call
+stops after its input file is written but before either result exists, abort,
+verify that no stage is moving, inspect the newest TMPython log, and restart
+TestMaster if the host does not release.
 
 ## Commissioning Boundary
 
