@@ -60,6 +60,7 @@ VISION_RECOGNITION_LAB_TITLE = f"Vision Recognition Lab {VISION_RECOGNITION_LAB_
 FIXED_MEASUREMENT_SHORT_EDGE_LENGTH_UM = 500.0
 COARSE_TOP_CAPTURE_IDS = frozenset({"2.1.1", "4.1.1"})
 DIRECT_TOP_VIEW_MAX_Y_FRACTION = 0.65
+COARSE_SKIP_ACTION = "vision_lab_skip_coarse_assume_aligned"
 FEATURE_ROLE_CHOICES = (
     "laser_reference",
     "ball_candidate",
@@ -3397,6 +3398,7 @@ class VisionRecognitionLab(tk.Toplevel):
         self._feature_role_display_values = tuple(label for _role, label in self._feature_role_options)
         self._session_saved = False
         self._session_cancelled = False
+        self._session_skipped = False
         self.library = VisionPositionLibrary(positions=(), images=())
         self._position_display_to_id: dict[str, str] = {}
         self._image_item_to_image: dict[str, VisionPositionImage] = {}
@@ -3662,6 +3664,7 @@ class VisionRecognitionLab(tk.Toplevel):
         )
         self.roi_count_var = tk.StringVar(value="ROIs: 0")
         ttk.Label(roi_buttons, textvariable=self.roi_count_var, anchor="e").grid(row=0, column=1, sticky="ew")
+        self.skip_coarse_button: ttk.Button | None = None
         if self._show_session_done_button:
             ttk.Button(roi_buttons, text="Save + Close", command=self._finish_session).grid(
                 row=1,
@@ -3676,6 +3679,19 @@ class VisionRecognitionLab(tk.Toplevel):
                 sticky="ew",
                 pady=(4, 0),
             )
+            if self._capture_id in COARSE_TOP_CAPTURE_IDS:
+                self.skip_coarse_button = ttk.Button(
+                    roi_buttons,
+                    text="Skip coarse - assume aligned",
+                    command=self._skip_coarse_session,
+                )
+                self.skip_coarse_button.grid(
+                    row=2,
+                    column=0,
+                    columnspan=2,
+                    sticky="ew",
+                    pady=(4, 0),
+                )
 
         result_frame = ttk.LabelFrame(sidebar, text="Detected shapes", padding=(6, 4))
         result_frame.grid(row=4, column=0, sticky="nsew", pady=(0, 8))
@@ -4526,6 +4542,19 @@ class VisionRecognitionLab(tk.Toplevel):
     def _finish_session(self) -> None:
         self._session_saved = True
         self._session_cancelled = False
+        self._session_skipped = False
+        if self._session_done_callback is not None:
+            self._session_done_callback()
+            return
+        self.destroy()
+
+    def _skip_coarse_session(self) -> None:
+        if self._capture_id not in COARSE_TOP_CAPTURE_IDS:
+            self.tool_status_var.set("Skip is available only for V6 coarse top captures")
+            return
+        self._session_saved = True
+        self._session_cancelled = False
+        self._session_skipped = True
         if self._session_done_callback is not None:
             self._session_done_callback()
             return
@@ -4534,6 +4563,7 @@ class VisionRecognitionLab(tk.Toplevel):
     def _cancel_session(self) -> None:
         self._session_saved = False
         self._session_cancelled = True
+        self._session_skipped = False
         if self._session_done_callback is not None:
             self._session_done_callback()
             return
@@ -6164,6 +6194,33 @@ def vision_session_payload(
     return payload
 
 
+def coarse_skip_session_payload(
+    *,
+    image_path: str | Path,
+    capture_id: str,
+    image_dimensions_px: dict[str, int] | None = None,
+) -> dict[str, Any]:
+    if capture_id not in COARSE_TOP_CAPTURE_IDS:
+        raise ValueError("assume-aligned skip is allowed only for V6 coarse top captures")
+    payload = vision_session_payload(
+        image_path=image_path,
+        rois=(),
+        result=None,
+        status=(
+            f"Operator skipped coarse review for {capture_id} and assumed the "
+            "current position is aligned"
+        ),
+        ok=True,
+        capture_id=capture_id,
+        image_dimensions_px=image_dimensions_px,
+        action=COARSE_SKIP_ACTION,
+    )
+    payload["skip_assume_aligned"] = True
+    payload["operator_decision"] = "assume_current_coarse_position_is_correct"
+    payload["skip_scope"] = "coarse_alignment_only"
+    return payload
+
+
 def run_vision_recognition_lab_session(
     image_path: str | Path,
     *,
@@ -6196,6 +6253,24 @@ def run_vision_recognition_lab_session(
     lab.protocol("WM_DELETE_WINDOW", lab._cancel_session)  # pylint: disable=protected-access
     try:
         root.mainloop()
+        image_dimensions_px = (
+            {
+                "image_width_px": int(lab._source_gray_image.shape[1]),  # pylint: disable=protected-access
+                "image_height_px": int(lab._source_gray_image.shape[0]),  # pylint: disable=protected-access
+            }
+            if lab._source_gray_image is not None  # pylint: disable=protected-access
+            else None
+        )
+        if lab._session_skipped:  # pylint: disable=protected-access
+            payload = coarse_skip_session_payload(
+                image_path=source_path,
+                capture_id=str(capture_id or ""),
+                image_dimensions_px=image_dimensions_px,
+            )
+            if result_output_path is not None:
+                payload["result_output_path"] = str(Path(result_output_path))
+                _write_json(result_output_path, payload)
+            return payload
         if lab._session_cancelled or not lab._session_saved:  # pylint: disable=protected-access
             payload = vision_session_payload(
                 image_path=source_path,
@@ -6225,14 +6300,7 @@ def run_vision_recognition_lab_session(
             yase_display=lab.selected_yase_display_status(status),
             capture_id=capture_id,
             mirror_roi=lab.reviewed_mirror_roi_payload(),
-            image_dimensions_px=(
-                {
-                    "image_width_px": int(lab._source_gray_image.shape[1]),  # pylint: disable=protected-access
-                    "image_height_px": int(lab._source_gray_image.shape[0]),  # pylint: disable=protected-access
-                }
-                if lab._source_gray_image is not None  # pylint: disable=protected-access
-                else None
-            ),
+            image_dimensions_px=image_dimensions_px,
         )
         if roi_output_path is not None:
             roi_payload = {

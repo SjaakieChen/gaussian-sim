@@ -57,6 +57,7 @@ DEFAULT_DIRECT_TOP_VIEW_MAX_Y_FRACTION = 0.65
 DEFAULT_LAYOUT_SOURCE_MACHINE_X_UM = 0.0
 DEFAULT_LAYOUT_TAPER_MACHINE_X_UM = 1278.0
 TRANSITION_STATUSES = {"in_progress", "complete"}
+COARSE_SKIP_ACTION = "vision_lab_skip_coarse_assume_aligned"
 
 MACHINE_AXES = ("machine_x_um", "machine_y_um", "machine_z_um")
 AXIS_ALIASES = {
@@ -138,6 +139,11 @@ CAPTURE_SPECS: dict[str, JsonDict] = {
         "result_use": "side_mirror_y_offset_correction",
     },
 }
+SKIPPABLE_CAPTURE_IDS = frozenset(
+    capture_id
+    for capture_id, spec in CAPTURE_SPECS.items()
+    if spec["result_use"] == "coarse_offset_correction"
+)
 
 OFFSET_SPECS: dict[str, JsonDict] = {
     "2.1.1": {
@@ -359,9 +365,16 @@ def review_and_record_capture(params_in: JsonDict) -> JsonDict:
             result_output_path=params_in.get("review_session_output_path")
             or params_in.get("vision_session_output_path"),
         )
-    if review_was_cancelled(review_session):
+    skip_assume_aligned = review_requests_coarse_skip(review_session)
+    if skip_assume_aligned and capture_id not in SKIPPABLE_CAPTURE_IDS:
+        raise ValueError(
+            f"assume-aligned skip is not allowed for {capture_id}; "
+            "only coarse captures 2.1.1 and 4.1.1 may be skipped"
+        )
+    if not skip_assume_aligned and review_was_cancelled(review_session):
         return abort_response(f"operator cancelled review for {capture_id}; v6 memory was not updated")
-    validate_reviewed_capture_session(capture_id, review_session, params_in)
+    if not skip_assume_aligned:
+        validate_reviewed_capture_session(capture_id, review_session, params_in)
 
     image_dimensions = image_dimensions_payload(image_path, review_session)
     settings = capture_settings_payload(params_in, after)
@@ -383,7 +396,7 @@ def review_and_record_capture(params_in: JsonDict) -> JsonDict:
     record = {
         **deepcopy_json(spec),
         "capture_id": capture_id,
-        "review_status": "reviewed",
+        "review_status": "assumed_aligned" if skip_assume_aligned else "reviewed",
         "revision": revision,
         "recorded_at_utc": now,
         "image_path": image_path,
@@ -400,22 +413,46 @@ def review_and_record_capture(params_in: JsonDict) -> JsonDict:
             "image_width_px": image_dimensions.get("image_width_px"),
             "image_height_px": image_dimensions.get("image_height_px"),
         },
-        "scale_source": scale_source_for_capture(capture_id),
+        "scale_source": (
+            {
+                "kind": "operator_assumption",
+                "calibration_used": False,
+                "scope": "coarse_alignment_only",
+            }
+            if skip_assume_aligned
+            else scale_source_for_capture(capture_id)
+        ),
     }
+    if skip_assume_aligned:
+        record["operator_assumption"] = {
+            "decision": "assume_current_coarse_position_is_correct",
+            "vision_measurement_used": False,
+            "motion_requested": False,
+            "capture_id": capture_id,
+            "recorded_at_utc": now,
+        }
     records[capture_id] = record
     memory["capture_records"] = records
     invalidated = invalidate_dependent_plans(memory, capture_id, revision)
     memory["updated_at_utc"] = now
     memory["ok"] = True
     memory["action"] = MEMORY_ACTION
-    memory["status"] = f"recorded reviewed capture {capture_id} revision {revision}"
+    memory["status"] = (
+        f"recorded operator-assumed coarse alignment {capture_id} revision {revision}"
+        if skip_assume_aligned
+        else f"recorded reviewed capture {capture_id} revision {revision}"
+    )
     write_json_if_requested(memory, params_in.get("memory_output_path") or params_in.get("memory_path"))
 
     result = {
         "schema_version": SCHEMA_VERSION,
         "ok": True,
-        "action": "reviewed_capture_recorded",
-        "status": f"recorded reviewed capture {capture_id} revision {revision}",
+        "action": (
+            "coarse_alignment_assumption_recorded"
+            if skip_assume_aligned
+            else "reviewed_capture_recorded"
+        ),
+        "status": memory["status"],
         "capture_id": capture_id,
         "revision": revision,
         "position_id": spec["position_id"],
@@ -427,6 +464,9 @@ def review_and_record_capture(params_in: JsonDict) -> JsonDict:
         "invalidated_plan_ids": invalidated,
         "sequence_memory_summary": memory_summary(memory),
     }
+    if skip_assume_aligned:
+        result["skip_assume_aligned"] = True
+        result["vision_measurement_used"] = False
     write_json_if_requested(result, params_in.get("result_output_path") or params_in.get("output_path"))
     return result
 
@@ -472,7 +512,15 @@ def next_offset_correction(params_in: JsonDict) -> JsonDict:
         "correction_tolerance_um",
     )
 
-    if spec["kind"] == "coarse_top":
+    assumed_aligned = record_is_assumed_coarse_alignment(record)
+    if assumed_aligned:
+        if spec["kind"] != "coarse_top":
+            raise ValueError(
+                f"capture {capture_id} contains an invalid assume-aligned record "
+                "for a non-coarse correction"
+            )
+        correction = assumed_coarse_alignment_correction(capture_id, spec, record)
+    elif spec["kind"] == "coarse_top":
         correction = coarse_top_correction(capture_id, spec, memory, params_in)
     elif spec["kind"] == "top_fine":
         correction = top_fine_correction(capture_id, spec, memory, params_in)
@@ -490,6 +538,10 @@ def next_offset_correction(params_in: JsonDict) -> JsonDict:
         tolerance_um=tolerance_um,
         params_in=params_in,
     )
+    if assumed_aligned:
+        convergence["assumed_aligned"] = True
+        convergence["evidence"] = "operator_assumption_only"
+        convergence["vision_measurement_used"] = False
     try:
         planned_moves = moves_from_axis_corrections(
             current_positions,
@@ -529,6 +581,35 @@ def next_offset_correction(params_in: JsonDict) -> JsonDict:
     save_correction_plan(memory, capture_id, record, response)
     persist_memory(memory, params_in)
     return response
+
+
+def record_is_assumed_coarse_alignment(record: JsonDict) -> bool:
+    session = as_dict(record.get("session"))
+    return (
+        str(record.get("review_status") or "") == "assumed_aligned"
+        and session.get("skip_assume_aligned") is True
+        and str(session.get("action") or "") == COARSE_SKIP_ACTION
+    )
+
+
+def assumed_coarse_alignment_correction(
+    capture_id: str,
+    spec: JsonDict,
+    record: JsonDict,
+) -> JsonDict:
+    return {
+        "source": "operator_assumption_no_vision_correction",
+        "capture_id": capture_id,
+        "target": spec["target"],
+        "tower": spec["tower"],
+        "axis_residuals_um": {
+            "machine_x_um": 0.0,
+            "machine_z_um": 0.0,
+        },
+        "operator_assumption": deepcopy_json(record.get("operator_assumption")),
+        "vision_measurement_used": False,
+        "motion_requested": False,
+    }
 
 
 def coarse_top_correction(capture_id: str, spec: JsonDict, memory: JsonDict, params_in: JsonDict) -> JsonDict:
@@ -1065,9 +1146,12 @@ def verify_final_geometry(params_in: JsonDict) -> JsonDict:
 
 def validate_final_workflow_prerequisites(memory: JsonDict) -> JsonDict:
     converged_capture_ids = []
+    assumed_aligned_capture_ids = []
     for capture_id in OFFSET_SPECS:
-        require_converged_capture(memory, capture_id)
+        convergence = require_converged_capture(memory, capture_id)
         converged_capture_ids.append(capture_id)
+        if convergence.get("assumed_aligned") is True:
+            assumed_aligned_capture_ids.append(capture_id)
     completed_transition_ids = []
     for transition_id in TRANSITION_SPECS:
         require_completed_transition(memory, transition_id)
@@ -1075,6 +1159,7 @@ def validate_final_workflow_prerequisites(memory: JsonDict) -> JsonDict:
     return {
         "valid": True,
         "converged_capture_ids": converged_capture_ids,
+        "assumed_aligned_capture_ids": assumed_aligned_capture_ids,
         "completed_transition_ids": completed_transition_ids,
     }
 
@@ -1768,10 +1853,20 @@ def correction_response(
         "motion_policy": "operator_confirmed_yase_movestage_only",
     }
     if not planned_moves:
+        assumed_aligned = correction.get("source") == "operator_assumption_no_vision_correction"
         return no_move_response(
             action="no_offset_correction_required",
-            status=f"{capture_id} reviewed residual is within tolerance",
-            extra={"diagnostics": diagnostics, "capture_id": capture_id},
+            status=(
+                f"{capture_id} coarse alignment was skipped and assumed correct; no move requested"
+                if assumed_aligned
+                else f"{capture_id} reviewed residual is within tolerance"
+            ),
+            extra={
+                "diagnostics": diagnostics,
+                "capture_id": capture_id,
+                "skip_assume_aligned": assumed_aligned,
+                "vision_measurement_used": not assumed_aligned,
+            },
         )
     return flat_move_response(
         action="offset_correction_move",
@@ -2599,6 +2694,15 @@ def review_was_cancelled(session: JsonDict) -> bool:
     }
 
 
+def review_requests_coarse_skip(session: JsonDict) -> bool:
+    if session.get("ok") is not True:
+        return False
+    return (
+        session.get("skip_assume_aligned") is True
+        and str(session.get("action") or "").strip() == COARSE_SKIP_ACTION
+    )
+
+
 def open_v6_vision_review_ui(
     image_path: str,
     *,
@@ -2969,10 +3073,16 @@ def reviewed_session_has_selected_shapes(session: JsonDict) -> bool:
 
 
 def memory_summary(memory: JsonDict) -> JsonDict:
+    records = as_dict(memory.get("capture_records"))
     return {
         "schema_version": SCHEMA_VERSION,
-        "capture_count": len(as_dict(memory.get("capture_records"))),
-        "recorded_capture_ids": sorted(as_dict(memory.get("capture_records"))),
+        "capture_count": len(records),
+        "recorded_capture_ids": sorted(records),
+        "assumed_aligned_capture_ids": sorted(
+            capture_id
+            for capture_id, record in records.items()
+            if str(as_dict(record).get("review_status") or "") == "assumed_aligned"
+        ),
         "capture_history_count": sum(
             len(value) for value in as_dict(memory.get("capture_history")).values() if isinstance(value, list)
         ),

@@ -90,6 +90,8 @@ The review UI preloads the proposed ROIs and detections. The operator can:
 - replace a detection;
 - redraw an ROI;
 - assign a feature role from the capture-specific list;
+- skip only a coarse capture by explicitly choosing
+  `Skip coarse - assume aligned`;
 - save the reviewed result; or
 - cancel without changing memory.
 
@@ -98,6 +100,14 @@ their laser or ball-circle role plus `Ignore`; mirror captures show only the
 side-mirror ball circle, trench-top line, trench-floor line, and `Ignore`.
 These readable labels are converted back to the existing canonical role keys
 before the reviewed result is stored.
+
+The skip control appears only for coarse captures `2.1.1` and `4.1.1`. It
+records that the operator accepts the current coarse pose; it does not create
+a ball detection or request motion. The normal offset step still validates the
+exact recorded pose, safe lateral height, and workflow prerequisites before it
+marks that coarse capture converged with zero motion. Fine-top references,
+fine-top balls, mirror-side measurements, and final verification cannot be
+skipped because their reviewed geometry is required for later calculations.
 
 The active capture record stores the exact post-grab pose, pre/post stability
 evidence, view, zoom, commanded camera settings, image dimensions, selected

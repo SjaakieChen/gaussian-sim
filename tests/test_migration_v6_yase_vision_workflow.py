@@ -31,10 +31,12 @@ from migrations.migration_v6.python_vision_geometry.v6_offset_workflow import (
     validate_reviewed_capture_session,
 )
 from migrations.migration_v6.vision_recognition_lab import (
+    COARSE_SKIP_ACTION as UI_COARSE_SKIP_ACTION,
     DIRECT_TOP_VIEW_MAX_Y_FRACTION,
     FEATURE_ROLE_CHOICES,
     VisionROI,
     VisionRecognitionLab,
+    coarse_skip_session_payload,
     detect_coarse_top_ball_circle,
     detect_side_trench_ruler_lines,
     feature_role_display_label,
@@ -572,12 +574,19 @@ def test_v6_measurement_plan_and_operator_docs_use_schema_2_canonical_contract()
         "raise every tower"
     )
     assert "2.5.1 converged" in plan["workflow_prerequisites"]["2.6.1"]
+    skip_policy = plan["capture_memory"]["skip_policy"]
+    assert skip_policy["allowed_capture_ids"] == ["2.1.1", "4.1.1"]
+    assert skip_policy["vision_measurement_used"] is False
+    assert skip_policy["motion_requested"] is False
+    assert "final verification" in skip_policy["forbidden_uses"]
 
     readme = (V6 / "README.md").read_text(encoding="utf-8")
     assert "Do not rerun the memory initializer between normal steps" in readme
     assert "mirror_flipped_y_px = mirror_roi_bottom_y_px - full_image_y_px" in readme
     assert "--popup-scope all" in readme
     assert "ball 1 to ball 2 = 200 um" in readme
+    assert "Skip coarse - assume aligned" in readme
+    assert "final verification cannot be" in readme.replace("\n", " ")
     assert "It is not physical machine validation" in readme.replace("\n", " ")
 
     mistakes = (ROOT / "COMMON_MISTAKES.md").read_text(encoding="utf-8")
@@ -623,6 +632,8 @@ def test_v6_review_ui_preloads_live_proposal_allows_override_and_tracks_cancel()
         assert lab.feature_role_context_var.get() == (
             "Review target: BALL 1 - COARSE TOP CAMERA VIEW"
         )
+        assert lab.skip_coarse_button is not None
+        assert lab.skip_coarse_button.cget("text") == "Skip coarse - assume aligned"
 
         selected_item_id = next(iter(lab._selected_recognition_item_ids))  # pylint: disable=protected-access
         lab.recognition_tree.selection_set(selected_item_id)
@@ -631,9 +642,15 @@ def test_v6_review_ui_preloads_live_proposal_allows_override_and_tracks_cancel()
         lab._set_selected_recognition_role()  # pylint: disable=protected-access
         assert lab.selected_recognition_payload()["roi_1"][0]["feature_role"] == "ignore"
 
+        lab.skip_coarse_button.invoke()
+        assert lab._session_skipped is True  # pylint: disable=protected-access
+        assert lab._session_saved is True  # pylint: disable=protected-access
+        assert lab._session_cancelled is False  # pylint: disable=protected-access
+
         lab._cancel_session()  # pylint: disable=protected-access
         assert lab._session_cancelled is True  # pylint: disable=protected-access
         assert lab._session_saved is False  # pylint: disable=protected-access
+        assert lab._session_skipped is False  # pylint: disable=protected-access
     finally:
         if lab is not None:
             lab.destroy()
@@ -677,6 +694,28 @@ def test_v6_capture_role_choices_are_filtered_and_name_the_camera_view():
 
         for role in roles:
             assert feature_role_display_label(role, capture_id) == dict(options)[role]
+
+
+def test_v6_skip_payload_is_explicitly_limited_to_coarse_captures():
+    assert v6_module.COARSE_SKIP_ACTION == UI_COARSE_SKIP_ACTION
+    assert v6_module.SKIPPABLE_CAPTURE_IDS == frozenset({"2.1.1", "4.1.1"})
+
+    payload = coarse_skip_session_payload(
+        image_path="capture.png",
+        capture_id="2.1.1",
+        image_dimensions_px={"image_width_px": 2592, "image_height_px": 1944},
+    )
+    assert payload["ok"] is True
+    assert payload["action"] == UI_COARSE_SKIP_ACTION
+    assert payload["skip_assume_aligned"] is True
+    assert payload["selected_recognition"] == {}
+
+    for capture_id in set(CAPTURE_IDS) - set(v6_module.SKIPPABLE_CAPTURE_IDS):
+        with pytest.raises(ValueError, match="only for V6 coarse top captures"):
+            coarse_skip_session_payload(
+                image_path="capture.png",
+                capture_id=capture_id,
+            )
 
 
 def test_v6_side_review_ui_preloads_ball_two_ruler_lines_and_mirror_roi():
@@ -731,6 +770,7 @@ def test_v6_side_review_ui_preloads_ball_two_ruler_lines_and_mirror_roi():
                     if label != "Ignore this detection"
                 )
                 assert all("TOP view" not in label for label in displayed_roles)
+                assert lab.skip_coarse_button is None
             finally:
                 lab.destroy()
     finally:
@@ -928,6 +968,145 @@ def test_v6_record_capture_preloads_simulator_initial_session(monkeypatch, tmp_p
         "capture_id": "2.1.1",
         "initial_session": initial_session,
     }
+
+
+def test_v6_coarse_skip_records_assumption_then_converges_without_motion(tmp_path):
+    memory_path = tmp_path / "memory.json"
+    image_path = ROOT / "Standard position images" / "v4" / "newhead" / "2.1.1.PNG"
+    pose = _pose()
+    review_session = coarse_skip_session_payload(
+        image_path=image_path,
+        capture_id="2.1.1",
+        image_dimensions_px={"image_width_px": 2592, "image_height_px": 1944},
+    )
+
+    recorded = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "record_capture",
+            "capture_id": "2.1.1",
+            "image_path": str(image_path),
+            "memory_path": str(memory_path),
+            "machine_positions_before_grab_um": pose,
+            "machine_positions_after_grab_um": pose,
+            "review_session": review_session,
+        }
+    )
+
+    assert recorded["ok"] is True
+    assert recorded["action"] == "coarse_alignment_assumption_recorded"
+    assert recorded["skip_assume_aligned"] is True
+    assert recorded["vision_measurement_used"] is False
+    memory = json.loads(memory_path.read_text(encoding="utf-8"))
+    record = memory["capture_records"]["2.1.1"]
+    assert record["review_status"] == "assumed_aligned"
+    assert record["session"]["selected_recognition"] == {}
+    assert record["operator_assumption"]["vision_measurement_used"] is False
+    assert "2.1.1" not in memory["convergence"]
+
+    correction = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "next_offset_correction",
+            "capture_id": "2.1.1",
+            "memory_path": str(memory_path),
+            "machine_positions_um": pose,
+        }
+    )
+
+    assert correction["ok"] is True
+    assert correction["action"] == "no_offset_correction_required"
+    assert correction["move_count"] == 0
+    assert correction["skip_assume_aligned"] is True
+    assert correction["vision_measurement_used"] is False
+    assert "skipped and assumed correct" in correction["status"]
+    memory = json.loads(memory_path.read_text(encoding="utf-8"))
+    convergence = memory["convergence"]["2.1.1"]
+    assert convergence["status"] == "converged"
+    assert convergence["assumed_aligned"] is True
+    assert convergence["vision_measurement_used"] is False
+    assert convergence["capture_revision"] == record["revision"]
+
+
+@pytest.mark.parametrize(
+    "capture_id",
+    sorted(set(CAPTURE_IDS) - set(v6_module.SKIPPABLE_CAPTURE_IDS)),
+)
+def test_v6_record_capture_rejects_forged_skip_for_noncoarse_views(
+    capture_id,
+    tmp_path,
+):
+    image_path = ROOT / "Standard position images" / "v4" / "newhead" / f"{capture_id}.PNG"
+    forged_skip = {
+        "schema_version": 3,
+        "ok": True,
+        "action": UI_COARSE_SKIP_ACTION,
+        "skip_assume_aligned": True,
+        "selected_recognition": {},
+        "image_dimensions_px": {
+            "image_width_px": 2592,
+            "image_height_px": 1944,
+        },
+    }
+
+    result = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "record_capture",
+            "capture_id": capture_id,
+            "image_path": str(image_path),
+            "memory_path": str(tmp_path / f"{capture_id}.json"),
+            "machine_positions_before_grab_um": _pose(),
+            "machine_positions_after_grab_um": _pose(),
+            "review_session": forged_skip,
+        }
+    )
+
+    assert result["ok"] is False
+    assert result["move_count"] == 0
+    assert "only coarse captures 2.1.1 and 4.1.1 may be skipped" in result["status"]
+
+
+def test_v6_ball_2_coarse_skip_does_not_bypass_ball_1_prerequisite(tmp_path):
+    memory_path = tmp_path / "memory.json"
+    image_path = ROOT / "Standard position images" / "v4" / "newhead" / "4.1.1.PNG"
+    pose = _pose()
+    recorded = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "record_capture",
+            "capture_id": "4.1.1",
+            "image_path": str(image_path),
+            "memory_path": str(memory_path),
+            "machine_positions_before_grab_um": pose,
+            "machine_positions_after_grab_um": pose,
+            "review_session": coarse_skip_session_payload(
+                image_path=image_path,
+                capture_id="4.1.1",
+                image_dimensions_px={
+                    "image_width_px": 2592,
+                    "image_height_px": 1944,
+                },
+            ),
+        }
+    )
+    assert recorded["ok"] is True
+
+    correction = run_v6_vision_workflow(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "command": "next_offset_correction",
+            "capture_id": "4.1.1",
+            "memory_path": str(memory_path),
+            "machine_positions_um": pose,
+        }
+    )
+
+    assert correction["ok"] is False
+    assert correction["move_count"] == 0
+    assert "reviewed capture record for 2.6.1" in correction["status"]
+    memory = json.loads(memory_path.read_text(encoding="utf-8"))
+    assert "4.1.1" not in memory["convergence"]
 
 
 def test_v6_convergence_wrappers_are_independent_and_main_calls_them_once():

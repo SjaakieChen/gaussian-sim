@@ -115,6 +115,22 @@
     ],
     "replacement_rule": "A re-recorded capture replaces its active record, archives the prior revision, and invalidates all downstream correction plans, convergence states, transitions, and final verification.",
     "cancel_rule": "Review cancellation does not update memory.",
+    "skip_policy": {
+      "allowed_capture_ids": [
+        "2.1.1",
+        "4.1.1"
+      ],
+      "operator_action": "assume_current_coarse_position_is_correct",
+      "vision_measurement_used": false,
+      "motion_requested": false,
+      "convergence_rule": "The normal next_offset_correction command must still validate exact pose, safe height, and workflow prerequisites before recording zero-motion coarse convergence.",
+      "forbidden_uses": [
+        "fine-top reference",
+        "fine-top ball measurement",
+        "mirror-side measurement",
+        "final verification"
+      ]
+    },
     "stability_rule": "All camera, zoom, and tower axes are queried before and after the grab; excessive motion rejects the capture.",
     "settings_rule": "Standard exposure and three light outputs are reapplied before the operator focus/framing gate and stored as commanded values; the operator must not change them because analog readback is not claimed."
   },
